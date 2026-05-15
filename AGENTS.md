@@ -34,33 +34,31 @@ Only generate code in the assigned area. Ask before touching another owner's fil
 ## Branch strategy
 
 ```
-main                  — demo-ready, stable. Ray merges dev -> main before the demo.
-dev                   — integration branch. All feature branches merge here.
-feat/<prefix>-<slug>  — working branch. Never commit directly to dev or main.
+main        — demo-ready, stable. Ray merges dev -> main before the demo.
+dev         — integration branch. All feature branches merge here.
+<name>/...  — working branch. Never commit directly to dev or main.
 ```
 
-Branch prefix per person:
+Just use your name as the prefix. Slug is optional.
 
-| Person | Prefix |
-|--------|--------|
-| Ray | `feat/ray-` |
-| Aryan | `feat/aryan-` |
-| Hemish | `feat/hemish-` |
-| Maalav | `feat/maalav-` |
-
-Example branch names: `feat/aryan-add-auth-endpoint`, `feat/hemish-sidebar-nav`
+| Person | Example branch |
+|--------|----------------|
+| Ray | `ray/homepage` |
+| Aryan | `aryan/auth` |
+| Hemish | `hemish/sidebar` |
+| Maalav | `maalav/results-page` |
 
 ## Contribution workflow
 
 1. Always branch off `dev` — never off `main`.
    ```
-   git checkout dev && git pull && git checkout -b feat/<prefix>-<slug>
+   git checkout dev && git pull && git checkout -b <name>/<slug>
    ```
 2. Work only in your area (see layer ownership above).
-3. Commit in conventional format (see below).
+3. Commit whatever — just make it clear enough that teammates understand what changed.
 4. When done, merge back into `dev` directly:
    ```
-   git checkout dev && git pull && git merge feat/<prefix>-<slug> && git push
+   git checkout dev && git pull && git merge <name>/<slug> && git push
    ```
 5. Delete your branch after merging.
 6. Pull `dev` before starting the next branch.
@@ -73,13 +71,13 @@ Every feature must connect to the runnable demo. If it cannot be shown in 4 minu
 
 ## Commit format
 
-```
-feat: add search input
-fix: handle empty gemini response
-chore: install @google/generative-ai
-```
+Free-form is fine. Just describe what changed.
 
-Conventional commits. ASCII only. Imperative mood. No trailing period. No compound types.
+```
+add search input
+fix empty gemini response crash
+install @google/generative-ai
+```
 
 ## Fallback toggle
 
