@@ -58,11 +58,12 @@ Example branch names: `feat/aryan-add-auth-endpoint`, `feat/hemish-sidebar-nav`
    ```
 2. Work only in your area (see layer ownership above).
 3. Commit in conventional format (see below).
-4. Push and open a PR targeting `dev`.
-5. Announce in group chat: "PR open — feat/aryan-add-auth-endpoint".
-6. Ray reviews and merges. Do not self-merge.
-7. Delete your branch after merge.
-8. Pull `dev` before starting the next branch.
+4. When done, merge back into `dev` directly:
+   ```
+   git checkout dev && git pull && git merge feat/<prefix>-<slug> && git push
+   ```
+5. Delete your branch after merging.
+6. Pull `dev` before starting the next branch.
 
 Shared files (`src/types/`, `src/lib/`) — announce in group chat before touching to avoid conflicts.
 
