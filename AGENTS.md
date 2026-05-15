@@ -8,7 +8,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Hackathon AI Rules — GDGC 2026
 
-All AI tools (Claude Code, Copilot, Cursor, etc.) follow these rules in this repo.
+All AI tools (Claude Code, Copilot, etc.) follow these rules in this repo.
 
 ## Mode: HACKATHON — speed over perfection
 
