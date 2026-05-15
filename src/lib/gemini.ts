@@ -12,7 +12,7 @@ export const geminiModel = genAI.getGenerativeModel({
   model: "gemini-2.0-flash",
 });
 
-export async function generateText(prompt: string): Promise<string> {
-  const result = await geminiModel.generateContent(prompt);
-  return result.response.text();
+// TODO: implement at 10am once theme is known
+export async function generateText(_prompt: string): Promise<string> {
+  throw new Error("Not implemented yet");
 }
