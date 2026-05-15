@@ -1,24 +1,22 @@
 # Team Roles — GDGC Hackathon 2026
 
-Fill in task assignments at 9am Saturday after the briefing.
+Fill in task assignments after the briefing.
 
 ## Ownership
 
 | Person | Role | Owns | Branch prefix |
 |--------|------|------|---------------|
-| Ray | Lead + AI/Gemini infra + Demo | `src/lib/`, demo script | `feat/ray-` |
-| Aryan | Backend + Supabase | `src/app/api/` | `feat/aryan-` |
-| Hemish | Frontend / UI | `src/components/` | `feat/hemish-` |
-| Maalav | Frontend support / Backend flex | TBD at 10am | `feat/maalav-` |
-| TBD | TBD | TBD | `feat/<name>-` |
+| Ray | TBD | TBD | `feat/ray-` |
+| Aryan | TBD | TBD | `feat/aryan-` |
+| Hemish | TBD | TBD | `feat/hemish-` |
+| Maalav | TBD | TBD | `feat/maalav-` |
 
-## Day 1 tasks (fill in at 10am)
+## Day 1 tasks (fill in after briefing)
 
 - Ray:
 - Aryan:
 - Hemish:
 - Maalav:
-- TBD:
 
 ## Rule
 

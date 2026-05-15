@@ -22,14 +22,14 @@ This project runs in hackathon mode. Speed > perfection.
 
 ## Layer ownership
 
-Only touch files in the assigned owner's area unless explicitly told otherwise.
+Roles TBD — assign after briefing. Until then, coordinate before touching shared files.
 
 | Area | Owner | Path |
 |------|-------|------|
-| AI / Gemini infra + Supabase + Vercel | Ray | `src/lib/` |
-| Backend / API routes | Aryan | `src/app/api/` |
-| Frontend / UI components | Hemish | `src/components/` |
-| Pages / routing | Maalav | `src/app/` (non-API) |
+| TBD | Ray | TBD |
+| TBD | Aryan | TBD |
+| TBD | Hemish | TBD |
+| TBD | Maalav | TBD |
 | Types | All | `src/types/` |
 
 ## Frontend design with Claude Code
