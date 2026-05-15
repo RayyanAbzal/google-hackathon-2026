@@ -25,11 +25,46 @@ Only generate code in the assigned area. Ask before touching another owner's fil
 
 | Area | Owner | Path |
 |------|-------|------|
-| AI / Gemini infra + Supabase + Vercel | Ray | `src/lib/` |
+| Everything (full-stack lead) | Ray | all of `src/` |
 | Backend / API routes | Aryan | `src/app/api/` |
 | Frontend / UI components | Hemish | `src/components/` |
 | Pages / routing | Maalav | `src/app/` (non-API) |
 | Shared types | All | `src/types/` |
+
+## Branch strategy
+
+```
+main                  — demo-ready, stable. Ray merges dev -> main before the demo.
+dev                   — integration branch. All feature branches merge here.
+feat/<prefix>-<slug>  — working branch. Never commit directly to dev or main.
+```
+
+Branch prefix per person:
+
+| Person | Prefix |
+|--------|--------|
+| Ray | `feat/ray-` |
+| Aryan | `feat/aryan-` |
+| Hemish | `feat/hemish-` |
+| Maalav | `feat/maalav-` |
+
+Example branch names: `feat/aryan-add-auth-endpoint`, `feat/hemish-sidebar-nav`
+
+## Contribution workflow
+
+1. Always branch off `dev` — never off `main`.
+   ```
+   git checkout dev && git pull && git checkout -b feat/<prefix>-<slug>
+   ```
+2. Work only in your area (see layer ownership above).
+3. Commit in conventional format (see below).
+4. Push and open a PR targeting `dev`.
+5. Announce in group chat: "PR open — feat/aryan-add-auth-endpoint".
+6. Ray reviews and merges. Do not self-merge.
+7. Delete your branch after merge.
+8. Pull `dev` before starting the next branch.
+
+Shared files (`src/types/`, `src/lib/`) — announce in group chat before touching to avoid conflicts.
 
 ## Demo-path-first
 
