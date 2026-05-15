@@ -1,0 +1,41 @@
+# Cursor Rules — GDGC Hackathon 2026
+
+Mode: HACKATHON. Speed over perfection.
+
+Stack: Next.js 15 App Router, TypeScript strict, Tailwind v4, shadcn/ui, Gemini API, Supabase.
+
+## Hard rules
+
+- No `any` — use typed alternatives
+- shadcn/ui components only — no custom UI primitives
+- Tailwind v4 utility classes — no inline styles
+- No refactoring untouched code
+- No tests unless explicitly asked
+- Keep components under 200 lines — extract if larger
+- Keep functions under 50 lines
+
+## Layer ownership
+
+Only write code in your assigned area. Ask before touching another owner's path.
+
+| Area | Owner | Path |
+|------|-------|------|
+| AI / Gemini + Supabase + Vercel | Ray | `src/lib/` |
+| Backend / API routes | Aryan | `src/app/api/` |
+| Frontend / UI | Hemish | `src/components/` |
+| Pages | Maalav | `src/app/` (non-API) |
+| Types | All | `src/types/` |
+
+## Commits
+
+`feat: add x` / `fix: handle y` / `chore: install z`
+Imperative, lowercase, no period, ASCII only.
+
+## Demo-path-first
+
+Every piece of code must connect to the demo. If it is not demoable in 4 minutes, cut it.
+
+## Fallbacks
+
+`src/lib/fallbacks.ts` has mock data for all external services.
+`USE_FALLBACKS=true` in `.env.local` activates them.
