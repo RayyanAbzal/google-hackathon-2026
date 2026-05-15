@@ -2,6 +2,8 @@
 
 Team project — GDGC @ UoA, 16-17 May 2026, GridAKL.
 
+**New? Read [ROLES.md](./ROLES.md) first — it covers who owns what, how branches work, and how to contribute.**
+
 ## Quick start
 
 ```bash
@@ -13,24 +15,22 @@ npm run dev
 
 ## Docs
 
+- [ROLES.md](./ROLES.md) — who owns what, branch workflow, contribution steps
 - [PLAN.md](./PLAN.md) — fill in at 9am Saturday with theme + idea
-- [ROLES.md](./ROLES.md) — who owns what
-- [CONTRIBUTING.md](./CONTRIBUTING.md) — branch strategy + commit rules
 
 ## Branch strategy
 
 ```
 main  demo-ready only
-  └── dev  integration (all PRs go here)
-        └── feat/<yourname>-<what>
+  └── dev  integration (all branches merge here)
+        └── feat/<yourname>-<what>  your working branch
 ```
 
-Never push to `main` directly.
+Never push to `main` or `dev` directly. Always use a `feat/` branch.
 
 ## Inviting teammates
 
 ```bash
-# Run for each teammate once you have their GitHub username
 gh repo edit --add-collaborator <github-username>
 ```
 
