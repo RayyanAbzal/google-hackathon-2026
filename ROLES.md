@@ -31,11 +31,12 @@ Never commit directly to `dev` or `main`. Always work on a feature branch.
    ```
 2. Work in your area only (see ownership table above).
 3. Commit early and often using the format below.
-4. Push and open a PR into `dev`.
-5. Post in group chat: "PR open — feat/hemish-sidebar-nav".
-6. Ray merges. Do not merge your own PR.
-7. Delete your branch after merge.
-8. Pull `dev` before starting the next branch.
+4. When done, merge back into `dev` directly:
+   ```
+   git checkout dev && git pull && git merge feat/<your-prefix>-<what-you-built> && git push
+   ```
+5. Delete your branch after merging.
+6. Pull `dev` before starting the next branch.
 
 Shared files (`src/types/`, `src/lib/`) — announce in group chat before editing.
 
