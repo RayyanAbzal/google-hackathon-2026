@@ -1,6 +1,6 @@
 # CivicTrust — Roadmap & Progress
 
-> BLACKOUT · GDGC UOA 2026 · Updated: 2026-05-16
+> BLACKOUT · GDGC UOA 2026 · Updated: 2026-05-17
 
 ---
 
@@ -14,8 +14,9 @@ Sarah registers → uploads passport → gets BLK-XXXXX-LDN node ID
 → uploads medical degree → score rises to 15 (Unverified)
 → submits NHS employer letter → score 30 → Verified tier
 → Dr. Osei (pre-seeded) QR-vouches Sarah → score 40
-→ Doctor pin appears on London map in Southwark
-→ Yellow Pages: search "Doctor" → "Southwark: 3 verified doctors"
+→ Doctor pin appears on /find map hero (Southwark, borough dimmed on click)
+→ NL search: "I need a doctor in Southwark" → Haiku interprets → filtered results
+→ Dashboard ego graph shows trust network
 ```
 
 **Score formula:** passport×20 + other_doc×15 (max 3 docs) + vouch×5 (max 10) + gov_vouch×20 (can exceed 90 cap)
@@ -34,11 +35,11 @@ Vouch minimum gate: 1 doc=5 vouches, 2 docs=3, 3 docs=2 — below minimum, score
 
 | Person | Role | Progress | Status |
 |--------|------|----------|--------|
-| Ray | Full-stack lead, DB, AI, map | 6 done / 3 remaining | 🟡 Nearly done |
-| Aryan | Backend API + Supabase setup | 10 done / 1 confirmation needed | 🟡 Nearly done |
-| Tao | Find API + rate limiting | 1 done / 3 remaining | 🔴 Needs work |
-| Hemish | UI shell + wiring | 4 done / 4 remaining | 🔴 Needs work |
-| Maalav | Pages + routing | 9 done / 5 wiring tasks | 🔴 Needs work |
+| Ray | Full-stack lead, DB, AI, map, NL search | All done / demo prep remaining | 🟢 Demo prep |
+| Aryan | Backend API + Supabase setup | All done / realtime confirm pending | 🟡 Nearly done |
+| Tao | Find API + rate limiting | All done | 🟢 Done |
+| Hemish | UI shell + wiring + notifications | All done | 🟢 Done |
+| Maalav | Pages + routing + ego graph | All done | 🟢 Done |
 
 ---
 
@@ -78,18 +79,19 @@ Vouch minimum gate: 1 doc=5 vouches, 2 docs=3, 3 docs=2 — below minimum, score
 - [x] Wire TopBar avatar initials from real session — **HEMISH** ✅
 - [x] Wire dashboard evidence cards → `GET /api/claims/[userId]` — **HEMISH** ✅
 - [x] Wire vouch confirm button → `POST /api/vouch` — **HEMISH** ✅
+- [x] Full notifications system — unread badge, mark-as-read, TopBar popup — **HEMISH** ✅
 
 ### Phase 4 — Pages
 - [x] Landing (`/`) — hero, CTAs, lore (content extracted to `_components/LandingContent.tsx`)
 - [x] Register (`/register`) — 2-step: display name + password, then doc upload
 - [x] Login (`/login`) — node_id or @username + password, session to localStorage
-- [x] Dashboard (`/dashboard`) — profile, claims, score ring (inline SVG), sidebar-aware layout
-- [x] Map (`/map`) — HeatMap + SkillPins
-- [x] Find (`/find`) — hardcoded rich results (intentional — API returns aggregates only)
+- [x] Dashboard (`/dashboard`) — profile, claims, score ring (inline SVG), ego graph wired to Supabase
+- [x] Find (`/find`) — full-width map hero (Leaflet) + listings + NL interpret-search (Haiku)
+- [x] Map (`/map`) — **REMOVED** — merged into `/find`
 - [x] Vouch (`/vouch`) — QR inline SVG, wired to `POST /api/vouch`
 - [x] Add Evidence (`/add-evidence`) — wizard wired to `POST /api/claims`
-- [x] Settings (`/settings`) — session data wired; username save low priority
-- [x] Profile redirect (`/profile/[username]`) — redirects to `/dashboard`
+- [x] Settings (`/settings`) — session data wired, Node ID copy fixed
+- [x] Profile (`/profile/[username]`) — protected profile view with score + claims
 - [x] Auth guards on all protected pages — **MAALAV** ✅
 - [x] Wire real session data into pages — **MAALAV** ✅
 - [x] Wire add-evidence submit → `POST /api/claims` — **MAALAV** ✅
@@ -99,9 +101,10 @@ Vouch minimum gate: 1 doc=5 vouches, 2 docs=3, 3 docs=2 — below minimum, score
 - [ ] Supabase realtime enabled on `users` table — **ARYAN** 🟡
 - [x] RLS policies confirmed — **RAY via MCP (2026-05-16)**
 - [ ] Run seed: `npx tsx scripts/seedGov.ts && npx tsx scripts/seed.ts` — **RAY** 🟡
-- [ ] Full demo path rehearsed end-to-end
+- [ ] Full demo path rehearsed end-to-end (including NL search + ego graph)
 - [ ] Bad actor path tested (wrong-name doc → rejected)
 - [ ] `USE_FALLBACKS=true` tested (app works if Gemini down)
+- [ ] NL search tested: "I need a doctor in Southwark" → correct filter
 
 ---
 
@@ -112,8 +115,8 @@ ALL CODE DONE. Demo prep remaining:
 
   Aryan: enable realtime on users table            ← live score updates won't fire
   Ray: run seed scripts (--wipe)                   ← map is empty without seeded data
-  Ray: verify demo path math                       ← vouch gate check (see open questions)
-  Ray: confirm heatmap + counter before Sarah logs in
+  Ray: confirm heatmap + NL search before demo
+  Ray: confirm ego graph renders correctly after seed
 
   Full demo rehearsal x2
 ```
@@ -124,7 +127,7 @@ ALL CODE DONE. Demo prep remaining:
 
 ## RAY — Full-stack lead
 
-> DB schema, AI integration, map components, seed data
+> DB schema, AI integration, map, NL search, seed data
 
 | # | Task | Status |
 |---|------|--------|
@@ -134,13 +137,14 @@ ALL CODE DONE. Demo prep remaining:
 | 4 | `src/lib/score.ts` — `recalculateUserScore()` | ✅ Done |
 | 5 | `src/components/map/HeatMap.tsx` — D3 choropleth by borough | ✅ Done |
 | 6 | `src/components/map/SkillPin.tsx` — coloured circle per skill | ✅ Done |
-| 7 | Run seed scripts against live Supabase | ⏳ Pending |
-| 8 | Confirm live counter on map page subscribes to realtime | ⏳ Pending |
-| 9 | Wire map heatmap + pins from real Supabase data (currently uses FALLBACK_USERS) | ⏳ Pending |
+| 7 | MapFlyController + PopupListing + borough dimming (Leaflet) | ✅ Done |
+| 8 | `POST /api/find/interpret-search` — Haiku NL → structured query | ✅ Done |
+| 9 | Run seed scripts against live Supabase | ⏳ Pending |
+| 10 | Confirm live counter subscribes to realtime | ⏳ Pending |
 
 ### Remaining tasks
 
-**Task 7 — Run seeds**
+**Task 9 — Run seeds**
 ```bash
 npx tsx scripts/seedGov.ts   # run first — seed.ts depends on gov accounts
 npx tsx scripts/seed.ts
@@ -149,16 +153,8 @@ npx tsx scripts/seed.ts --wipe
 ```
 Creates: 3 Gov Officials + NHS/Met/Council anchors + Dr. Osei (BLK-00471-LDN, score 74, Southwark) + 200 fake Londoners
 
-**Task 8 — Live counter**
-Map page should show "X / 9,000,000 verified" — confirm it's hooked up to realtime subscription.
-
-**Task 9 — Wire map real data**
-`src/app/map/page.tsx` line 8 imports `FALLBACK_USERS` and passes it to `<HeatMap users={FALLBACK_USERS} />`. After seed runs, replace with a Supabase query:
-```typescript
-const { data: users } = await supabaseAdmin.from('users').select('borough, skill, tier, score').eq('tier', 'verified')
-```
-Also replace the hardcoded `PINS` array with real pin data grouped by borough and skill.
-Do this AFTER seed is confirmed (otherwise the query returns 0 rows and map looks empty).
+**Task 10 — Live counter**
+`/find` page counter should show "X / 9,000,000 verified" — confirm realtime subscription fires on INSERT/UPDATE.
 
 ### Demo day responsibilities
 - Run seed script the morning of demo
@@ -200,38 +196,15 @@ Required for live score ring animation on dashboard.
 | # | Task | Status |
 |---|------|--------|
 | 1 | `scripts/seedGov.ts` written | ✅ Done |
-| 2 | `GET /api/find` | 🔴 Not started |
-| 3 | Rate limiting middleware (`src/middleware.ts`) | 🔴 Not started |
-| 4 | Confirm seedGov runs clean against live Supabase | ⏳ Pending |
-
-### Task 2 — `GET /api/find` (blocks Yellow Pages page)
-
-```typescript
-// Query params: skill?, resource?, borough?
-// Returns: { success: true, data: [{ borough, skill, count, avg_score }] }
-// No auth required
-// Example: GET /api/find?skill=Doctor&borough=Southwark
-// → [{ borough: 'Southwark', skill: 'Doctor', count: 3, avg_score: 67 }]
-```
-
-### Task 3 — Rate limiting middleware (blocks vouch spam)
-
-File exists at `src/middleware.ts` — body is a single `return NextResponse.next()` stub.
-
-Rules to enforce:
-- Max 5 vouches per user per 24h — check `vouches` table
-- Max 3 claim submissions per user per 10min — check `claims` table
-- Return `429` + `{ success: false, error: 'Rate limit exceeded' }` if breached
-
-### Task 4 — Run seedGov
-
-Coordinate with Ray. seedGov must run before seed.ts (vouch chains depend on gov accounts existing).
+| 2 | `GET /api/find` | ✅ Done |
+| 3 | Rate limiting middleware (`src/middleware.ts`) | ✅ Done |
+| 4 | Confirm seedGov runs clean against live Supabase | ⏳ Pending — coordinate with Ray on seed day |
 
 ---
 
 ## HEMISH — UI components + wiring
 
-> Shell components done. Four wiring tasks remain — Sidebar is highest priority (visible every page).
+> All done. Notifications fully shipped.
 
 | # | Task | Status |
 |---|------|--------|
@@ -239,83 +212,35 @@ Coordinate with Ray. seedGov must run before seed.ts (vouch chains depend on gov
 | 2 | Sidebar — identity card, tier progress bar | ✅ Done |
 | 3 | TierBadge — all 5 tiers | ✅ Done |
 | 4 | Icon wrapper (Material Symbols) | ✅ Done |
-| 5 | Wire Sidebar real session data (display_name, node_id from localStorage) | 🔴 Blocking |
-| 6 | Wire TopBar avatar initials from real session | 🟡 Remaining |
-| 7 | Wire dashboard evidence cards → `GET /api/claims/[userId]` | 🟡 Remaining |
-| 8 | Wire vouch confirm → `POST /api/vouch` | 🟡 Remaining |
-
-### Component status note
-
-The original planned components (TrustRing as separate file, ProfileCard, ScoreBadge, VouchQR) are superseded — they are implemented inline in the pages directly. Do not rebuild them as separate components.
-
-ClaimCard and ClaimForm stubs exist but are low priority — dashboard evidence cards and add-evidence wizard are both handled inline in page files.
-
-### Task 5 — Wire Sidebar session data (do first)
-
-`src/components/civic/Sidebar.tsx` line 27 hardcodes "Sarah Mitchell" and "BLK-0471-LDN". Replace with real data from localStorage:
-```typescript
-const [session, setSession] = useState<{ display_name: string; node_id: string; tier: TrustTier } | null>(null)
-useEffect(() => {
-  const raw = localStorage.getItem('civictrust_session')
-  if (raw) setSession(JSON.parse(raw))
-}, [])
-```
-Use `session?.display_name`, `session?.node_id`, `session?.tier` in the identity card and progress bar.
-
-### Task 6 — Wire TopBar avatar
-
-`src/components/civic/TopBar.tsx`: show first initial of `session.display_name` in the avatar circle instead of a static placeholder.
-
-### Task 7 — Wire dashboard evidence cards
-
-In `src/app/dashboard/page.tsx`: fetch `GET /api/claims/[userId]` using the session user_id. Replace the hardcoded placeholder evidence with real claim data.
-
-### Task 8 — Wire vouch confirm
-
-In `src/app/vouch/page.tsx`: on QR scan success (or manual confirm), call `POST /api/vouch` with `{ voucher_id, vouchee_id }`. Handle success (show new score) and error (already vouched, score too low).
+| 5 | Wire Sidebar real session data (display_name, node_id) | ✅ Done |
+| 6 | Wire TopBar avatar initials from real session | ✅ Done |
+| 7 | Wire dashboard evidence cards → `GET /api/claims/[userId]` | ✅ Done |
+| 8 | Wire vouch confirm → `POST /api/vouch` | ✅ Done |
+| 9 | Full notifications system — unread badge, mark-as-read | ✅ Done |
 
 ---
 
 ## MAALAV — Pages + routing
 
-> All 9 pages built. Three wiring tasks remain — two are blocking security issues.
+> All pages done. Auth guards, session wiring, ego graph all shipped.
 
 | # | Task | Status |
 |---|------|--------|
 | 1 | Landing (`/`) | ✅ Done |
 | 2 | Register (`/register`) | ✅ Done |
 | 3 | Login (`/login`) | ✅ Done |
-| 4 | Dashboard (`/dashboard`) | ✅ Done |
-| 5 | Map (`/map`) | ✅ Done |
-| 6 | Find (`/find`) | ✅ Done (UI) |
-| 7 | Vouch (`/vouch`) | ✅ Done (UI) |
-| 8 | Add Evidence (`/add-evidence`) | ✅ Done (UI) |
-| 9 | Settings (`/settings`) | ✅ Done |
-| 10 | Auth guards on protected pages | 🔴 Blocking |
-| 11 | Wire real session into pages | 🔴 Blocking |
-| 12 | Wire add-evidence submit → `POST /api/claims` | 🟡 Remaining |
-| 13 | Wire unverified page session data (node_id, display_name) | 🟡 Remaining |
-| 14 | Wire settings "Save username" → `PATCH /api/auth/username` | 🟡 Remaining (low priority) |
+| 4 | Dashboard (`/dashboard`) — ego graph wired to Supabase | ✅ Done |
+| 5 | Map (`/map`) | ✅ Removed — merged into `/find` |
+| 6 | Find (`/find`) — map hero + NL search + listings | ✅ Done |
+| 7 | Vouch (`/vouch`) | ✅ Done |
+| 8 | Add Evidence (`/add-evidence`) | ✅ Done |
+| 9 | Settings (`/settings`) — Node ID copy fixed | ✅ Done |
+| 10 | Auth guards on protected pages | ✅ Done |
+| 11 | Wire real session into pages | ✅ Done |
+| 12 | Wire add-evidence submit → `POST /api/claims` | ✅ Done |
+| 13 | Wire unverified page session data (node_id, display_name) | ✅ Done |
 
-### Task 10 — Auth guards (security, blocking)
-
-Protected pages (`/dashboard`, `/map`, `/vouch`, `/add-evidence`, `/settings`) currently have no auth check — anyone can visit them without logging in.
-
-Add at the top of each protected page:
-```typescript
-'use client'
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-
-// Inside component:
-const router = useRouter()
-useEffect(() => {
-  const raw = localStorage.getItem('civictrust_session')
-  if (!raw) router.push('/login')
-}, [router])
-```
-
-### Task 11 — Real session data (blocking)
+### Task 11 — Real session data (done — kept for reference)
 
 Pages currently show hardcoded "Sarah Mitchell" / placeholder values. Wire the `session` object from localStorage into:
 - Dashboard: display real display_name, score, tier
@@ -356,10 +281,11 @@ In `src/app/add-evidence/page.tsx`: the wizard form collects doc type + file. On
 - [ ] Submit NHS employer letter → score 30, tier: Verified
 - [ ] Bad actor test: upload doc with wrong name → rejected ("name doesn't match")
 - [ ] Login as Dr. Osei (`BLK-00471-LDN` / `password123`) → QR-vouch Sarah → score 40
-- [ ] Doctor pin appears on Southwark map
-- [ ] Map: 200+ pins visible, counter shows "1,847 / 9,000,000"
-- [ ] Yellow Pages: search "Doctor" → "Southwark: 3 verified doctors"
-- [ ] Yellow Pages: search "insulin" → returns relevant results
+- [ ] Doctor pin appears on Southwark in `/find` map hero
+- [ ] Click Southwark borough → map flies to it, other boroughs dim, popup shows count
+- [ ] `/find` map: 200+ pins visible, counter shows "1,847 / 9,000,000"
+- [ ] NL search: type "I need a doctor in Southwark" → Haiku interprets → filtered results
+- [ ] Dashboard → ego graph shows trust network (Sarah + Dr. Osei linked)
 - [ ] Set `USE_FALLBACKS=true` → confirm app still runs
 
 ### Passwords

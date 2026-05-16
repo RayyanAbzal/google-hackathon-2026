@@ -69,7 +69,7 @@ function MapResetController({ active }: { active: boolean }) {
   const map = useMap()
   useEffect(() => {
     if (!active) return
-    map.flyTo([51.505, -0.09], 10, { duration: 0.8 })
+    map.flyTo([51.505, -0.09], 10, { duration: 1.2 })
   }, [active, map])
   return null
 }
@@ -123,6 +123,7 @@ export function HeatMap({
   const [centroids, setCentroids] = useState<CentroidMap>({})
   const [mapError, setMapError] = useState<string | null>(null)
   const [resetView, setResetView] = useState(false)
+  const geojsonLayerRef = useRef<LeafletGeoJSON | null>(null)
 
   useEffect(() => {
     fetch('/london-boroughs.json')
@@ -197,6 +198,13 @@ export function HeatMap({
   const boroughStyleRef = useRef(boroughStyle)
   boroughStyleRef.current = boroughStyle
 
+  // Imperatively update GeoJSON styles — avoids remounting the layer on selection change
+  useEffect(() => {
+    if (geojsonLayerRef.current) {
+      geojsonLayerRef.current.setStyle(boroughStyle)
+    }
+  }, [boroughStyle])
+
   const onEachBorough = useCallback((feature: Feature, layer: Layer) => {
     const name = (feature.properties as Record<string, string>)['LAD13NM'] ?? ''
 
@@ -249,10 +257,11 @@ export function HeatMap({
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         subdomains="abcd"
         maxZoom={19}
+        keepBuffer={6}
       />
 
       <GeoJSON
-        key={`${selectedBorough ?? '__none__'}__${activeSkill}`}
+        ref={geojsonLayerRef}
         data={geojson}
         style={boroughStyle}
         onEachFeature={onEachBorough}

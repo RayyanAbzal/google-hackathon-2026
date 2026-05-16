@@ -7,7 +7,7 @@
 
 ## RAY — Full-stack Lead
 
-**Status as of 2026-05-16 (session 14):** All core systems wired. Aryan's scoring overhaul pulled in. `gov_anchors` bug in score.ts fixed. `tsc` clean. Demo path needs one more end-to-end run.
+**Status as of 2026-05-17 (session 15):** All core systems wired. `/map` merged into `/find` — single page with full-width map hero + listings. NL interpret-search (Haiku) live. MapFlyController, PopupListing, borough dimming implemented. Dashboard ego graph wired to Supabase. Notifications system fully wired. Settings Node ID copy fixed. Demo path needs one more end-to-end run.
 
 ### Phase 1 — Database + Seed
 - [x] Supabase project created, URL + anon key in `.env.local`
@@ -26,36 +26,40 @@
 - [x] `src/components/map/SkillPin.tsx` — coloured SVG circles by skill
 - [x] Map wired to live Supabase data
 - [x] Live counter component — realtime UPDATE + INSERT
-- [ ] QR vouch flow glue — vouch page has QR display; confirm with Hemish that flow is testable end-to-end
+- [x] QR vouch flow — vouch page QR display wired, flow testable end-to-end
+- [x] MapFlyController — smooth fly-to on borough click
+- [x] PopupListing — Leaflet popup showing verified users in borough
+- [x] Borough dimming — non-selected boroughs dim on click
+- [x] `/map` merged into `/find` — single-page map hero + listings (no separate /map route)
 
-### Phase 2.5 — Scoring (sessions 14)
+### Phase 2.5 — Scoring (session 14)
 - [x] Pulled Aryan's scoring overhaul: new `ScoreInput` (passport_count/other_doc_count), vouch gate, `getTier` thresholds 20/55/91
 - [x] `tier='partial'` type error in `dashboard/page.tsx` fixed — removed dead branch
 - [x] `gov_anchors` bug in `score.ts` fixed — was querying wrong table, now `gov_officials`
 - [x] All stale threshold comments in CLAUDE.md files corrected
 - [x] DB confirmed: no `partial` tier rows
 
+### Phase 2.6 — Features (session 15)
+- [x] NL interpret-search: `POST /api/find/interpret-search` — Haiku parses free-text query → `{ skill, borough }` → passed to `/api/find`
+- [x] Dashboard ego graph wired to Supabase DB (trust network, interactive)
+- [x] Notifications system fully implemented — unread badge, mark-as-read, TopBar popup
+- [x] Settings page — stale "User ID" copy fixed to "Node ID" everywhere
+
 ### Phase 3 — Pre-demo prep
 
 #### Demo prep
 - [ ] Re-run seed `--wipe` before demo to reset to clean state (Dr. Osei score 74)
-- [ ] Test full demo path end-to-end: register → add-evidence × 2 → Dr. Osei vouch → map pin
+- [ ] Test full demo path end-to-end: register → add-evidence × 2 → Dr. Osei vouch → find page map pin
 - [ ] Test bad actor path: upload doc with wrong name → rejected
 - [ ] Verify `NEXT_PUBLIC_USE_FALLBACKS=true` works if Gemini fails during demo
 - [ ] Confirm heatmap shows populated London before Sarah registers
-
-#### Demo prep
-- [ ] Re-run seed `--wipe` before demo to reset to clean state (Dr. Osei will be score 74)
-- [ ] Test full demo path end-to-end: register → claim → vouch → verified → map
-- [ ] Test bad actor path: upload doc with wrong name → rejected
-- [ ] Verify `NEXT_PUBLIC_USE_FALLBACKS=true` works if Gemini fails during demo
-- [ ] Confirm heatmap shows populated London before Sarah registers
+- [ ] Test NL search: "I need a doctor in Southwark" → Haiku extracts skill=Doctor, borough=Southwark
 
 ---
 
 ## ARYAN — Backend API (core) + Supabase
 
-**Status as of 2026-05-16 (session 14): ALL ROUTES DONE. Scoring overhaul merged into dev.**
+**Status as of 2026-05-17 (session 15): ALL ROUTES DONE. Scoring overhaul merged. Supabase realtime confirm still pending.**
 
 ### API routes — all implemented
 - [x] `POST /api/auth/register` — creates user. Gap: does not call Gemini at signup (doc accepted but not verified). Not blocking for demo — claim route does Gemini.
@@ -73,7 +77,7 @@
 
 ## TAO — Backend API (features)
 
-**Status as of 2026-05-16 (session 14):** `seedGov.ts` done. `realtime.ts` done. `rateLimit.ts` exists. Middleware exists.
+**Status as of 2026-05-17 (session 15):** `seedGov.ts` done. `realtime.ts` done. `rateLimit.ts` exists. Middleware exists. `/api/find` done.
 
 - [x] `scripts/seedGov.ts` — L0 + L1 gov anchor accounts
 - [x] `src/lib/realtime.ts` — `subscribeToUserScore()` implemented
@@ -85,16 +89,17 @@
 
 ## HEMISH — Frontend Components
 
-**Status as of 2026-05-16 (session 14): ALL CHROME WIRED.**
+**Status as of 2026-05-17 (session 15): ALL DONE. Notifications fully wired.**
 
-- [x] `src/components/civic/Sidebar.tsx` — reads real session (display_name, score, tier, node_id). Tier label thresholds are slightly off — Ray fixing.
+- [x] `src/components/civic/Sidebar.tsx` — reads real session (display_name, score, tier, node_id)
 - [x] `src/components/civic/TopBar.tsx` — reads real session, shows initials, logout works
+- [x] Notifications — unread badge, mark-as-read, TopBar popup — fully implemented
 
 ---
 
 ## MAALAV — Pages + Routing
 
-**Status as of 2026-05-16 (session 14): ALL PROTECTED PAGES GUARDED AND WIRED.**
+**Status as of 2026-05-17 (session 15): ALL PAGES DONE. `/map` merged into `/find`. Dashboard ego graph + notifications live.**
 
 ### Auth guards — ALL DONE
 - [x] `/dashboard` — `requireSession()` guard
@@ -121,14 +126,14 @@
 | `/` | DONE | N/A (public) | N/A |
 | `/login` | DONE | N/A | DONE |
 | `/register` | DONE | N/A | DONE |
-| `/unverified` | DONE | DONE | DONE (threshold bug — Ray fixing) |
-| `/dashboard` | DONE | DONE | DONE |
+| `/unverified` | DONE | DONE | DONE |
+| `/dashboard` | DONE | DONE | DONE + ego graph wired |
 | `/add-evidence` | DONE | DONE | DONE |
 | `/vouch` | DONE | DONE | DONE |
-| `/find` | DONE | N/A (public) | HARDCODED (intentional) |
-| `/map` | DONE | DONE | DONE |
-| `/settings` | DONE | DONE | Session only |
-| `/profile/[username]` | DONE | — | — |
+| `/find` | DONE | N/A (public) | DONE — map hero + listings + NL search |
+| `/map` | REMOVED | — | Merged into `/find` |
+| `/settings` | DONE | DONE | DONE (Node ID copy fixed) |
+| `/profile/[username]` | DONE | DONE | DONE |
 
 ---
 
@@ -153,12 +158,13 @@ Set `NEXT_PUBLIC_USE_FALLBACKS=true` in `.env.local` — activates mock data fro
 - [ ] Register as Sarah Mitchell + Doctor + passport upload → node ID issued, tier: Unverified
 - [ ] Login → prompted to set @username → set to @sarah_mitchell
 - [ ] Submit medical degree → Gemini reads "UCL Medicine" → score 15, still Unverified
-- [ ] Submit NHS employer letter → score 30, tier: **Verified** (threshold: 25)
+- [ ] Submit NHS employer letter → score 30, tier: **Verified** (threshold: 20)
 - [ ] Bad actor test: upload doc with wrong name → rejected ("name doesn't match")
 - [ ] Dr. Osei (BLK-00471-LDN, score 74) vouches Sarah → score 40, still Verified
-- [ ] Doctor pin appears on London map in Southwark
-- [ ] Map: 200+ pins visible, counter live
-- [ ] Yellow Pages (/find): filter Medical + Southwark → shows verified doctors
+- [ ] Doctor pin appears on Southwark on /find map hero
+- [ ] `/find` map: 200+ pins visible across London boroughs, counter live
+- [ ] NL search: type "I need a doctor in Southwark" → Haiku interprets → results filter correctly
+- [ ] Borough click → map flies to borough, non-selected boroughs dim, popup shows count
 - [ ] `NEXT_PUBLIC_USE_FALLBACKS=true` tested — app still works if Gemini is down
 - [ ] Full demo rehearsed at least twice
 
