@@ -84,7 +84,7 @@ function SummaryBar({ claimType, step }: { claimType: ClaimType; step: number })
           { label: 'Type', value: claimType },
           { label: 'Document', value: step >= 3 ? 'UK Passport' : '—' },
           { label: 'Points if verified', value: '+15', valueColor: '#40e56c' },
-          { label: 'Review wait', value: '~2 hours' },
+          { label: 'Analysis', value: 'Instant' },
         ].map(({ label, value, valueColor }) => (
           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
             <dt style={{ color: '#8c90a1' }}>{label}</dt>
