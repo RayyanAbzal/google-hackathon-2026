@@ -34,9 +34,9 @@ else (no)
 endif
 
 :SHA-256 hash of image_base64 -> content_hash;
-:Per-user dedup check\n(content_hash + user_id already in claims?);
+:Global dedup check\n(content_hash exists in ANY claim across all users?);
 if (Duplicate?) then (yes)
-  :Return 409 — "already submitted this document";
+  :Return 409 — "This document has already been registered";
   |#fff2cc|Frontend|
   :Show rejection message;
   stop
