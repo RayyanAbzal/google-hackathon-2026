@@ -202,7 +202,7 @@ Next.js 16, Tailwind v4, shadcn/ui, D3.js, Supabase, Gemini 2.0 Flash, qrcode.js
 ## Demo path (4 minutes)
 
 1. **0:00** — Open with lore: "It's T+14h. Sarah is a surgeon. Her hospital locked her out."
-2. **0:30** — Sarah registers. Name + PIN + Doctor. Gets BLK-00471-LDN. Score: 0.
+2. **0:30** — Sarah registers. Name + password + uploads passport. Gets BLK-00471-LDN. Score: 0.
 3. **1:00** — Submits medical degree. Gemini reads "UCL Medicine, Dr. Sarah Mitchell." Score: 15.
 4. **1:30** — Submits NHS employer letter. Score: 30. Now Partial.
 5. **2:00** — Dr. Osei (pre-seeded, 74) sees Sarah in area. QR vouch. Sarah → 40pts. Still Partial.

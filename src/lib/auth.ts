@@ -4,8 +4,8 @@ import type { User } from "@/types";
 
 const SESSION_SECRET = process.env.SESSION_SECRET ?? "civictrust-dev-secret";
 
-export function hashPin(pin: string): string {
-  return createHash("sha256").update(pin).digest("hex");
+export function hashPassword(password: string): string {
+  return createHash("sha256").update(password).digest("hex");
 }
 
 export function generateNodeId(): string {

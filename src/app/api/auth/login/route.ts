@@ -1,11 +1,16 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { hashPin, signToken } from "@/lib/auth";
+import { hashPassword, signToken } from "@/lib/auth";
 import { getTier } from "@/types";
 import type { ApiResponse, Session } from "@/types";
 
+// POST /api/auth/login
+// Owner: Aryan
+// Input: { identifier, password } — identifier is node_id OR @username
+// Returns: { token, user_id, node_id, username, display_name, score, tier }
+
 interface LoginBody {
   identifier: string; // node_id or @username
-  pin: string;
+  password: string;
 }
 
 export async function POST(request: Request): Promise<Response> {
@@ -16,13 +21,10 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ success: false, error: "Invalid JSON" } satisfies ApiResponse<never>, { status: 400 });
   }
 
-  const { identifier, pin } = body;
+  const { identifier, password } = body;
 
-  if (!identifier?.trim() || !pin) {
-    return Response.json({ success: false, error: "identifier and pin are required" } satisfies ApiResponse<never>, { status: 400 });
-  }
-  if (!/^\d{4}$/.test(pin)) {
-    return Response.json({ success: false, error: "Invalid credentials" } satisfies ApiResponse<never>, { status: 401 });
+  if (!identifier?.trim() || !password) {
+    return Response.json({ success: false, error: "identifier and password are required" } satisfies ApiResponse<never>, { status: 400 });
   }
 
   const clean = identifier.trim().replace(/^@/, "");
@@ -30,11 +32,11 @@ export async function POST(request: Request): Promise<Response> {
 
   const { data: user } = await supabaseAdmin
     .from("users")
-    .select("id, node_id, username, display_name, score, pin_hash")
+    .select("id, node_id, username, display_name, score, password_hash")
     .eq(isNodeId ? "node_id" : "username", isNodeId ? identifier.trim().toUpperCase() : clean)
     .single();
 
-  if (!user || user.pin_hash !== hashPin(pin)) {
+  if (!user || user.password_hash !== hashPassword(password)) {
     return Response.json({ success: false, error: "Invalid credentials" } satisfies ApiResponse<never>, { status: 401 });
   }
 

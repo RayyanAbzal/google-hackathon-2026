@@ -9,36 +9,39 @@ title CivicTrust — Login Flow
 
 |#dae8fc|User|
 start
-:Enter Node ID (BLK-XXXXX-LDN)\nor @username;
-:Enter 4-digit PIN;
+:Enter identifier\n(BLK-XXXXX-LDN  or  @username);
+:Enter password;
 
 |#fff2cc|Frontend|
-:POST /api/auth/login;
+:Validate: identifier + password present;
+:POST /api/auth/login\n{identifier, password};
 
 |#e1d5e7|API|
-:Resolve @username -> node_id\n(if username provided);
+:Detect identifier type\n(node_id regex: BLK-\d{5}-LDN — else treat as username);
+:Query Supabase by node_id or username;
 if (User found?) then (no)
-  :Return 404;
+  :Return 401 — "Invalid credentials";
   |#fff2cc|Frontend|
-  :Show "Node ID not found";
+  :Show error (no hint about which field);
   stop
 else (yes)
 endif
 
-:Verify PIN hash against stored hash;
-if (PIN correct?) then (no)
-  :Return 401;
+:Compare hashPassword(password) vs stored password_hash;
+if (Hash matches?) then (no)
+  :Return 401 — "Invalid credentials";
   |#fff2cc|Frontend|
-  :Show "Incorrect PIN";
+  :Show error;
   stop
 else (yes)
 endif
 
-:Issue session token;
-:Return 200 + user payload\n(node_id, score, tier, skill);
+:Sign JWT token (user_id);
+:getTier(score) — derive tier from score;
+:Return 200 + Session\n{token, user_id, node_id, username,\ndisplay_name, score, tier};
 
 |#fff2cc|Frontend|
-:Store session on device;
+:Store session in localStorage;
 :Redirect to Profile page;
 
 |#dae8fc|User|

@@ -10,9 +10,8 @@ title CivicTrust — User Registration Flow
 |#dae8fc|User|
 start
 :Enter display name;
-:Set 4-digit PIN;
-:Select skill\n(Doctor / Engineer / Lawyer / Builder);
-:Upload mandatory doc\n(Passport **or** Driving Licence **or** National ID);
+:Set password;
+:Upload mandatory doc\n(Passport **or** Driving Licence — min 1 required);
 
 |#fff2cc|Frontend|
 :Validate required fields;
