@@ -42,4 +42,4 @@ The civic design system is shipped. Most planned components are now superseded b
 
 ## Score tiers
 
-0-29 Unverified, 30-49 Partial, 50-89 Verified, 90-94 Trusted, 95+ Gov Official
+0-19 Unverified, 20-54 Verified, 55-90 Trusted, 91-100 Gov Official

@@ -1,18 +1,32 @@
-import { createHash, createHmac, timingSafeEqual } from "crypto";
+import { createHash, createHmac, randomBytes, scryptSync, timingSafeEqual } from "crypto";
 import { supabaseAdmin } from "./supabase";
+import { generateNodeId } from "./nodeId";
 import type { User } from "@/types";
 
+export { generateNodeId };
+
 const SESSION_SECRET = process.env.SESSION_SECRET ?? "civictrust-dev-secret";
+const PASSWORD_HASH_PREFIX = "scrypt";
+const PASSWORD_KEY_LENGTH = 64;
 
 export function hashPassword(password: string): string {
-  return createHash("sha256").update(password).digest("hex");
+  const salt = randomBytes(16).toString("hex");
+  const key = scryptSync(password, salt, PASSWORD_KEY_LENGTH).toString("hex");
+  return `${PASSWORD_HASH_PREFIX}$${salt}$${key}`;
 }
 
-export function generateNodeId(): string {
-  const num = Math.floor(Math.random() * 99999)
-    .toString()
-    .padStart(5, "0");
-  return `BLK-${num}-LDN`;
+export function verifyPassword(password: string, storedHash: string): boolean {
+  const [scheme, salt, key] = storedHash.split("$");
+
+  if (scheme === PASSWORD_HASH_PREFIX && salt && key) {
+    const candidate = scryptSync(password, salt, PASSWORD_KEY_LENGTH);
+    const stored = Buffer.from(key, "hex");
+    return stored.length === candidate.length && timingSafeEqual(stored, candidate);
+  }
+
+  // Legacy demo/seed hashes used unsalted SHA-256.
+  const legacyHash = createHash("sha256").update(password).digest("hex");
+  return legacyHash === storedHash;
 }
 
 // Token format: base64url(userId:issuedAt).hmac_sha256(payload, SESSION_SECRET)

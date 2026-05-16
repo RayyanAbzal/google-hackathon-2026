@@ -10,7 +10,7 @@
 // All seed accounts password: password123 | Gov accounts password: govpassword99
 
 import { createClient } from '@supabase/supabase-js'
-import { createHash } from 'crypto'
+import { createHash, randomBytes, scryptSync } from 'crypto'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { getTier } from '../src/types/index'
@@ -37,7 +37,9 @@ const supabase = createClient(
 )
 
 function hashPassword(password: string): string {
-  return createHash('sha256').update(password).digest('hex')
+  const salt = randomBytes(16).toString('hex')
+  const key = scryptSync(password, salt, 64).toString('hex')
+  return `scrypt$${salt}$${key}`
 }
 
 function nodeId(n: number): string {
