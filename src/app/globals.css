@@ -1,3 +1,4 @@
+@import url("https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap");
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -33,6 +34,8 @@
 }
 
 :root, .dark {
+  --font-inter: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --font-geist-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
   --background: #10141a;
   --foreground: #dfe2eb;
   --card: #181c22;
@@ -208,3 +211,27 @@
   50% { opacity: 0.4; transform: scale(0.85); }
 }
 .pulse-dot { animation: pulse-dot 2s ease-in-out infinite; }
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Leaflet popup dark theme overrides */
+.leaflet-container .leaflet-popup .leaflet-popup-content-wrapper {
+  background: transparent !important;
+  border: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+}
+.leaflet-container .leaflet-popup .leaflet-popup-content {
+  margin: 0 !important;
+  padding: 0 !important;
+}
+.leaflet-container .leaflet-popup .leaflet-popup-tip-container {
+  display: none !important;
+}
+.leaflet-container .leaflet-popup {
+  filter: drop-shadow(0 6px 24px rgba(0, 0, 0, 0.75));
+}

@@ -58,7 +58,7 @@ export default function DashboardPage() {
 
       // Refresh score from DB — catches vouches received since last login
       fetch(`/api/score/${current.user_id}`)
-        .then(r => r.json() as Promise<ApiResponse<{ score: number; tier: TrustTier }>>)
+        .then(r => r.json() as Promise<ApiResponse<{ score: number; tier: TrustTier; passport_count: number; other_doc_count: number; vouches_received: number; gov_vouched: boolean }>>)
         .then(json => {
           if (json.success && (json.data.score !== current.score || json.data.tier !== current.tier)) {
             const updated = updateStoredSession({ score: json.data.score, tier: json.data.tier })

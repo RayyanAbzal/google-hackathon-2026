@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
-import "./globals.css";
 import { SidebarProvider } from "@/components/civic/SidebarProvider";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "CivicTrust — London Mesh",
@@ -19,7 +15,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`antialiased dark ${inter.variable} ${mono.variable}`}
+      className="antialiased dark"
       suppressHydrationWarning
     >
       <head>
@@ -30,7 +26,12 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap"
         />
       </head>
-      <body style={{ background: "#10141a", color: "#dfe2eb", minHeight: "100vh" }}>
+      <body
+        style={{ background: "#10141a", color: "#dfe2eb", minHeight: "100vh" }}
+        suppressHydrationWarning
+        data-new-gr-c-s-check-loaded="14.1292.0"
+        data-gr-ext-installed=""
+      >
         <SidebarProvider>
           {children}
         </SidebarProvider>
