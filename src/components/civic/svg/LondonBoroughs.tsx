@@ -14,6 +14,7 @@ interface LondonBoroughsProps {
   height?: number
   highlights?: string[]
   pins?: Pin[]
+  onBoroughClick?: (name: string) => void
 }
 
 const BOROUGHS: Borough[] = [
@@ -34,6 +35,7 @@ export default function LondonBoroughs({
   height = 360,
   highlights = ['Southwark'],
   pins = [],
+  onBoroughClick,
 }: LondonBoroughsProps) {
   return (
     <svg
@@ -54,11 +56,11 @@ export default function LondonBoroughs({
         const tx = match ? Number(match[1]) + 30 : 0
         const ty = match ? Number(match[2]) + 30 : 0
         return (
-          <g key={b.name}>
+          <g key={b.name} onClick={() => onBoroughClick?.(b.name)} style={{ cursor: onBoroughClick ? 'pointer' : 'default' }}>
             <path
               d={b.d}
-              fill={active ? 'rgba(64,229,108,0.15)' : '#181c22'}
-              stroke={active ? '#40e56c' : '#424655'}
+              fill={active ? 'rgba(176,198,255,0.18)' : '#181c22'}
+              stroke={active ? '#b0c6ff' : '#424655'}
               strokeWidth={active ? 1.5 : 0.7}
             />
             <text
@@ -66,7 +68,7 @@ export default function LondonBoroughs({
               y={ty}
               fontFamily="JetBrains Mono, ui-monospace, monospace"
               fontSize="9"
-              fill={active ? '#40e56c' : '#8c90a1'}
+              fill={active ? '#b0c6ff' : '#8c90a1'}
               opacity={active ? 1 : 0.6}
             >
               {b.name.toUpperCase()}

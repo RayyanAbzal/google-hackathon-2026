@@ -23,9 +23,9 @@ export default function MeshGraph({
   const nodes: { x: number; y: number; r: number; kind: string }[] = []
   for (let i = 0; i < N; i++) {
     nodes.push({
-      x: 40 + rand(i) * (width - 80),
-      y: 40 + rand(i + 100) * (height - 80),
-      r: 2 + rand(i + 200) * 3,
+      x: Math.round((40 + rand(i) * (width - 80)) * 100) / 100,
+      y: Math.round((40 + rand(i + 100) * (height - 80)) * 100) / 100,
+      r: Math.round((2 + rand(i + 200) * 3) * 100) / 100,
       kind: rand(i + 300) > 0.78 ? 'hl' : rand(i + 400) > 0.4 ? 'mid' : 'dim',
     })
   }

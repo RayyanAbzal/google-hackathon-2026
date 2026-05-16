@@ -1,144 +1,177 @@
 'use client'
 
 import Link from 'next/link'
-import Sidebar from '@/components/civic/Sidebar'
-import { useSidebar } from '@/components/civic/SidebarProvider'
 import MeshGraph from '@/components/civic/svg/MeshGraph'
 
 export default function LandingContent() {
-  const { width: sidebarWidth } = useSidebar()
-
   return (
     <>
-      <Sidebar active="" mode="public" />
-      <main style={{ marginLeft: sidebarWidth, paddingTop: 56, transition: 'margin-left 0.2s ease' }}>
+      <main style={{ paddingTop: 56 }}>
 
         {/* Hero */}
-        <section style={{ padding: '96px 64px 80px', textAlign: 'center', position: 'relative', overflow: 'hidden', borderBottom: '1px solid rgba(66,70,85,0.6)' }}>
-          <div style={{ position: 'absolute', inset: 0, opacity: 0.4, pointerEvents: 'none' }}>
-            <MeshGraph width={1280} height={600} dense seed={3} />
+        <section style={{ position: 'relative', padding: '72px 72px 96px', overflow: 'hidden', borderBottom: '1px solid rgba(66,70,85,0.5)' }}>
+          <div style={{ position: 'absolute', inset: 0, opacity: 0.7, pointerEvents: 'none' }}>
+            <MeshGraph width={1280} height={680} dense seed={3} />
           </div>
-          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 50% 60%, rgba(16,20,26,0) 0%, rgba(16,20,26,0.9) 70%)', pointerEvents: 'none' }} />
-          <div style={{ position: 'relative' }}>
-            <h1 style={{ fontSize: 80, fontWeight: 700, letterSpacing: '-0.03em', lineHeight: 1.0, maxWidth: 900, margin: '0 auto', marginBottom: 0 }}>
-              Rebuilding trust<br />
-              <span style={{ color: '#b0c6ff' }}>when records are gone.</span>
+          <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 30% 50%, rgba(16,20,26,0) 0%, rgba(16,20,26,0.85) 60%, rgba(16,20,26,1) 100%)', pointerEvents: 'none' }} />
+          <div style={{ position: 'relative', maxWidth: 760 }}>
+            <span className="meta" style={{ color: '#b0c6ff' }}>BLACKOUT · T+14:00 · LONDON</span>
+            <h1 style={{ fontSize: 80, fontWeight: 700, lineHeight: 0.96, letterSpacing: '-0.03em', marginTop: 18, marginBottom: 0 }}>
+              Trust is a<br />
+              <span style={{ color: '#b0c6ff' }}>network,</span><br />
+              not a record.
             </h1>
-            <p style={{ fontSize: 18, color: '#c2c6d8', marginTop: 28, maxWidth: 600, margin: '28px auto 0', lineHeight: 1.6 }}>
-              Prove who you are, find verified doctors and tradespeople, and rebuild your reputation — even with no digital records.
+            <p style={{ fontSize: 19, color: '#c2c6d8', marginTop: 28, maxWidth: 540, lineHeight: 1.55 }}>
+              When the records are gone, the people are not. Prove who you are by the people who vouch for you — and find verified doctors, nurses, and engineers nearby.
             </p>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 36 }}>
-              <Link href="/register" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 24px', background: '#b0c6ff', color: '#002d6f', borderRadius: 8, fontWeight: 600, fontSize: 15, textDecoration: 'none' }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 20 }}>arrow_forward</span>
-                Create account
+            <div style={{ display: 'flex', gap: 12, marginTop: 36, alignItems: 'center' }}>
+              <Link href="/register" style={{ padding: '14px 24px', background: '#b0c6ff', color: '#002d6f', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 15, display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>
+                Create your node
               </Link>
-              <Link href="/login" style={{ display: 'inline-flex', alignItems: 'center', padding: '14px 20px', background: '#262a31', border: '1px solid #424655', borderRadius: 8, color: '#dfe2eb', fontSize: 14, textDecoration: 'none' }}>
-                Sign in
-              </Link>
+            </div>
+            <div style={{ display: 'flex', gap: 28, marginTop: 40 }}>
+              {[
+                ['12,847', 'verified nodes'],
+                ['38,221', 'vouches issued'],
+                ['142', 'aid hubs live'],
+              ].map(([n, l]) => (
+                <div key={l}>
+                  <div style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em' }}>{n}</div>
+                  <span className="meta">{l}</span>
+                </div>
+              ))}
             </div>
           </div>
         </section>
 
-        {/* How it works */}
-        <section style={{ padding: '80px 64px', borderBottom: '1px solid rgba(66,70,85,0.6)', background: 'rgba(24,28,34,0.35)' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <h2 style={{ fontSize: 40, fontWeight: 700, letterSpacing: '-0.02em', textAlign: 'center', marginBottom: 12 }}>How it works</h2>
-            <p style={{ color: '#c2c6d8', textAlign: 'center', fontSize: 15, marginBottom: 48, maxWidth: 480, margin: '12px auto 48px' }}>Four simple steps. No central server, no waiting on banks.</p>
+        {/* How a node is born */}
+        <section style={{ padding: '80px 72px', borderBottom: '1px solid rgba(66,70,85,0.5)' }}>
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', marginBottom: 48 }}>
+            <h2 style={{ fontSize: 44, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>How a node is born</h2>
+            <span className="meta">FOUR STEPS · NO CENTRAL SERVER</span>
+          </div>
+          <div style={{ position: 'relative', display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 0 }}>
+            <svg style={{ position: 'absolute', top: 36, left: 0, right: 0, height: 2, width: '100%', pointerEvents: 'none' }} viewBox="0 0 1000 2" preserveAspectRatio="none">
+              <line x1="60" y1="1" x2="940" y2="1" stroke="#b0c6ff" strokeOpacity="0.4" strokeDasharray="4 6" />
+            </svg>
+            {[
+              ['01', 'Identify', 'Name, password, one ID document.', '#b0c6ff'],
+              ['02', 'Evidence', 'Passport, degree, work ID.', '#b0c6ff'],
+              ['03', 'Vouch', 'People who know you confirm it.', '#b0c6ff'],
+              ['04', 'Verified', 'You appear on the public directory.', '#40e56c'],
+            ].map(([n, t, d, col]) => (
+              <div key={n} style={{ paddingRight: 28 }}>
+                <div style={{ position: 'relative', width: 72, height: 72, display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 24 }}>
+                  <div style={{ position: 'absolute', inset: 0, borderRadius: '50%', background: `${col}18`, border: `1px solid ${col}55` }} />
+                  <div style={{ position: 'absolute', inset: 8, borderRadius: '50%', border: `1px solid ${col}40` }} />
+                  <div style={{ position: 'absolute', inset: 22, borderRadius: '50%', background: col }} />
+                </div>
+                <span className="meta" style={{ color: col }}>STEP {n}</span>
+                <h3 style={{ fontSize: 26, fontWeight: 700, letterSpacing: '-0.02em', margin: '6px 0 8px' }}>{t}</h3>
+                <p style={{ fontSize: 14, color: '#c2c6d8', lineHeight: 1.55 }}>{d}</p>
+              </div>
+            ))}
+          </div>
+        </section>
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 20 }}>
-              {[
-                ['1', 'Create account', 'Name, password, one ID document.', '#b0c6ff'],
-                ['2', 'Add evidence', 'Upload a passport, degree, or work ID.', '#b0c6ff'],
-                ['3', 'Get vouched', 'People you know confirm your identity.', '#b0c6ff'],
-                ['4', 'Get verified', 'Appear on the public directory.', '#40e56c'],
-              ].map(([n, title, desc, col]) => (
-                <div key={n} style={{ border: '1px solid #424655', borderRadius: 12, padding: 24, background: '#181c22' }}>
-                  <div style={{ width: 40, height: 40, borderRadius: '50%', background: `${col}18`, border: `1px solid ${col}55`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: col, fontWeight: 600, marginBottom: 16 }}>
-                    {n}
+        {/* Trust tiers — concentric rings */}
+        <section style={{ padding: '80px 72px', borderBottom: '1px solid rgba(66,70,85,0.5)', background: 'rgba(24,28,34,0.35)' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 520px', gap: 48, alignItems: 'center' }}>
+            <div>
+              <span className="meta">TRUST AS DISTANCE FROM CENTER</span>
+              <h2 style={{ fontSize: 44, fontWeight: 700, letterSpacing: '-0.02em', margin: '12px 0 16px' }}>Four rings of trust.</h2>
+              <p style={{ fontSize: 16, color: '#c2c6d8', marginBottom: 32, lineHeight: 1.55, maxWidth: 460 }}>
+                Each ring brings you closer to government-verified status. The further you go, the more people the city can rely on you.
+              </p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
+                {[
+                  ['Tier 0', 'Unverified', '0–19 pts', '#8c90a1'],
+                  ['Tier 1', 'Verified', '20–54 pts', '#b0c6ff'],
+                  ['Tier 2', 'Trusted', '55–90 pts', '#b0c6ff'],
+                  ['Tier 3', 'Gov Official', '91–100 pts', '#40e56c'],
+                ].map(([t, n, p, col]) => (
+                  <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 18px', border: '1px solid rgba(66,70,85,0.5)', borderRadius: 10, background: '#181c22' }}>
+                    <div style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0 }} />
+                    <div style={{ width: 70 }}><span className="meta" style={{ color: col }}>{t}</span></div>
+                    <div style={{ fontWeight: 600, flex: 1 }}>{n}</div>
+                    <div className="mono" style={{ fontSize: 12, color: '#8c90a1' }}>{p}</div>
                   </div>
-                  <h3 style={{ fontSize: 17, fontWeight: 600, marginBottom: 8 }}>{title}</h3>
-                  <p style={{ fontSize: 14, color: '#c2c6d8', lineHeight: 1.55, margin: 0 }}>{desc}</p>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        </section>
-
-        {/* Trust tiers */}
-        <section style={{ padding: '80px 64px', borderBottom: '1px solid rgba(66,70,85,0.6)' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <h2 style={{ fontSize: 40, fontWeight: 700, letterSpacing: '-0.02em', textAlign: 'center', marginBottom: 12 }}>Trust tiers</h2>
-            <p style={{ color: '#c2c6d8', textAlign: 'center', fontSize: 15, marginBottom: 48, maxWidth: 480, margin: '12px auto 48px' }}>Your score climbs as you add evidence and get vouched.</p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16 }}>
-              {[
-                { label: 'Tier 0', name: 'Unverified', pts: '0–19 points', col: '#8c90a1', bg: 'rgba(140,144,161,0.1)', border: 'rgba(140,144,161,0.3)' },
-                { label: 'Tier 1', name: 'Verified', pts: '20–54 points', col: '#b0c6ff', bg: 'rgba(176,198,255,0.1)', border: 'rgba(176,198,255,0.3)' },
-                { label: 'Tier 2', name: 'Trusted', pts: '55–90 points', col: '#b0c6ff', bg: 'rgba(86,141,255,0.12)', border: 'rgba(86,141,255,0.5)' },
-                { label: 'Tier 3', name: 'Gov Official', pts: '91–100 points', col: '#40e56c', bg: 'rgba(64,229,108,0.1)', border: 'rgba(64,229,108,0.4)' },
-              ].map(t => (
-                <div key={t.label} style={{ border: `1px solid ${t.border}`, borderRadius: 12, padding: 24, background: '#181c22' }}>
-                  <span style={{ display: 'inline-block', padding: '3px 10px', borderRadius: 9999, background: t.bg, border: `1px solid ${t.border}`, color: t.col, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em' }}>
-                    {t.label}
-                  </span>
-                  <h3 style={{ fontSize: 18, fontWeight: 600, marginTop: 16, marginBottom: 4 }}>{t.name}</h3>
-                  <p style={{ fontSize: 13, color: '#8c90a1', margin: 0 }}>{t.pts}</p>
-                </div>
-              ))}
+            <div style={{ position: 'relative', height: 460, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <svg viewBox="0 0 460 460" width="100%" height="100%">
+                {[200, 150, 100, 50].map((r, i) => {
+                  const cols = ['#8c90a1', '#b0c6ff', '#b0c6ff', '#40e56c']
+                  return (
+                    <circle
+                      key={i} cx="230" cy="230" r={r}
+                      fill="none" stroke={cols[i]}
+                      strokeOpacity={0.4 + i * 0.1}
+                      strokeDasharray={i === 3 ? undefined : '3 5'}
+                      strokeWidth={i === 3 ? 1.5 : 1}
+                    />
+                  )
+                })}
+                {[
+                  [80, 100, '#8c90a1', 3], [380, 110, '#8c90a1', 3], [60, 320, '#8c90a1', 3], [400, 360, '#8c90a1', 3],
+                  [130, 180, '#b0c6ff', 4], [330, 130, '#b0c6ff', 4], [350, 320, '#b0c6ff', 4], [110, 340, '#b0c6ff', 4],
+                  [180, 180, '#b0c6ff', 4], [290, 290, '#b0c6ff', 4], [275, 165, '#b0c6ff', 4], [185, 290, '#b0c6ff', 4],
+                ].map(([x, y, c, r], i) => (
+                  <circle key={i} cx={x} cy={y} r={r} fill={c as string} />
+                ))}
+                <circle cx="230" cy="230" r="14" fill="#40e56c" />
+                <circle cx="230" cy="230" r="22" fill="none" stroke="#40e56c" strokeOpacity="0.5" />
+                <text x="230" y="234" textAnchor="middle" fontSize="11" fontWeight="700" fill="#002d6f">VERIFIED</text>
+              </svg>
             </div>
           </div>
         </section>
 
         {/* Fraud resistance */}
-        <section style={{ padding: '80px 64px', borderBottom: '1px solid rgba(66,70,85,0.6)', background: 'rgba(24,28,34,0.35)' }}>
-          <div style={{ maxWidth: 1100, margin: '0 auto' }}>
-            <h2 style={{ fontSize: 40, fontWeight: 700, letterSpacing: '-0.02em', textAlign: 'center', marginBottom: 12 }}>Built to resist fraud</h2>
-            <p style={{ color: '#c2c6d8', textAlign: 'center', fontSize: 15, marginBottom: 48, maxWidth: 480, margin: '12px auto 48px' }}>Anti-fraud rules run on every claim and every vouch.</p>
-
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 20 }}>
-              {[
-                { icon: 'content_copy', title: 'Duplicates blocked', desc: 'Same document twice? Both copies are paused.' },
-                { icon: 'person_off', title: 'Names must match', desc: 'Across every document. A mismatch stops verification.' },
-                { icon: 'hub', title: 'Vouch rings detected', desc: 'Coordinated cross-vouching is flagged automatically.' },
-              ].map(f => (
-                <div key={f.title} style={{ border: '1px solid #424655', borderRadius: 12, padding: 24, background: '#181c22' }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 24, color: '#b0c6ff', display: 'block', marginBottom: 12 }}>{f.icon}</span>
-                  <h4 style={{ fontSize: 16, fontWeight: 600, marginBottom: 6 }}>{f.title}</h4>
-                  <p style={{ fontSize: 13, color: '#c2c6d8', lineHeight: 1.55, margin: 0 }}>{f.desc}</p>
+        <section style={{ padding: '80px 72px', borderBottom: '1px solid rgba(66,70,85,0.5)' }}>
+          <h2 style={{ fontSize: 44, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 8 }}>The mesh resists fraud.</h2>
+          <p style={{ color: '#c2c6d8', fontSize: 16, marginBottom: 48, maxWidth: 540 }}>Anti-fraud rules run on every claim and every vouch — without a central server.</p>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}>
+            {[
+              ['content_copy', 'Duplicates blocked', 'Same document twice? Both copies are paused.', 7],
+              ['hub', 'Vouch rings detected', 'Coordinated cross-vouching is flagged automatically.', 8],
+              ['person_off', 'Names must match', 'Across every document. A mismatch stops verification.', 9],
+            ].map(([icon, t, d, s]) => (
+              <div key={t as string} style={{ position: 'relative', overflow: 'hidden', border: '1px solid rgba(66,70,85,0.5)', borderRadius: 14, padding: 24, background: '#181c22', height: 220 }}>
+                <div style={{ position: 'absolute', right: -30, bottom: -30, opacity: 0.6, width: 200, height: 200 }}>
+                  <MeshGraph width={200} height={200} seed={s as number} />
                 </div>
-              ))}
-            </div>
+                <span className="material-symbols-outlined" style={{ fontSize: 22, color: '#b0c6ff', display: 'block' }}>{icon}</span>
+                <h4 style={{ fontSize: 18, fontWeight: 700, marginTop: 16, marginBottom: 8 }}>{t}</h4>
+                <p style={{ fontSize: 13, color: '#c2c6d8', lineHeight: 1.55, maxWidth: 230 }}>{d}</p>
+              </div>
+            ))}
           </div>
         </section>
 
         {/* CTA */}
-        <section style={{ padding: '96px 64px', textAlign: 'center', borderBottom: '1px solid rgba(66,70,85,0.6)' }}>
-          <div style={{ maxWidth: 760, margin: '0 auto' }}>
-            <h2 style={{ fontSize: 44, fontWeight: 700, letterSpacing: '-0.02em', lineHeight: 1.1, marginBottom: 20 }}>Ready to rebuild your trust?</h2>
-            <p style={{ color: '#c2c6d8', fontSize: 16, maxWidth: 440, margin: '0 auto 32px', lineHeight: 1.6 }}>
-              Two minutes. One document. The rest happens as the people around you vouch.
-            </p>
-            <Link href="/register" style={{ display: 'inline-flex', alignItems: 'center', gap: 8, padding: '14px 24px', background: '#b0c6ff', color: '#002d6f', borderRadius: 8, fontWeight: 600, fontSize: 15, textDecoration: 'none' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 20 }}>arrow_forward</span>
-              Create account
+        <section style={{ padding: '96px 72px', textAlign: 'center', position: 'relative', overflow: 'hidden' }}>
+          <div style={{ position: 'absolute', inset: 0, opacity: 0.45 }}>
+            <MeshGraph width={1280} height={300} seed={11} />
+          </div>
+          <div style={{ position: 'relative' }}>
+            <h2 style={{ fontSize: 48, fontWeight: 700, letterSpacing: '-0.02em', marginBottom: 16 }}>Join the mesh.</h2>
+            <p style={{ color: '#c2c6d8', fontSize: 16, maxWidth: 480, margin: '0 auto 32px' }}>Two minutes. One document. The rest happens as people around you vouch.</p>
+            <Link href="/register" style={{ padding: '14px 28px', background: '#b0c6ff', color: '#002d6f', border: 'none', borderRadius: 8, fontWeight: 600, fontSize: 15, display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>
+              Create your node
             </Link>
           </div>
         </section>
 
         {/* Footer */}
-        <footer style={{ padding: '20px 64px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(66,70,85,0.5)' }}>
-          <span style={{ fontSize: 12, color: '#8c90a1' }}>CivicTrust · London Mesh</span>
-          <div style={{ display: 'flex', gap: 24 }}>
-            {[
-              { label: 'How it works', href: '#' },
-              { label: 'Aid hubs', href: '#' },
-              { label: 'Sign in', href: '/login' },
-            ].map(l => (
-              <Link key={l.label} href={l.href} style={{ fontSize: 12, color: '#8c90a1', textDecoration: 'none' }}
-                onMouseEnter={e => (e.currentTarget.style.color = '#b0c6ff')}
-                onMouseLeave={e => (e.currentTarget.style.color = '#8c90a1')}>
-                {l.label}
-              </Link>
+        <footer style={{ padding: '20px 72px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderTop: '1px solid rgba(66,70,85,0.5)' }}>
+          <span className="meta">CivicTrust · London Mesh · T+14:00:00</span>
+          <div style={{ display: 'flex', gap: 18 }}>
+            {['How it works', 'Aid hubs', 'Sign in'].map(l => (
+              <Link key={l} href={l === 'Sign in' ? '/login' : '#'} style={{ fontSize: 12, color: '#8c90a1', textDecoration: 'none' }}>{l}</Link>
             ))}
           </div>
         </footer>

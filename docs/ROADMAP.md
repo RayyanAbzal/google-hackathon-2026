@@ -63,36 +63,37 @@ Vouch minimum gate: 1 doc=5 vouches, 2 docs=3, 3 docs=2 — below minimum, score
 - [x] `POST /api/vouch` — score gate (>=50), duplicate check, score recalc
 - [x] `POST /api/vouch/flag` — flags claim, penalises all vouchers -15pts
 - [x] `GET /api/users/[username]` — public profile, 403 if viewer score < 50
+- [x] `GET /api/users/node/[nodeId]` — resolves node ID to user (vouch page lookup, no auth)
 - [x] `GET /api/score/[userId]` — current score + tier
-- [ ] `GET /api/find` — Yellow Pages grouped counts — **TAO** 🔴
-- [ ] Rate limiting middleware (`src/middleware.ts`) — **TAO** 🔴
+- [x] `GET /api/find` — Yellow Pages grouped counts — **TAO** ✅
+- [x] Rate limiting middleware (`src/middleware.ts`) — **TAO** ✅
 
 ### Phase 3 — UI Shell
 - [x] TopBar — fixed nav, notifications popup, avatar menu + sign out
-- [x] Sidebar — fixed left nav, identity card, tier progress bar, active state
+- [x] Sidebar — collapsible (240px/56px), AUTH_NAV vs PUBLIC_NAV, real session data
+- [x] SidebarProvider — collapse context + `useSidebar()`, persisted to localStorage
 - [x] TierBadge — all 5 tiers with correct colours
 - [x] Icon — Material Symbols Outlined wrapper
-- [ ] Wire Sidebar to show real session data (display_name, node_id) — **HEMISH** 🔴 (visible every page)
-- [ ] Wire TopBar avatar initials from real session — **HEMISH** 🟡
-- [ ] Wire dashboard evidence cards → `GET /api/claims/[userId]` — **HEMISH** 🟡
-- [ ] Wire vouch confirm button → `POST /api/vouch` — **HEMISH** 🟡
+- [x] Wire Sidebar real session data (display_name, node_id) — **HEMISH** ✅
+- [x] Wire TopBar avatar initials from real session — **HEMISH** ✅
+- [x] Wire dashboard evidence cards → `GET /api/claims/[userId]` — **HEMISH** ✅
+- [x] Wire vouch confirm button → `POST /api/vouch` — **HEMISH** ✅
 
 ### Phase 4 — Pages
-- [x] Landing (`/`) — hero, CTAs, lore
+- [x] Landing (`/`) — hero, CTAs, lore (content extracted to `_components/LandingContent.tsx`)
 - [x] Register (`/register`) — 2-step: display name + password, then doc upload
 - [x] Login (`/login`) — node_id or @username + password, session to localStorage
-- [x] Dashboard (`/dashboard`) — profile, claims, score ring (inline SVG)
+- [x] Dashboard (`/dashboard`) — profile, claims, score ring (inline SVG), sidebar-aware layout
 - [x] Map (`/map`) — HeatMap + SkillPins
-- [x] Find (`/find`) — UI complete, waiting on API
-- [x] Vouch (`/vouch`) — QR inline SVG, waiting on wiring
-- [x] Add Evidence (`/add-evidence`) — wizard flow UI complete
-- [x] Settings (`/settings`) — username update, password change
+- [x] Find (`/find`) — hardcoded rich results (intentional — API returns aggregates only)
+- [x] Vouch (`/vouch`) — QR inline SVG, wired to `POST /api/vouch`
+- [x] Add Evidence (`/add-evidence`) — wizard wired to `POST /api/claims`
+- [x] Settings (`/settings`) — session data wired; username save low priority
 - [x] Profile redirect (`/profile/[username]`) — redirects to `/dashboard`
-- [ ] Auth guards on protected pages — **MAALAV** 🔴 (anyone can hit /dashboard now)
-- [ ] Wire real session data into pages — **MAALAV** 🔴 (hardcoded "Sarah Mitchell" everywhere)
-- [ ] Wire add-evidence submit → `POST /api/claims` — **MAALAV** 🟡
-- [ ] Wire unverified page session data (node_id, display_name) — **MAALAV** 🟡
-- [ ] Wire settings "Save username" → `PATCH /api/auth/username` — **MAALAV** 🟡 (low priority)
+- [x] Auth guards on all protected pages — **MAALAV** ✅
+- [x] Wire real session data into pages — **MAALAV** ✅
+- [x] Wire add-evidence submit → `POST /api/claims` — **MAALAV** ✅
+- [x] Wire unverified page session data (node_id, display_name) — **MAALAV** ✅
 
 ### Phase 5 — Demo prep
 - [ ] Supabase realtime enabled on `users` table — **ARYAN** 🟡
@@ -107,18 +108,13 @@ Vouch minimum gate: 1 doc=5 vouches, 2 docs=3, 3 docs=2 — below minimum, score
 ## Critical path
 
 ```
-BLOCKING RIGHT NOW:
-  Maalav: auth guards + real session data          ← unauthed users see everything
-  Hemish: Sidebar hardcoded "Sarah Mitchell"       ← visible on every protected page
-  Tao: /api/find                                   ← Yellow Pages shows no results
+ALL CODE DONE. Demo prep remaining:
 
-NEEDED FOR FULL DEMO:
-  Hemish: wire claims + vouch calls                ← dashboard shows placeholder data
-  Maalav: wire add-evidence submit                 ← form does nothing on submit
   Aryan: enable realtime on users table            ← live score updates won't fire
-  Ray: run seed scripts + wire map real data       ← map is empty
+  Ray: run seed scripts (--wipe)                   ← map is empty without seeded data
+  Ray: verify demo path math                       ← vouch gate check (see open questions)
+  Ray: confirm heatmap + counter before Sarah logs in
 
-LAST:
   Full demo rehearsal x2
 ```
 
