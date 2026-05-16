@@ -8,6 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "node --import tsx --test tests/**/*.test.ts",
+    "check": "npm test && npm run lint && npx tsc --noEmit",
     "seed": "tsx scripts/seed.ts",
     "seed:wipe": "tsx scripts/seed.ts --wipe",
     "seed:gov": "tsx scripts/seedGov.ts",

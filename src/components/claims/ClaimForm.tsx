@@ -13,5 +13,6 @@ export function ClaimForm({
   userId: string
   onSuccess: (newScore: number) => void
 }) {
+  void onSuccess
   return <div>ClaimForm {userId} — TODO (Hemish)</div>
 }
