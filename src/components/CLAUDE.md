@@ -8,13 +8,12 @@ All reusable UI components live here. Pages (Maalav) import from here.
 | Component | File | Purpose |
 |---|---|---|
 | TrustRing | `trust/TrustRing.tsx` | Animated SVG score ring. Prop: `score: number`. Animates on change. |
+| ScoreBadge | `trust/ScoreBadge.tsx` | Tier badge — Unverified/Partial/Verified/Trusted/Gov Official |
 | ProfileCard | `trust/ProfileCard.tsx` | User card: username, score ring, tier badge, skill tag, claim list |
 | ClaimCard | `claims/ClaimCard.tsx` | Single claim with vouch count, status badge, flag button |
 | ClaimForm | `claims/ClaimForm.tsx` | Upload doc form. File input + claim type selector. |
 | VouchQR | `trust/VouchQR.tsx` | Shows QR for user's node ID. Also has scanner mode. |
 | SkillPin | `map/SkillPin.tsx` | D3 pin for map — skill icon + colour by type |
-| HelpPostCard | `trust/HelpPostCard.tsx` | Help request card — content, skill/resource tag, urgency, respond button |
-| ScoreBadge | `trust/ScoreBadge.tsx` | Verified / Unverified / Trusted / Gov badge |
 
 ## Rules
 - shadcn/ui components only — do not build primitives from scratch
@@ -30,10 +29,13 @@ All reusable UI components live here. Pages (Maalav) import from here.
 3. ClaimCard + ClaimForm
 4. VouchQR
 5. ScoreBadge
-6. HelpPostCard
-7. SkillPin (needed for map — coordinate with Ray)
+6. SkillPin (needed for map — coordinate with Ray)
 
 ## The score ring
 This is the most important component. Score animates from old value to new value on update.
 Use Framer Motion for the animation. SVG circle with stroke-dasharray.
-Colour: green for Verified, amber for Partial, red for Unverified.
+Colour by tier: red = Unverified (<30), orange = Partial (30-49), green = Verified (50-89), amber = Trusted (90-94), gold = Gov Official (95+).
+
+## Score tiers (for badge colours)
+0-29 Unverified, 30-49 Partial, 50-89 Verified, 90-94 Trusted, 95+ Gov Official
+Use `getTier()` from `src/types/index.ts` — never hardcode tier thresholds.
