@@ -1,18 +1,18 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { hashPassword, generateNodeId, signToken } from "@/lib/auth";
-import type { ApiResponse, MandatoryDocType } from "@/types";
+import type { ApiResponse, MandatoryDocType, SkillTag } from "@/types";
 
 // POST /api/auth/register
 // Owner: Aryan
-// Input: { display_name, password, doc_image_base64, doc_type } — doc_type must be 'passport' or 'driving_licence'
+// Input: { display_name, password, doc_type, borough, skill? }
 // Returns: { token, user_id, node_id }
 
 interface RegisterBody {
   display_name: string;
   password: string;
-  doc_image_base64?: string;
-  doc_type?: MandatoryDocType;
-  borough?: string;
+  doc_type: MandatoryDocType;
+  borough: string;
+  skill?: SkillTag;
 }
 
 interface RegisterResult {
@@ -20,6 +20,9 @@ interface RegisterResult {
   user_id: string;
   node_id: string;
 }
+
+const VALID_DOC_TYPES: MandatoryDocType[] = ['passport', 'driving_licence']
+const VALID_SKILLS: SkillTag[] = ['Doctor', 'Engineer', 'Legal', 'Builder', 'Nurse', 'Other']
 
 export async function POST(request: Request): Promise<Response> {
   let body: RegisterBody;
@@ -29,7 +32,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ success: false, error: "Invalid JSON" } satisfies ApiResponse<never>, { status: 400 });
   }
 
-  const { display_name, password, doc_type, borough } = body;
+  const { display_name, password, doc_type, borough, skill } = body;
 
   if (!display_name?.trim()) {
     return Response.json({ success: false, error: "display_name is required" } satisfies ApiResponse<never>, { status: 400 });
@@ -37,8 +40,14 @@ export async function POST(request: Request): Promise<Response> {
   if (!password || password.length < 6) {
     return Response.json({ success: false, error: "Password must be at least 6 characters" } satisfies ApiResponse<never>, { status: 400 });
   }
-  if (!doc_type || !['passport', 'driving_licence'].includes(doc_type)) {
+  if (!doc_type || !VALID_DOC_TYPES.includes(doc_type)) {
     return Response.json({ success: false, error: "doc_type must be 'passport' or 'driving_licence'" } satisfies ApiResponse<never>, { status: 400 });
+  }
+  if (!borough?.trim()) {
+    return Response.json({ success: false, error: "borough is required" } satisfies ApiResponse<never>, { status: 400 });
+  }
+  if (skill && !VALID_SKILLS.includes(skill)) {
+    return Response.json({ success: false, error: `skill must be one of: ${VALID_SKILLS.join(', ')}` } satisfies ApiResponse<never>, { status: 400 });
   }
 
   const node_id = generateNodeId();
@@ -50,7 +59,8 @@ export async function POST(request: Request): Promise<Response> {
       node_id,
       display_name: display_name.trim(),
       password_hash,
-      borough: borough?.trim() ?? null,
+      borough: borough.trim(),
+      ...(skill ? { skill } : {}),
     })
     .select("id, node_id")
     .single();
