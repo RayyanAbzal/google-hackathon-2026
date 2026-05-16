@@ -115,15 +115,18 @@ export default function LandingContent() {
                   )
                 })}
                 {[
+                  // Tier 0 dots — on outer ring r=200
                   [80, 100, '#8c90a1', 3], [380, 110, '#8c90a1', 3], [60, 320, '#8c90a1', 3], [400, 360, '#8c90a1', 3],
-                  [130, 180, '#b0c6ff', 4], [330, 130, '#b0c6ff', 4], [350, 320, '#b0c6ff', 4], [110, 340, '#b0c6ff', 4],
-                  [180, 180, '#b0c6ff', 4], [290, 290, '#b0c6ff', 4], [275, 165, '#b0c6ff', 4], [185, 290, '#b0c6ff', 4],
+                  // Tier 1 dots — on ring r=150
+                  [305, 100, '#b0c6ff', 4], [155, 100, '#b0c6ff', 4], [355, 310, '#b0c6ff', 4], [105, 310, '#b0c6ff', 4],
+                  // Tier 2 dots — on ring r=100
+                  [317, 180, '#b0c6ff', 4], [143, 180, '#b0c6ff', 4], [317, 280, '#b0c6ff', 4], [143, 280, '#b0c6ff', 4],
                 ].map(([x, y, c, r], i) => (
                   <circle key={i} cx={x} cy={y} r={r} fill={c as string} />
                 ))}
-                <circle cx="230" cy="230" r="14" fill="#40e56c" />
-                <circle cx="230" cy="230" r="22" fill="none" stroke="#40e56c" strokeOpacity="0.5" />
-                <text x="230" y="234" textAnchor="middle" fontSize="11" fontWeight="700" fill="#002d6f">VERIFIED</text>
+                <circle cx="230" cy="230" r="18" fill="#40e56c" />
+                <circle cx="230" cy="230" r="28" fill="none" stroke="#40e56c" strokeOpacity="0.5" />
+                <text x="230" y="234" textAnchor="middle" fontSize="9" fontWeight="700" letterSpacing="0.5" fill="#0a0e14">GOV</text>
               </svg>
             </div>
           </div>

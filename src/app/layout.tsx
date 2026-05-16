@@ -19,11 +19,19 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className="antialiased dark"
+      className={`antialiased dark ${inter.variable} ${mono.variable}`}
       suppressHydrationWarning
     >
+      <head>
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=block"
+        />
+      </head>
       <body style={{ background: "#10141a", color: "#dfe2eb", minHeight: "100vh" }}>
-        {children}
+        <SidebarProvider>
+          {children}
+        </SidebarProvider>
       </body>
     </html>
   );
