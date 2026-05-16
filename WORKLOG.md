@@ -1,33 +1,31 @@
 # WORKLOG
 
-**Updated:** 2026-05-16 (session — Yellow Pages / heatmap overhaul)
+**Updated:** 2026-05-16 (session — dashboard trust network wiring + EgoGraph interactivity)
 
 ## Active task
-Yellow Pages + heatmap redesign: full-width map hero, search-driven skill density, map audit fixes
+Dashboard fully wired to DB; Trust Network section connected to real vouch data with interactive ego graph
 
 ## Phase
 implementing
 
 ## Files changed this session
-- `src/app/find/page.tsx` — full rewrite: full-width map hero above listings; search drives heatmap skill filter (type "doctor" → map shows doctor density); borough chips replace category pills; search→skill overlay hint + live counter sub-count now skill-aware; hardcoded POIs removed; category pills removed; Aid Hub card removed from listings; Status filter removed; icon colors now match skill colors
-- `src/components/map/HeatMap.tsx` — empty boroughs now visible (`#1a2235` / opacity 0.55 instead of near-black 0.18); permanent Tooltip labels on POI markers (removed since POIs removed from find page); tooltip now shows top-2 skills e.g. "Southwark — 14 verified · 5 Doctor · 3 Engineer"; onBoroughClick signature simplified to `(name: string) => void` (dropped unused users param); Tooltip imported
-- `src/components/map/map-data.ts` — removed dead `getDisplayName` function; removed its usage in people sort
-- `src/app/CLAUDE.md` — updated /map row from "Done" to "Removed — merged into /find"
-- `src/app/find/page.tsx.tmp` — deleted (stale scratch file)
+- `src/app/api/network/[userId]/route.ts` — NEW: returns real voucher nodes (type, display_name, username, tier, vouched_at), pts_this_week via snapshot diff, total_vouchers; capped at 12 displayed nodes
+- `src/components/civic/svg/EgoGraph.tsx` — rewritten: 4 tier rings matching landing page; nodes placed on ring by voucher tier; hover tooltip shows name/@username/tier badge/vouched date; tooltip dismisses on mouse-out; no-flicker: passes `[]` while loading (not mock fallback)
+- `src/app/dashboard/page.tsx` — fetches /api/network; passes real voucher nodes to EgoGraph; shows real pts_this_week (hidden when 0); replaced hardcoded "Southwark, London" with session.borough; added networkLoaded flag to prevent mock flicker
+- `src/app/CLAUDE.md` — (pre-existing, no change this session)
 
 ## Next step
-Visual QA in browser — verify: search "doctor" changes map to green density + counter shows doctor count; click borough on map filters listings; modal opens with credentials; tsc stays clean
+Visual QA in browser — verify: 4 rings visible; hover node shows tooltip with real name/tier; tooltip clears on mouse-out; pts_this_week shows correct diff; borough shows from session; no mock flicker on page load
 
 ## Open questions
-- Scoring formula multipliers still not tuned to tier boundaries (deferred)
-- seed users all have username=null so "View Profile" won't show — need @dr_osei to have username set for demo flow
-- Yellow Pages still feels like a directory — discussed "Post for Help" bulletin board feature but user confirmed NOT building it
+- Scoring formula multipliers still not tuned to tier boundaries (deferred from last session)
+- EgoGraph legend still says "Gov. voucher / Community voucher" — should it now say all 4 tiers to match the rings?
+- Only 1 real voucher in DB for demo user (David Lewis / Verified) — graph looks sparse; seed more vouchers for demo?
 
 ## Key decisions
-- Combined /find page (map + listings) confirmed — no separate /map route
-- Search drives heatmap `activeSkill`: SEARCH_TO_SKILL mapping covers plurals, synonyms (lawyer→Legal, nhs→Nurse, construction→Builder)
-- Map overlay counter sub-count is skill-aware: searching "builder" → shows "146 builders verified"; no search → shows medical/engineers/legal breakdown
-- Borough chips now show ALL boroughs (not per-category) — simpler, works with search replacing category filter
-- Hardcoded POIs (NHS Emergency HQ, Aid Hubs etc.) removed from map — user wants these searchable not pinned
-- Empty borough style: `#1a2235` fill at 0.55 opacity — visually distinct from "low density" (dark vs dim blue)
-- Icon colors in listings now match skill colors from heatmap legend (Doctor=green, Engineer=blue, Legal=purple, Builder=amber)
+- pts_this_week uses snapshot diff (recalculate score as-of-7-days-ago, diff with current) — not naive 5×count which breaks at caps
+- EgoGraph 4 rings: Gov Official (innermost, green solid), Trusted (green dashed), Verified (blue dashed), Unverified (gray dashed) — matches landing page "Four rings of trust"
+- Nodes placed on ring matching voucher's own tier, not just gov/community binary
+- No mock fallback while loading: passes `vouchers={[]}` until networkLoaded=true — shows rings + YOU only during fetch
+- Tooltip clears via onMouseLeave on each node `<g>` (SVG-level onMouseLeave alone was insufficient)
+- hardcoded "Southwark, London" replaced with session.borough (already in Session type from login route)

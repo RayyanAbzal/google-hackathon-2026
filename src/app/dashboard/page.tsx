@@ -45,6 +45,9 @@ export default function DashboardPage() {
   const [claims, setClaims] = useState<Claim[]>([])
   const [claimsLoaded, setClaimsLoaded] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [networkNodes, setNetworkNodes] = useState<Array<{ type: 'gov' | 'community'; display_name?: string; username?: string | null; tier?: string; vouched_at?: string }>>([])
+  const [networkLoaded, setNetworkLoaded] = useState(false)
+  const [ptsThisWeek, setPtsThisWeek] = useState<number | null>(null)
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -76,6 +79,18 @@ export default function DashboardPage() {
           if (json.success) setNotifications(json.data)
         })
         .catch(() => setNotifications([]))
+
+      protectedFetch<{ nodes: Array<{ type: 'gov' | 'community'; display_name: string; username: string | null; tier: string; vouched_at: string }>; pts_this_week: number; total_vouchers: number }>(
+        `/api/network/${current.user_id}`, current
+      )
+        .then((json) => {
+          if (json.success) {
+            setNetworkNodes(json.data.nodes)
+            setPtsThisWeek(json.data.pts_this_week)
+          }
+        })
+        .catch(() => {})
+        .finally(() => setNetworkLoaded(true))
     })
   }, [router])
 
@@ -130,7 +145,7 @@ export default function DashboardPage() {
             </h1>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#c2c6d8', fontSize: 14 }}>
               <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#40e56c' }}>stethoscope</span>
-              {session?.username ? `@${session.username}` : 'Your account'} · Southwark, London
+              {session?.username ? `@${session.username}` : 'Your account'}{session?.borough ? ` · ${session.borough}` : ''}
             </div>
           </div>
           <div style={{ display: 'flex', gap: 8 }}>
@@ -149,10 +164,12 @@ export default function DashboardPage() {
           <div style={{ border: '1px solid rgba(66,70,85,0.5)', borderRadius: 14, padding: 20, background: '#181c22' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
               <span className="meta">YOUR TRUST NETWORK</span>
-              <span className="meta" style={{ color: '#40e56c' }}>+45 PTS THIS WEEK</span>
+              {ptsThisWeek !== null && ptsThisWeek > 0 && (
+                <span className="meta" style={{ color: '#40e56c' }}>+{ptsThisWeek} PTS THIS WEEK</span>
+              )}
             </div>
             <div style={{ height: 300, marginTop: 6 }}>
-              <EgoGraph width={680} height={300} count={9} />
+              <EgoGraph width={680} height={300} vouchers={networkLoaded ? networkNodes : []} />
             </div>
             <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#c2c6d8' }}>
