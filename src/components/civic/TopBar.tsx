@@ -181,9 +181,14 @@ export default function TopBar({ authMode = 'auto' }: TopBarProps) {
           </>
         ) : (
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Link href={authMode === 'public' ? '/register' : '/login'} className="btn-primary" style={{ fontSize: 13 }}>
-              {authMode === 'public' ? 'Create account' : 'Sign in'}
-            </Link>
+            {authMode === 'public' ? (
+              <>
+                <Link href="/login" style={{ fontSize: 13, color: '#b0c6ff', textDecoration: 'none', padding: '6px 14px', borderRadius: 8, border: '1px solid #424655', background: 'transparent' }}>Sign in</Link>
+                <Link href="/register" className="btn-primary" style={{ fontSize: 13 }}>Create account</Link>
+              </>
+            ) : (
+              <Link href="/login" className="btn-primary" style={{ fontSize: 13 }}>Sign in</Link>
+            )}
           </div>
         )}
       </div>
