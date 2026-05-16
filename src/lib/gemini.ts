@@ -1,15 +1,55 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenerativeAI } from '@google/generative-ai'
+import type { DocumentAnalysis, DocType } from '@/types'
 
 function getGeminiModel() {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("GEMINI_API_KEY is not set");
+  const apiKey = process.env.GEMINI_API_KEY
+  if (!apiKey) throw new Error('GEMINI_API_KEY is not set')
   return new GoogleGenerativeAI(apiKey).getGenerativeModel({
-    model: "gemini-2.0-flash",
-  });
+    model: 'gemini-2.0-flash',
+  })
 }
 
 export async function generateText(prompt: string): Promise<string> {
-  const model = getGeminiModel();
-  const result = await model.generateContent(prompt);
-  return result.response.text();
+  const model = getGeminiModel()
+  const result = await model.generateContent(prompt)
+  return result.response.text()
+}
+
+export async function analyseDocument(
+  imageBase64: string,
+  docType: DocType
+): Promise<DocumentAnalysis> {
+  const model = getGeminiModel()
+
+  const prompt = `You are verifying a ${docType} document for a post-disaster identity system.
+Extract the following fields exactly as they appear on the document:
+- full_name: the person's full legal name
+- institution: issuing institution or employer (null if not applicable)
+- confidence: a float 0.0-1.0 indicating how clearly legible and authentic the document appears
+
+Respond ONLY with valid JSON in this exact shape:
+{"full_name": string | null, "institution": string | null, "confidence": number}
+
+No other text.`
+
+  const result = await model.generateContent([
+    prompt,
+    { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
+  ])
+
+  const raw = result.response.text().trim()
+
+  let parsed: { full_name: string | null; institution: string | null; confidence: number }
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return { extracted_name: null, doc_type: docType, confidence: 0, institution: null }
+  }
+
+  return {
+    extracted_name: parsed.full_name ?? null,
+    doc_type: docType,
+    confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,
+    institution: parsed.institution ?? null,
+  }
 }
