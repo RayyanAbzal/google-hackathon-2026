@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
 import Icon from '@/components/civic/Icon'
+import DocumentCameraCapture from '@/components/claims/DocumentCameraCapture'
 import type { Claim, ClaimType as ApiClaimType, Session, TrustTier } from '@/types'
 import { protectedFetch, requireSession, updateStoredSession } from '@/app/_lib/session'
 
@@ -110,6 +111,7 @@ export default function AddEvidencePage() {
   const [statusMessage, setStatusMessage] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [cameraOpen, setCameraOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
@@ -120,6 +122,19 @@ export default function AddEvidencePage() {
     setSelectedFile(e.target.files?.[0] ?? null)
     setError('')
     setStatusMessage(e.target.files?.[0] ? 'Document ready for review.' : '')
+  }
+
+  function handleCameraCapture(file: File) {
+    setSelectedFile(file)
+    setError('')
+    setStatusMessage('Photo captured and ready for review.')
+  }
+
+  function removeSelectedFile() {
+    setSelectedFile(null)
+    setStatusMessage('')
+    setError('')
+    if (fileRef.current) fileRef.current.value = ''
   }
 
   function fileToBase64(file: File): Promise<string> {
@@ -292,7 +307,7 @@ export default function AddEvidencePage() {
                     Drag a file here
                   </div>
                   <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-                    <button className="btn-ghost" style={{ fontSize: 13 }}>
+                    <button className="btn-ghost" style={{ fontSize: 13 }} onClick={() => setCameraOpen(true)}>
                       <Icon name="photo_camera" size={16} />
                       Use camera
                     </button>
@@ -313,8 +328,44 @@ export default function AddEvidencePage() {
                     />
                   </div>
                   {selectedFile && (
-                    <div style={{ fontSize: 12, color: '#40e56c', marginTop: 14 }}>
-                      {selectedFile.name}
+                    <div
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        maxWidth: '100%',
+                        marginTop: 14,
+                        padding: '8px 10px',
+                        borderRadius: 8,
+                        background: 'rgba(64,229,108,0.06)',
+                        border: '1px solid rgba(64,229,108,0.25)',
+                        color: '#40e56c',
+                        fontSize: 12,
+                      }}
+                    >
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {selectedFile.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={removeSelectedFile}
+                        aria-label="Remove selected document"
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: 6,
+                          border: '1px solid rgba(255,180,171,0.3)',
+                          background: 'rgba(255,180,171,0.08)',
+                          color: '#ffb4ab',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Icon name="close" size={16} />
+                      </button>
                     </div>
                   )}
                 </div>
@@ -536,6 +587,11 @@ export default function AddEvidencePage() {
         </div>
 
       </main>
+      <DocumentCameraCapture
+        open={cameraOpen}
+        onClose={() => setCameraOpen(false)}
+        onCapture={handleCameraCapture}
+      />
     </div>
   )
 }
