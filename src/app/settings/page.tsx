@@ -303,12 +303,12 @@ export default function SettingsPage() {
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
                   <label style={{ fontSize: 13, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
-                    User ID
+                    Node ID
                   </label>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
                       className="field-input"
-                      value={session?.user_id ?? ''}
+                      value={session?.node_id ?? ''}
                       disabled
                       style={{ fontFamily: 'monospace', opacity: 0.6 }}
                       readOnly
