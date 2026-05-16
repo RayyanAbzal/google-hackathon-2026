@@ -77,14 +77,10 @@ CREATE TABLE gov_officials (
 - [ ] Confirm `USE_FALLBACKS=true` in `.env.local` still works as a fallback
 
 ### Phase 2 — AI + Map
-- [ ] London heatmap D3 component (`src/components/map/HeatMap.tsx`)
-  - D3 choropleth using London GeoJSON by borough
-  - Colour scale: dark = no verified users, bright blue = high density
-  - Export as React component, Maalav embeds in map page
-- [ ] Skill pins layer on map (`src/components/map/SkillPin.tsx`)
-  - Coloured circle per skill: green = Doctor, blue = Engineer, purple = Legal, amber = Builder
-  - Click pin → opens profile card (requires login)
-- [ ] Live counter component: "X / 9,000,000 verified" — subscribes to Supabase realtime
+- [x] London heatmap D3 component (`src/components/map/HeatMap.tsx`)
+- [x] Skill pins layer on map (`src/components/map/SkillPin.tsx`)
+- [ ] Wire map heatmap + pins from real Supabase data — currently uses `FALLBACK_USERS` and hardcoded `PINS` array in `src/app/map/page.tsx`. Do AFTER seed confirmed. Query: `from('users').select('borough, skill, tier, score').eq('tier', 'verified')`
+- [ ] Live counter component: confirm "X / 9,000,000 verified" subscribes to Supabase realtime
 - [ ] QR vouch flow glue — coordinate with Hemish (QR display) + Aryan (vouch API)
 
 ### Phase 3 — Demo prep
@@ -245,22 +241,31 @@ function calculateScore(input: { claims_verified: number, vouches_received: numb
 
 ### Priority tasks
 
-#### 1. Wire dashboard evidence cards to real data
+#### 1. Wire Sidebar real session data — DO FIRST (visible every page)
+- [ ] `src/components/civic/Sidebar.tsx` — lines 27-28 hardcode "Sarah Mitchell" / "BLK-0471-LDN"
+  - Add `useState` + `useEffect` to read `civictrust_session` from localStorage
+  - Display `session.display_name` and `session.node_id` in the identity card
+  - Use `session.tier` for the tier badge and progress bar colour
+
+#### 2. Wire TopBar avatar
+- [ ] `src/components/civic/TopBar.tsx` — show first initial of `session.display_name` in avatar circle
+
+#### 3. Wire dashboard evidence cards to real data
 - [ ] `src/app/dashboard/page.tsx` — replace hardcoded evidence array with `GET /api/claims/[userId]`
   - Read `civictrust_session` from localStorage to get `user_id`
   - Fetch on mount, display real claims with correct status badges
   - Empty state: show the "Add another claim" slot only
 
-#### 2. Wire vouch confirm button
+#### 4. Wire vouch confirm button
 - [ ] `src/app/vouch/page.tsx` — "Confirm vouch" button should `POST /api/vouch`
   - Input: `{ voucher_id, vouchee_id }` from session + looked-up node
   - On success: show score update, refresh activity
 
-#### 3. Wire dashboard activity feed
+#### 5. Wire dashboard activity feed
 - [ ] Replace hardcoded activity items with real recent events
   - Source: recent claims + vouches for the logged-in user
 
-#### 4. Realtime score update (nice-to-have)
+#### 6. Realtime score update (nice-to-have)
 - [ ] Connect Tao's realtime helper to update the score ring live when a vouch comes in
   - The SVG ring in dashboard/page.tsx takes `SCORE` as a constant — make it stateful
 
@@ -308,25 +313,16 @@ Public (no guard needed): `/`, `/find`, `/login`, `/register`, `/unverified`
 All pages currently show hardcoded "Sarah Mitchell / BLK-0471-LDN / score 55".
 Replace with data from `civictrust_session` in localStorage.
 
-Session type (from `src/types/index.ts`):
+Session shape (set by login/register, stored as JSON):
 ```typescript
-interface Session {
-  token: string
-  user_id: string
-  node_id: string
-  username: string | null
-  display_name: string
-  score: number
-  tier: TrustTier
-}
+// { token, user_id, node_id, username, display_name, score, tier }
+const session = JSON.parse(localStorage.getItem('civictrust_session') ?? '{}')
 ```
 
-Pages to update:
-- [ ] `dashboard/page.tsx` — "Welcome back, Sarah." → session.display_name; score ring → session.score; tier badge → session.tier
-- [ ] `vouch/page.tsx` — Node ID display → session.node_id
-- [ ] `settings/page.tsx` — prefill name fields from session
-- [ ] `unverified/page.tsx` — node ID + name from session
-- [ ] `sidebar` (TopBar + Sidebar in civic/) — already reads from hardcoded values; update to read session
+Pages to update (Sidebar/TopBar handled by Hemish):
+- [ ] `dashboard/page.tsx` — "Welcome back, Sarah." → `session.display_name`; score ring → `session.score`; tier badge → `session.tier`
+- [ ] `vouch/page.tsx` — hardcoded `BLK-0471-LDN` (line 141) → `session.node_id`
+- [ ] `settings/page.tsx` — prefill display_name + username fields from session
 
 #### 3. Wire add-evidence submit
 - [ ] `src/app/add-evidence/page.tsx` step 4 "Submit claim" button:
@@ -335,7 +331,17 @@ Pages to update:
   - On success: redirect to `/dashboard`
   - On error: show error message
 
-#### 4. Wire find page to real API
+#### 4. Wire unverified page session data
+- [ ] `src/app/(auth)/unverified/page.tsx` line 30 hardcodes `BLK-0471-LDN`
+  - Read from localStorage and show real `session.node_id` and `session.display_name`
+
+#### 5. Wire settings username save (low priority)
+- [ ] `src/app/settings/page.tsx` — "Save changes" button for @username field
+  - Call `PATCH /api/auth/username` with `{ node_id: session.node_id, username }`
+  - Show success/error inline
+  - Password change form: leave UI as-is, non-functional (not in demo path)
+
+#### 6. Wire find page to real API
 - [ ] `src/app/find/page.tsx` — replace hardcoded 4 results with `GET /api/find?skill=...&borough=...`
   - Depends on Tao implementing `/api/find`
   - Loading state while fetching
