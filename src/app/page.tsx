@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import TopBar from '@/components/civic/TopBar'
 import LandingContent from './_components/LandingContent'
 
