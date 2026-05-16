@@ -12,7 +12,7 @@ import { buildMapInsights } from '@/components/map/map-data'
 import { FALLBACK_USERS, USE_FALLBACKS } from '@/lib/fallbacks'
 import { supabase } from '@/lib/supabase'
 import { requireSession } from '@/app/_lib/session'
-import type { SkillTag, TrustTier } from '@/types'
+import type { SkillTag } from '@/types'
 
 const HeatMap = dynamic(() => import('@/components/map/HeatMap').then(m => m.HeatMap), { ssr: false })
 
@@ -99,8 +99,10 @@ export default function MapPage() {
   }, [])
 
   useEffect(() => {
-    void fetchUsers()
-    void fetchCount()
+    queueMicrotask(() => {
+      void fetchUsers()
+      void fetchCount()
+    })
   }, [fetchUsers, fetchCount])
 
   useEffect(() => {

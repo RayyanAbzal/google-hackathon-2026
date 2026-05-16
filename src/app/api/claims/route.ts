@@ -4,18 +4,22 @@ import { verifyAuth } from "@/lib/auth";
 import { analyseDocument } from "@/lib/gemini";
 import { recalculateUserScore } from "@/lib/score";
 import { USE_FALLBACKS } from "@/lib/fallbacks";
-import type { ApiResponse, Claim, ClaimType, TrustTier } from "@/types";
+import { getTier } from "@/types";
+import type { ApiResponse, Claim, ClaimType, DocumentAnalysis, TrustTier } from "@/types";
 
 interface ClaimBody {
   type: ClaimType;
   doc_type: string;
   image_base64: string;
+  mime_type?: string;
 }
 
 interface ClaimResult {
   claim: Claim;
+  analysis: DocumentAnalysis;
   new_score: number;
   tier: TrustTier;
+  rejection_reason?: "name_mismatch" | "low_confidence" | "unreadable";
 }
 
 const RATE_WINDOW_MS = 10 * 60 * 1000;
@@ -34,7 +38,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ success: false, error: "Invalid JSON" } satisfies ApiResponse<never>, { status: 400 });
   }
 
-  const { type, doc_type, image_base64 } = body;
+  const { type, doc_type, image_base64, mime_type } = body;
 
   if (!["identity", "credential", "work"].includes(type)) {
     return Response.json({ success: false, error: "type must be identity | credential | work" } satisfies ApiResponse<never>, { status: 400 });
@@ -44,6 +48,9 @@ export async function POST(request: Request): Promise<Response> {
   }
   if (!image_base64?.trim()) {
     return Response.json({ success: false, error: "image_base64 is required" } satisfies ApiResponse<never>, { status: 400 });
+  }
+  if (mime_type && !mime_type.startsWith("image/") && mime_type !== "application/pdf") {
+    return Response.json({ success: false, error: "mime_type must be an image or application/pdf" } satisfies ApiResponse<never>, { status: 400 });
   }
 
   // Rate limiting: max 3 claims per 10 min
@@ -73,7 +80,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   // Analyse document via Gemini
-  let analysis;
+  let analysis: DocumentAnalysis;
   if (USE_FALLBACKS) {
     analysis = {
       extracted_name: user.display_name,
@@ -82,7 +89,7 @@ export async function POST(request: Request): Promise<Response> {
       confidence: 0.9,
     };
   } else {
-    analysis = await analyseDocument(image_base64, doc_type);
+    analysis = await analyseDocument(image_base64, doc_type, mime_type || "image/jpeg");
   }
 
   // Name consistency check
@@ -94,18 +101,44 @@ export async function POST(request: Request): Promise<Response> {
   const status = nameMatch && analysis.confidence >= 0.5 ? "verified" : "rejected";
 
   if (status === "rejected") {
-    await supabaseAdmin.from("claims").insert({
-      user_id: user.id,
-      type,
-      status: "rejected",
-      doc_type,
-      extracted_name: analysis.extracted_name,
-      extracted_institution: analysis.institution,
-      confidence: analysis.confidence,
-      content_hash,
-    });
+    const rejection_reason =
+      analysis.confidence < 0.5
+        ? analysis.extracted_name
+          ? "low_confidence"
+          : "unreadable"
+        : "name_mismatch";
+
+    const { data: rejectedClaim, error: rejectedError } = await supabaseAdmin
+      .from("claims")
+      .insert({
+        user_id: user.id,
+        type,
+        status: "rejected",
+        doc_type,
+        extracted_name: analysis.extracted_name,
+        extracted_institution: analysis.institution,
+        confidence: analysis.confidence,
+        content_hash,
+      })
+      .select("*")
+      .single();
+
+    if (rejectedError || !rejectedClaim) {
+      return Response.json({ success: false, error: "Failed to store rejected claim" } satisfies ApiResponse<never>, { status: 500 });
+    }
+
     return Response.json(
-      { success: false, error: "Document rejected — name does not match or document unreadable" } satisfies ApiResponse<never>,
+      {
+        success: false,
+        error: "Document rejected — name does not match or document unreadable",
+        data: {
+          claim: rejectedClaim as Claim,
+          analysis,
+          new_score: user.score,
+          tier: getTier(user.score),
+          rejection_reason,
+        },
+      } satisfies ApiResponse<ClaimResult>,
       { status: 422 }
     );
   }
@@ -140,6 +173,6 @@ export async function POST(request: Request): Promise<Response> {
 
   return Response.json({
     success: true,
-    data: { claim: claim as Claim, new_score, tier },
+    data: { claim: claim as Claim, analysis, new_score, tier },
   } satisfies ApiResponse<ClaimResult>, { status: 201 });
 }

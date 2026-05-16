@@ -77,7 +77,7 @@ export type GovAnchor = GovOfficial
 
 export type ApiResponse<T> =
   | { success: true; data: T }
-  | { success: false; error: string }
+  | { success: false; error: string; data?: T }
 
 // ─── Score logic ───────────────────────────────────────────────────────────
 
@@ -144,6 +144,7 @@ export interface Session {
 export interface DocumentAnalysis {
   extracted_name: string | null
   doc_type: DocType | string
+  country?: string | null
   institution: string | null
   confidence: number
 }

@@ -89,7 +89,7 @@ export async function POST(request: Request): Promise<Response> {
       display_name: display_name.trim(),
       skill: skill.trim(),
       password_hash,
-      borough: borough.trim(),
+      borough: safeBorough,
     })
     .select("id, node_id")
     .single();
