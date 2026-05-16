@@ -1,143 +1,162 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
+import { QRCodeSVG } from 'qrcode.react'
 import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
 import TierBadge from '@/components/civic/TierBadge'
 import Icon from '@/components/civic/Icon'
-import type { Session, TrustTier } from '@/types'
-import { protectedFetch, requireSession } from '@/app/_lib/session'
+import type { Session, TrustTier, SkillTag } from '@/types'
 
-type VouchType = 'regular' | 'government' | 'mutual'
-
-const VOUCH_OPTIONS: { id: VouchType; label: string; pts: string; locked?: boolean }[] = [
-  { id: 'regular',    label: 'Regular',    pts: '+10 pts' },
-  { id: 'government', label: 'Government', pts: '+20',   locked: true },
-  { id: 'mutual',     label: 'Mutual',     pts: '+12 each way' },
-]
-
-interface VouchResult {
-  new_score: number
-  tier: TrustTier
-}
-
-interface VouchRequest {
-  name: string
-  initials: string
-  skill: string
-  area: string
+interface FoundUser {
+  id: string
+  node_id: string
+  username: string | null
+  display_name: string
+  skill: SkillTag | null
   score: number
   tier: TrustTier
-  userId: string
+  borough: string | null
 }
 
-const VOUCH_REQUESTS: VouchRequest[] = [
-  {
-    name: 'Maalav G.',
-    initials: 'MG',
-    skill: 'Engineer',
-    area: 'Lambeth',
-    score: 62,
-    tier: 'verified',
-    userId: '51ff11d8-6035-4d07-bc7a-859153d8f7ce',
-  },
-  {
-    name: 'Hemish R.',
-    initials: 'HR',
-    skill: 'Frontend volunteer',
-    area: 'Southwark',
-    score: 55,
-    tier: 'verified',
-    userId: '2eb20d3f-b3c8-4ea2-b1df-5d71d6f45a72',
-  },
-  {
-    name: 'Sarah Mitchell',
-    initials: 'SM',
-    skill: 'Doctor',
-    area: 'Hackney',
-    score: 44,
-    tier: 'verified',
-    userId: 'a9c7d25c-1d5f-46fb-98a8-08df2fcb5a3d',
-  },
-]
+type VouchState = 'idle' | 'loading' | 'found' | 'confirming' | 'success' | 'error'
+type ScanState  = 'off' | 'scanning' | 'done'
 
 export default function VouchPage() {
   const router = useRouter()
-  const [session, setSession] = useState<Session | null>(null)
-  const [vouchType, setVouchType] = useState<VouchType>('regular')
-  const [userInput, setUserInput] = useState('')
-  const [requestIndex, setRequestIndex] = useState(0)
-  const [message, setMessage] = useState('')
-  const [error, setError] = useState('')
-  const activeRequest = VOUCH_REQUESTS[requestIndex]
+  const [session, setSession]         = useState<Session | null>(null)
+  const [nodeInput, setNodeInput]     = useState('')
+  const [foundUser, setFoundUser]     = useState<FoundUser | null>(null)
+  const [vouchState, setVouchState]   = useState<VouchState>('idle')
+  const [errorMsg, setErrorMsg]       = useState('')
+  const [scanState, setScanState]     = useState<ScanState>('off')
+  const scannerRef                    = useRef<HTMLDivElement>(null)
+  // html5-qrcode instance stored in ref so it survives renders
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const html5QrRef                    = useRef<any>(null)
 
   useEffect(() => {
-    queueMicrotask(() => setSession(requireSession(router)))
+    const raw = localStorage.getItem('civictrust_session')
+    if (!raw) { router.push('/login'); return }
+    setSession(JSON.parse(raw) as Session)
   }, [router])
 
-  async function copyUserId() {
-    if (!session) return
-    await navigator.clipboard.writeText(session.user_id)
-    setMessage('User ID copied.')
-    setError('')
-  }
+  const lookupByNodeId = useCallback(async (id: string) => {
+    const normalized = id.trim().toUpperCase()
+    if (!normalized) return
+    setVouchState('loading')
+    setErrorMsg('')
+    setFoundUser(null)
 
-  function moveRequest(direction: -1 | 1) {
-    setRequestIndex((current) => (current + direction + VOUCH_REQUESTS.length) % VOUCH_REQUESTS.length)
-    setMessage('')
-    setError('')
-  }
-
-  async function submitVouch(targetUserId = userInput.trim()) {
-    if (!session) return
-    if (!targetUserId) {
-      setError('Enter a User ID first.')
-      setMessage('')
-      return
+    try {
+      const res  = await fetch(`/api/users/node/${encodeURIComponent(normalized)}`)
+      const json = await res.json()
+      if (!json.success) { setErrorMsg(json.error ?? 'User not found'); setVouchState('error'); return }
+      if (json.data.id === session?.user_id) { setErrorMsg('Cannot vouch for yourself'); setVouchState('error'); return }
+      setFoundUser(json.data as FoundUser)
+      setVouchState('found')
+    } catch {
+      setErrorMsg('Network error — try again')
+      setVouchState('error')
     }
+  }, [session?.user_id])
 
-    const json = await protectedFetch<VouchResult>('/api/vouch', session, {
-      method: 'POST',
-      body: JSON.stringify({ vouchee_id: targetUserId }),
-    })
-
-    if (!json.success) {
-      setError(json.error)
-      setMessage('')
-      return
+  const stopScanner = useCallback(async () => {
+    if (html5QrRef.current) {
+      try { await html5QrRef.current.stop() } catch { /* already stopped */ }
+      html5QrRef.current = null
     }
+    setScanState('off')
+  }, [])
 
-    setError('')
-    setMessage(`Vouch recorded. Their score is now ${json.data.new_score}.`)
+  const startScanner = useCallback(async () => {
+    if (!scannerRef.current) return
+    setScanState('scanning')
+
+    // Dynamic import keeps html5-qrcode out of SSR bundle
+    const { Html5Qrcode } = await import('html5-qrcode')
+    const scanner = new Html5Qrcode('qr-scan-target')
+    html5QrRef.current = scanner
+
+    try {
+      await scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 200, height: 200 } },
+        async (decodedText: string) => {
+          await stopScanner()
+          setScanState('done')
+          setNodeInput(decodedText.trim().toUpperCase())
+          await lookupByNodeId(decodedText)
+        },
+        undefined
+      )
+    } catch {
+      setScanState('off')
+      html5QrRef.current = null
+    }
+  }, [lookupByNodeId, stopScanner])
+
+  // Clean up scanner when navigating away
+  useEffect(() => () => { stopScanner() }, [stopScanner])
+
+  const handleLookup = () => lookupByNodeId(nodeInput)
+
+  const handleConfirmVouch = async () => {
+    if (!foundUser || !session) return
+    setVouchState('confirming')
+    setErrorMsg('')
+
+    try {
+      const res  = await fetch('/api/vouch', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${session.token}` },
+        body:    JSON.stringify({ vouchee_id: foundUser.id }),
+      })
+      const json = await res.json()
+      if (!json.success) { setErrorMsg(json.error ?? 'Vouch failed'); setVouchState('found'); return }
+      setVouchState('success')
+    } catch {
+      setErrorMsg('Network error — try again')
+      setVouchState('found')
+    }
   }
+
+  const handleReject = () => {
+    setFoundUser(null)
+    setNodeInput('')
+    setVouchState('idle')
+    setErrorMsg('')
+    setScanState('off')
+  }
+
+  const copyNodeId = () => {
+    if (session?.node_id) navigator.clipboard.writeText(session.node_id).catch(() => {})
+  }
+
+  if (!session) return null
+
+  const initials = session.display_name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()
 
   return (
     <div style={{ background: '#10141a', minHeight: '100vh', color: '#dfe2eb' }}>
       <TopBar />
-      <Sidebar active="vouch" session={session} />
+      <Sidebar active="vouch" />
       <main className="ml-60 pt-14 px-8 py-8">
 
         <div style={{ marginBottom: 24 }}>
           <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Vouch</h1>
           <p style={{ fontSize: 15, color: '#8c90a1', marginTop: 4 }}>
-            Scan someone&apos;s QR code or enter their User ID to vouch for their identity.
+            Scan someone&apos;s QR code or enter their Node ID to vouch for their identity.
           </p>
         </div>
 
-        {/* Warning bar */}
         <div
           style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 10,
-            padding: '12px 16px',
-            borderRadius: 10,
-            background: 'rgba(255,180,171,0.07)',
-            border: '1px solid rgba(255,180,171,0.25)',
-            marginBottom: 24,
-            fontSize: 13,
-            color: '#ffb4ab',
+            display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px',
+            borderRadius: 10, background: 'rgba(255,180,171,0.07)',
+            border: '1px solid rgba(255,180,171,0.25)', marginBottom: 24,
+            fontSize: 13, color: '#ffb4ab',
           }}
         >
           <Icon name="warning" size={18} style={{ color: '#ffb4ab', flexShrink: 0 }} />
@@ -156,337 +175,214 @@ export default function VouchPage() {
             <div style={{ display: 'flex', justifyContent: 'center', marginBottom: 20 }}>
               <div
                 style={{
-                  padding: 12,
-                  borderRadius: 12,
-                  background: '#0a0e14',
+                  padding: 12, borderRadius: 12,
+                  background: '#ffffff',
                   border: '1px solid #424655',
                 }}
               >
-                <svg width="220" height="220" viewBox="0 0 24 24" shapeRendering="crispEdges">
-                  <rect width="24" height="24" fill="#0a0e14" />
-                  <g fill="#dfe2eb">
-                    {/* Top-left finder */}
-                    <rect x="1" y="1" width="6" height="6" />
-                    <rect x="2" y="2" width="4" height="4" fill="#0a0e14" />
-                    <rect x="3" y="3" width="2" height="2" />
-                    {/* Top-right finder */}
-                    <rect x="17" y="1" width="6" height="6" />
-                    <rect x="18" y="2" width="4" height="4" fill="#0a0e14" />
-                    <rect x="19" y="3" width="2" height="2" />
-                    {/* Bottom-left finder */}
-                    <rect x="1" y="17" width="6" height="6" />
-                    <rect x="2" y="18" width="4" height="4" fill="#0a0e14" />
-                    <rect x="3" y="19" width="2" height="2" />
-                    {/* Data modules */}
-                    <rect x="9" y="1" width="1" height="1" />
-                    <rect x="11" y="1" width="1" height="1" />
-                    <rect x="13" y="1" width="2" height="1" />
-                    <rect x="9" y="3" width="1" height="2" />
-                    <rect x="11" y="3" width="2" height="1" />
-                    <rect x="14" y="3" width="1" height="2" />
-                    <rect x="9" y="5" width="2" height="1" />
-                    <rect x="13" y="5" width="1" height="1" />
-                    <rect x="15" y="5" width="1" height="1" />
-                    <rect x="1" y="9" width="1" height="1" />
-                    <rect x="3" y="9" width="2" height="1" />
-                    <rect x="6" y="9" width="1" height="1" />
-                    <rect x="8" y="8" width="1" height="3" />
-                    <rect x="10" y="9" width="3" height="1" />
-                    <rect x="14" y="8" width="2" height="2" />
-                    <rect x="17" y="9" width="1" height="1" />
-                    <rect x="19" y="8" width="1" height="2" />
-                    <rect x="21" y="9" width="2" height="1" />
-                    <rect x="1" y="11" width="2" height="2" />
-                    <rect x="4" y="11" width="1" height="1" />
-                    <rect x="6" y="12" width="2" height="1" />
-                    <rect x="9" y="11" width="1" height="3" />
-                    <rect x="11" y="12" width="1" height="1" />
-                    <rect x="13" y="11" width="2" height="1" />
-                    <rect x="16" y="11" width="1" height="2" />
-                    <rect x="18" y="12" width="3" height="1" />
-                    <rect x="22" y="11" width="1" height="2" />
-                    <rect x="1" y="14" width="1" height="2" />
-                    <rect x="3" y="15" width="3" height="1" />
-                    <rect x="7" y="14" width="1" height="2" />
-                    <rect x="10" y="14" width="2" height="2" />
-                    <rect x="13" y="15" width="1" height="1" />
-                    <rect x="15" y="14" width="2" height="1" />
-                    <rect x="18" y="14" width="1" height="1" />
-                    <rect x="20" y="15" width="3" height="1" />
-                    <rect x="8" y="17" width="1" height="6" />
-                    <rect x="10" y="17" width="2" height="1" />
-                    <rect x="13" y="17" width="1" height="2" />
-                    <rect x="15" y="18" width="2" height="1" />
-                    <rect x="18" y="17" width="1" height="3" />
-                    <rect x="20" y="18" width="2" height="1" />
-                    <rect x="10" y="19" width="1" height="2" />
-                    <rect x="12" y="20" width="3" height="1" />
-                    <rect x="16" y="19" width="1" height="3" />
-                    <rect x="19" y="21" width="4" height="1" />
-                    <rect x="10" y="22" width="2" height="1" />
-                    <rect x="14" y="22" width="1" height="1" />
-                  </g>
-                </svg>
+                <QRCodeSVG
+                  value={session.node_id}
+                  size={200}
+                  bgColor="#ffffff"
+                  fgColor="#0a0e14"
+                  level="M"
+                />
               </div>
             </div>
 
             <div style={{ textAlign: 'center', marginBottom: 16 }}>
               <div style={{ fontSize: 20, fontFamily: 'monospace', fontWeight: 700, color: '#b0c6ff' }}>
-                {session?.user_id ?? 'Sign in required'}
+                {session.node_id}
               </div>
+              <div style={{ fontSize: 13, color: '#8c90a1', marginTop: 4 }}>{session.display_name}</div>
             </div>
 
-            <button className="btn-ghost" style={{ width: '100%', justifyContent: 'center' }} onClick={copyUserId}>
+            <button onClick={copyNodeId} className="btn-ghost" style={{ width: '100%', justifyContent: 'center' }}>
               <Icon name="content_copy" size={16} />
-              Copy User ID
+              Copy Node ID
             </button>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 20 }}>
-              <div style={{ display: 'flex', marginRight: 4 }}>
-                {['#b0c6ff', '#40e56c', '#ffb599'].map((color, i) => (
-                  <div
-                    key={i}
-                    style={{
-                      width: 28,
-                      height: 28,
-                      borderRadius: '50%',
-                      background: color,
-                      border: '2px solid #181c22',
-                      marginLeft: i > 0 ? -8 : 0,
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: '#181c22',
-                    }}
-                  >
-                    {['AJ', 'HR', 'MB'][i]}
-                  </div>
-                ))}
-              </div>
-              <span style={{ fontSize: 13, color: '#8c90a1' }}>3 people · +40 points earned</span>
-            </div>
           </div>
 
-          {/* Right — Scan + Preview */}
+          {/* Right — Scan + lookup + confirm */}
           <div style={{ gridColumn: 'span 7', display: 'flex', flexDirection: 'column', gap: 20 }}>
 
-            {/* Scan card */}
+            {/* Scan / lookup card */}
             <div className="bento">
               <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 16px' }}>Vouch for someone</h2>
+
+              {/* Camera target — hidden when not scanning */}
+              <div
+                id="qr-scan-target"
+                ref={scannerRef}
+                style={{
+                  display: scanState === 'scanning' ? 'block' : 'none',
+                  width: '100%', borderRadius: 10, overflow: 'hidden',
+                  marginBottom: 12,
+                }}
+              />
+
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 12, alignItems: 'end' }}>
-                {/* Scanner preview */}
-                <div
+                {/* Scanner toggle */}
+                <button
+                  onClick={scanState === 'scanning' ? stopScanner : startScanner}
                   style={{
-                    height: 100,
-                    borderRadius: 10,
-                    border: '1px solid #424655',
-                    background: '#0a0e14',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    position: 'relative',
-                    overflow: 'hidden',
+                    height: 52, borderRadius: 10, border: '1px solid #424655',
+                    background: scanState === 'scanning' ? 'rgba(255,180,171,0.1)' : '#0a0e14',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    gap: 8, cursor: 'pointer', fontSize: 13, fontWeight: 600,
+                    color: scanState === 'scanning' ? '#ffb4ab' : '#c2c6d8',
                   }}
                 >
-                  <Icon name="qr_code_scanner" size={32} style={{ color: '#424655' }} />
-                  {/* Corner markers */}
-                  {[
-                    { top: 8, left: 8, borderTop: '2px solid #b0c6ff', borderLeft: '2px solid #b0c6ff' },
-                    { top: 8, right: 8, borderTop: '2px solid #b0c6ff', borderRight: '2px solid #b0c6ff' },
-                    { bottom: 8, left: 8, borderBottom: '2px solid #b0c6ff', borderLeft: '2px solid #b0c6ff' },
-                    { bottom: 8, right: 8, borderBottom: '2px solid #b0c6ff', borderRight: '2px solid #b0c6ff' },
-                  ].map((style, i) => (
-                    <div key={i} style={{ position: 'absolute', width: 14, height: 14, ...style }} />
-                  ))}
-                </div>
+                  <Icon name={scanState === 'scanning' ? 'stop' : 'qr_code_scanner'} size={22} />
+                  {scanState === 'scanning' ? 'Stop' : 'Scan QR'}
+                </button>
+
                 <div>
                   <label style={{ fontSize: 12, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
-                    Or enter User ID
+                    Or enter Node ID
                   </label>
                   <input
                     className="field-input"
-                    placeholder="User UUID"
-                    value={userInput}
-                    onChange={(e) => setUserInput(e.target.value)}
+                    placeholder="BLK-XXXXX-LDN"
+                    value={nodeInput}
+                    onChange={(e) => setNodeInput(e.target.value.toUpperCase())}
+                    onKeyDown={(e) => { if (e.key === 'Enter') handleLookup() }}
                     style={{ fontFamily: 'monospace' }}
                   />
                 </div>
-                <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => submitVouch()}>
+
+                <button
+                  onClick={handleLookup}
+                  disabled={vouchState === 'loading'}
+                  className="btn-primary"
+                  style={{ width: '100%', justifyContent: 'center' }}
+                >
                   <Icon name="search" size={16} />
-                  Vouch
+                  {vouchState === 'loading' ? 'Looking up…' : 'Look up'}
                 </button>
               </div>
-              {(message || error) && (
-                <p style={{ fontSize: 13, color: error ? '#ffb4ab' : '#40e56c', margin: '14px 0 0' }}>
-                  {error || message}
-                </p>
+
+              {errorMsg && (
+                <div style={{ marginTop: 12, fontSize: 13, color: '#ffb4ab' }}>{errorMsg}</div>
               )}
             </div>
 
-            {/* Person preview card */}
-            <div className="bento">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-                <div>
-                  <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Vouch requests</h2>
-                  <p style={{ fontSize: 12, color: '#8c90a1', margin: '3px 0 0' }}>
-                    {requestIndex + 1} of {VOUCH_REQUESTS.length}
-                  </p>
-                </div>
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    aria-label="Previous vouch request"
-                    onClick={() => moveRequest(-1)}
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 8,
-                      border: '1px solid #424655',
-                      background: '#10141a',
-                      color: '#b0c6ff',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Icon name="chevron_left" size={20} />
-                  </button>
-                  <button
-                    aria-label="Next vouch request"
-                    onClick={() => moveRequest(1)}
-                    style={{
-                      width: 34,
-                      height: 34,
-                      borderRadius: 8,
-                      border: '1px solid #424655',
-                      background: '#10141a',
-                      color: '#b0c6ff',
-                      cursor: 'pointer',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
-                    <Icon name="chevron_right" size={20} />
-                  </button>
-                </div>
-              </div>
+            {/* Person preview + confirm — shown after lookup */}
+            {vouchState === 'success' ? (
               <div
+                className="bento"
                 style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 14,
-                  marginBottom: 20,
-                  paddingBottom: 20,
-                  borderBottom: '1px solid #424655',
+                  textAlign: 'center', padding: 40,
+                  border: '1px solid rgba(64,229,108,0.35)',
+                  background: 'rgba(64,229,108,0.05)',
                 }}
               >
-                <div
-                  style={{
-                    width: 52,
-                    height: 52,
-                    borderRadius: '50%',
-                    background: 'rgba(64,229,108,0.15)',
-                    border: '2px solid rgba(64,229,108,0.35)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: 16,
-                    fontWeight: 700,
-                    color: '#40e56c',
-                    flexShrink: 0,
-                  }}
-                >
-                  {activeRequest.initials}
+                <Icon name="check_circle" size={48} style={{ color: '#40e56c', marginBottom: 12 }} />
+                <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Vouch confirmed</div>
+                <div style={{ fontSize: 14, color: '#8c90a1' }}>
+                  {foundUser?.display_name} has been vouched. Their score will update shortly.
                 </div>
-                <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 16, fontWeight: 700 }}>{activeRequest.name}</div>
-                  <div style={{ fontSize: 13, color: '#8c90a1', marginTop: 2 }}>{activeRequest.skill} · {activeRequest.area}</div>
-                </div>
-                <div style={{ textAlign: 'right' }}>
-                  <TierBadge tier={activeRequest.tier} />
-                  <div style={{ fontSize: 13, color: '#8c90a1', marginTop: 6 }}>Score {activeRequest.score} / 100</div>
-                </div>
-              </div>
-
-              {/* Vouch type */}
-              <div style={{ fontSize: 13, color: '#8c90a1', marginBottom: 10 }}>Vouch type</div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 10, marginBottom: 20 }}>
-                {VOUCH_OPTIONS.map((opt) => (
-                  <button
-                    key={opt.id}
-                    onClick={() => { if (!opt.locked) setVouchType(opt.id) }}
-                    style={{
-                      padding: '10px 12px',
-                      borderRadius: 10,
-                      border: `1px solid ${
-                        opt.locked ? '#424655' : vouchType === opt.id ? '#40e56c' : '#424655'
-                      }`,
-                      background:
-                        opt.locked
-                          ? 'transparent'
-                          : vouchType === opt.id
-                          ? 'rgba(64,229,108,0.1)'
-                          : '#10141a',
-                      color: opt.locked ? '#424655' : vouchType === opt.id ? '#40e56c' : '#c2c6d8',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      cursor: opt.locked ? 'not-allowed' : 'pointer',
-                      textAlign: 'center',
-                      transition: 'all 0.15s',
-                    }}
-                  >
-                    <div>{opt.label}</div>
-                    <div style={{ fontSize: 11, marginTop: 2, opacity: 0.7 }}>{opt.pts}</div>
-                    {opt.locked && (
-                      <div style={{ fontSize: 10, marginTop: 2 }}>
-                        <Icon name="lock" size={10} style={{ display: 'inline' }} /> Gov only
-                      </div>
-                    )}
-                  </button>
-                ))}
-              </div>
-
-              {/* Confirm row */}
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 12,
-                  paddingTop: 16,
-                  borderTop: '1px solid #424655',
-                }}
-              >
-                <span style={{ flex: 1, fontSize: 14, color: '#c2c6d8' }}>
-                  Vouch {activeRequest.name} for +10 points?
-                </span>
-                <button className="btn-ghost">Reject</button>
-                <button
-                  onClick={() => submitVouch(activeRequest.userId)}
-                  style={{
-                    padding: '10px 20px',
-                    borderRadius: 8,
-                    background: 'rgba(64,229,108,0.15)',
-                    border: '1px solid rgba(64,229,108,0.4)',
-                    color: '#40e56c',
-                    fontSize: 14,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 8,
-                    transition: 'background 0.15s',
-                  }}
-                >
-                  <Icon name="handshake" size={16} />
-                  Confirm vouch
+                <button onClick={handleReject} className="btn-ghost" style={{ marginTop: 20 }}>
+                  Vouch someone else
                 </button>
               </div>
-            </div>
+            ) : foundUser ? (
+              <div className="bento">
+                <div
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 14,
+                    marginBottom: 20, paddingBottom: 20, borderBottom: '1px solid #424655',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: 52, height: 52, borderRadius: '50%',
+                      background: 'rgba(176,198,255,0.15)',
+                      border: '2px solid rgba(176,198,255,0.35)',
+                      display: 'flex', alignItems: 'center', justifyContent: 'center',
+                      fontSize: 16, fontWeight: 700, color: '#b0c6ff', flexShrink: 0,
+                    }}
+                  >
+                    {foundUser.display_name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 16, fontWeight: 700 }}>{foundUser.display_name}</div>
+                    <div style={{ fontSize: 13, color: '#8c90a1', marginTop: 2 }}>
+                      {foundUser.skill ?? 'Other'}{foundUser.borough ? ` · ${foundUser.borough}` : ''}
+                    </div>
+                  </div>
+                  <div style={{ textAlign: 'right' }}>
+                    <TierBadge tier={foundUser.tier} />
+                    <div style={{ fontSize: 13, color: '#8c90a1', marginTop: 6 }}>
+                      Score {foundUser.score} / 100
+                    </div>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 12,
+                    paddingTop: 8,
+                  }}
+                >
+                  <span style={{ flex: 1, fontSize: 14, color: '#c2c6d8' }}>
+                    Vouch {foundUser.display_name.split(' ')[0]} for +10 points?
+                  </span>
+                  <button onClick={handleReject} className="btn-ghost">Reject</button>
+                  <button
+                    onClick={handleConfirmVouch}
+                    disabled={vouchState === 'confirming'}
+                    style={{
+                      padding: '10px 20px', borderRadius: 8,
+                      background: 'rgba(64,229,108,0.15)',
+                      border: '1px solid rgba(64,229,108,0.4)',
+                      color: '#40e56c', fontSize: 14, fontWeight: 600, cursor: 'pointer',
+                      display: 'flex', alignItems: 'center', gap: 8, transition: 'background 0.15s',
+                      opacity: vouchState === 'confirming' ? 0.6 : 1,
+                    }}
+                  >
+                    <Icon name="handshake" size={16} />
+                    {vouchState === 'confirming' ? 'Confirming…' : 'Confirm vouch'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              /* Placeholder when nothing looked up yet */
+              <div
+                className="bento"
+                style={{
+                  display: 'flex', alignItems: 'center', justifyContent: 'center',
+                  flexDirection: 'column', gap: 12, padding: 40,
+                  color: '#424655', minHeight: 160,
+                }}
+              >
+                <Icon name="person_search" size={40} style={{ color: '#424655' }} />
+                <div style={{ fontSize: 14 }}>Scan a QR code or enter a Node ID to begin</div>
+              </div>
+            )}
 
           </div>
+        </div>
+
+        {/* Vouch API note — score gate is >=50 in API, but Verified starts at 25 */}
+        {/* If voucher gets a 403, they need score>=50 — known gap, Aryan's code */}
+
+        {/* Your identity row */}
+        <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 10 }}>
+          <div
+            style={{
+              width: 32, height: 32, borderRadius: '50%',
+              background: 'rgba(176,198,255,0.15)', border: '1px solid rgba(176,198,255,0.35)',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 11, fontWeight: 700, color: '#b0c6ff',
+            }}
+          >
+            {initials}
+          </div>
+          <span style={{ fontSize: 13, color: '#8c90a1' }}>
+            Vouching as {session.display_name} · {session.node_id}
+          </span>
+          <TierBadge tier={session.tier} />
         </div>
 
       </main>

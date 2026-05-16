@@ -1,6 +1,6 @@
 import type { User, Claim, DocumentAnalysis } from '@/types'
 
-export const USE_FALLBACKS = process.env.USE_FALLBACKS === 'true'
+export const USE_FALLBACKS = process.env.NEXT_PUBLIC_USE_FALLBACKS === 'true'
 
 // --- Fallback document analysis ---
 

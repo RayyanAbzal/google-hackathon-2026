@@ -1,36 +1,34 @@
 # WORKLOG
 
-**Updated:** 2026-05-16 (session 12)
+**Updated:** 2026-05-16 (session 13)
 
 ## Active task
-DB + seed fully operational — gov_anchors renamed to gov_officials, seed run, 207 users live
+Map wired to live Supabase data + live verified counter with realtime
 
 ## Phase
 implementing
 
 ## Files changed this session
-- `scripts/seed.ts` — `gov_anchors` -> `gov_officials`, added realtime websocket bypass for Node 21
-- `scripts/seedGov.ts` — same two fixes
-- `src/lib/score.ts` — `gov_anchors` -> `gov_officials` in DB query
-- `src/types/index.ts` — removed stale comment "DB table is gov_anchors"
-- `supabase/migrations/0001_init.sql` — all `gov_anchors` refs -> `gov_officials`
-- `src/lib/CLAUDE.md` — table name updated
+- `src/app/map/page.tsx` — replaced static FALLBACK_USERS with Supabase fetch (verified/trusted/gov_official), added live counter UI, realtime subscription for both count and pins
+- `src/components/map/HeatMap.tsx` — split single effect into two: geojson loads once ([] deps), counts recompute on users change. Added pin tooltips, borough name labels, improved color scale
+- `src/components/civic/TierBadge.tsx` — removed stale 'partial' key from TIER_MAP (not in TrustTier type)
+- `src/lib/fallbacks.ts` — USE_FALLBACKS -> NEXT_PUBLIC_USE_FALLBACKS (was dead in browser bundles)
+- `.env.local` + `.env.local.example` — same rename
 
 **Supabase (via MCP):**
-- Confirmed project `GDGC Hackathon 2026` (syffciafllpqgxcvdaih) ACTIVE_HEALTHY
-- Confirmed all 4 tables: users, claims, vouches, gov_officials (RLS enabled)
-- Confirmed RLS: SELECT-only policies on all tables, writes via service role (correct)
-- Applied migration: `ALTER TABLE gov_anchors RENAME TO gov_officials`
-- Seed run: 207 users, 663 verified claims, 0 vouches, 6 gov_officials rows
+- Applied migration: `ALTER PUBLICATION supabase_realtime ADD TABLE users` — realtime now active on users table
+- Verified DB state: 61 verified + 40 trusted + 6 gov_official = 107 users shown on map. Counter shows 107 / 9,000,000
 
 ## Next step
-Continue with uncommitted map work — `HeatMap.tsx` + `SkillPin.tsx` need live borough data wired in. Verify map renders with seeded boroughs.
+Demo prep: run seed script one more time with --wipe, then test full demo path end-to-end
 
 ## Open questions
-- Aryan: Enable Realtime on `users` table (Supabase dashboard > Database > Replication > Tables > users > toggle on)
 - Aryan: does /api/auth/register call Gemini at signup, or deferred to claims only?
 - Tao: /api/find ETA? Blocks Yellow Pages demo step
 - `skill` defaults to 'Other' at signup — profile edit page needed?
+
+## Known pre-existing issue (not introduced this session)
+**partial tier mismatch:** DB has 40 users with `tier='partial'` but `TrustTier` in `src/types/index.ts` does not include `'partial'` and `getTier()` never produces it. The seed script uses different thresholds (0-29 Unverified, 30-49 Partial...) than the types file (0-24 Unverified, 25-59 Verified...). These users are correctly excluded from the map (partial is not verified+). However, any code path that passes a DB user row directly to `TierBadge` with `tier='partial'` will runtime-crash. Fix before demo: either add 'partial' back to TrustTier, or re-seed with corrected thresholds.
 
 ## Key decisions — LOCKED
 
@@ -49,6 +47,8 @@ Continue with uncommitted map work — `HeatMap.tsx` + `SkillPin.tsx` need live 
 **Score formula:** `min(100, claims_verified * 15 + vouches_received * 10 + gov_vouched ? 20 : 0)`
 
 **Score thresholds:** 0-24 Unverified | 25-59 Verified | 60-89 Trusted | 90-100 Gov Official
+
+**Fallback toggle:** `NEXT_PUBLIC_USE_FALLBACKS=true` in `.env.local` (was USE_FALLBACKS — renamed this session)
 
 **Seed:** 207 users live (6 gov + Dr. Osei + 200 Londoners). Password: password123 | Gov: govpassword99. Re-run with --wipe before demo.
 

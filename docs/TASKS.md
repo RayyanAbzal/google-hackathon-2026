@@ -7,33 +7,37 @@
 
 ## RAY — Full-stack Lead
 
-**Status as of 2026-05-16:** DB schema + RLS done via MCP. `gemini.ts`, `score.ts`, map components, and seed scripts all implemented. Remaining: enable Realtime, run seed, live counter, QR glue, demo prep.
+**Status as of 2026-05-16 (session 13):** Map wired to live Supabase data. Counter live. Realtime enabled. Remaining: partial tier fix, QR glue, demo prep.
 
 ### Phase 1 — Database + Seed
 - [x] Supabase project created, URL + anon key in `.env.local`
-- [x] Schema created via MCP (tables: `users`, `claims`, `vouches`, `gov_anchors`)
+- [x] Schema created via MCP (tables: `users`, `claims`, `vouches`, `gov_officials`)
 - [x] RLS policies set via MCP
-- [ ] Enable Supabase Realtime on `users` table — dashboard > Database > Replication > Tables > users > toggle on
+- [x] Enable Supabase Realtime on `users` table — done via MCP migration (session 13)
 - [x] `src/lib/supabase.ts` — done
 - [x] `src/lib/gemini.ts` — `analyseDocument()` implemented (Gemini Vision, returns `{ extracted_name, institution, confidence }`)
-- [x] `src/lib/score.ts` — `recalculateUserScore()` implemented (queries claims + vouches + gov_anchors, updates user row)
+- [x] `src/lib/score.ts` — `recalculateUserScore()` implemented (queries claims + vouches + gov_officials, updates user row)
 - [x] `scripts/seed.ts` — written (200 Londoners + Dr. Osei, calls seedGov.ts internally)
 - [x] `scripts/seedGov.ts` — written (L0 + L1 gov anchors); imported and called by seed.ts
-- [ ] Run seed: `npx tsx scripts/seed.ts` — verify data in Supabase dashboard
-- [ ] Confirm `USE_FALLBACKS=true` in `.env.local` still works
+- [x] Seed run: 207 users live (61 verified, 40 trusted, 6 gov_official, 40 partial, 61 unverified)
+- [x] Fallback toggle: renamed to `NEXT_PUBLIC_USE_FALLBACKS` in `.env.local` (was `USE_FALLBACKS` — dead in browser bundles)
 
 ### Phase 2 — AI + Map
-- [x] `src/components/map/HeatMap.tsx` — D3 choropleth by borough, done
+- [x] `src/components/map/HeatMap.tsx` — D3 choropleth, split into two effects (geojson once, counts on users change), pin tooltips, borough labels
 - [x] `src/components/map/SkillPin.tsx` — coloured SVG circles by skill, done
-- [ ] Wire map heatmap + pins from real Supabase data — currently uses `FALLBACK_USERS` and hardcoded `PINS` array in `src/app/map/page.tsx`. Do AFTER seed confirmed. Query: `from('users').select('borough, skill, tier, score').eq('tier', 'verified')`
-- [ ] Live counter component: confirm "X / 9,000,000 verified" subscribes to Supabase realtime
+- [x] Wire map heatmap + pins from real Supabase data — `src/app/map/page.tsx` fetches verified/trusted/gov_official users on mount, falls back to FALLBACK_USERS on error
+- [x] Live counter component — shows 107 / 9,000,000, re-queries on realtime UPDATE + INSERT
 - [ ] QR vouch flow glue — coordinate with Hemish (QR display) + Aryan (vouch API)
 
+### Phase 2.5 — Pre-demo fix needed
+- [ ] **partial tier mismatch** — DB has 40 users with `tier='partial'` but `TrustTier` type (and `getTier()`) does not include it. Seed used different thresholds (0-29 Unverified, 30-49 Partial) than types file (0-24 Unverified, 25-59 Verified). Map correctly excludes partial users. Risk: any page that renders `TierBadge` for a DB user row with `tier='partial'` will runtime-crash. Fix: add `'partial'` back to `TrustTier` and handle it in `TierBadge`, OR re-seed with corrected thresholds to eliminate partial rows.
+
 ### Phase 3 — Demo prep
+- [ ] Resolve partial tier mismatch (see Phase 2.5) before demo
 - [ ] Re-run seed script with final fake documents
 - [ ] Test full demo path end-to-end (register → claim → vouch → verified → map)
 - [ ] Test bad actor path (mismatched name doc → rejected)
-- [ ] Verify `USE_FALLBACKS=true` works if Gemini API fails during demo
+- [ ] Verify `NEXT_PUBLIC_USE_FALLBACKS=true` works if Gemini API fails during demo
 - [ ] Confirm heatmap shows populated London before Sarah registers
 
 ---
@@ -46,7 +50,7 @@
 - [x] Supabase project created, URL + anon key shared with Ray
 - [x] Schema created via MCP (Ray, 2026-05-16)
 - [x] RLS policies set via MCP (Ray, 2026-05-16)
-- [ ] Enable Realtime on `users` table — dashboard > Database > Replication > Tables > users > toggle on
+- [x] Enable Realtime on `users` table — done by Ray via MCP migration (session 13)
 
 ### API routes
 

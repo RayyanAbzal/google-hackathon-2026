@@ -53,7 +53,7 @@ const L1_ACCOUNTS = [
 export async function seedGovAnchors(): Promise<void> {
   console.log('  Seeding gov anchors...')
 
-  await supabase.from('gov_anchors').delete().not('id', 'is', null)
+  await supabase.from('gov_officials').delete().not('id', 'is', null)
   await supabase.from('users').delete().in('node_id', [
     ...L0_ACCOUNTS.map(a => nodeId(a.node)),
     ...L1_ACCOUNTS.map(a => nodeId(a.node)),
@@ -77,7 +77,7 @@ export async function seedGovAnchors(): Promise<void> {
       .single()
 
     if (error || !user) { console.error(`  Failed L0 ${acc.name}:`, error?.message); continue }
-    await supabase.from('gov_anchors').insert({ user_id: user.id, level: 0, organisation: 'Emergency Coalition' })
+    await supabase.from('gov_officials').insert({ user_id: user.id, level: 0, organisation: 'Emergency Coalition' })
     console.log(`  ✓ L0 ${acc.name} (${nodeId(acc.node)})`)
   }
 
@@ -99,7 +99,7 @@ export async function seedGovAnchors(): Promise<void> {
       .single()
 
     if (error || !user) { console.error(`  Failed L1 ${acc.name}:`, error?.message); continue }
-    await supabase.from('gov_anchors').insert({ user_id: user.id, level: 1, organisation: acc.org })
+    await supabase.from('gov_officials').insert({ user_id: user.id, level: 1, organisation: acc.org })
     console.log(`  ✓ L1 ${acc.name} (${nodeId(acc.node)})`)
   }
 }
