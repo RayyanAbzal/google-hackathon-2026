@@ -74,31 +74,20 @@ export async function protectedFetch<T>(
   init: RequestInit = {}
 ): Promise<ApiResponse<T>> {
   const headers = new Headers(init.headers)
-  headers.set('Authorization', `Bearer ${session.user_id}`)
+  headers.set('Authorization', `Bearer ${session.token}`)
 
   if (init.body && !headers.has('Content-Type')) {
     headers.set('Content-Type', 'application/json')
   }
 
   const response = await fetch(url, { ...init, headers })
-  const json = await response.json() as ApiResponse<T>
-
-  if (response.status !== 401 || !session.token) return json
-
-  const retryHeaders = new Headers(init.headers)
-  retryHeaders.set('Authorization', `Bearer ${session.token}`)
-  if (init.body && !retryHeaders.has('Content-Type')) {
-    retryHeaders.set('Content-Type', 'application/json')
-  }
-
-  const retry = await fetch(url, { ...init, headers: retryHeaders })
-  return await retry.json() as ApiResponse<T>
+  return await response.json() as ApiResponse<T>
 }
 
 export function getRequiredAuthHeaders(session: Session): HeadersInit {
-  return userIdAuthHeaders(session)
+  return tokenAuthHeaders(session)
 }
 
 export function getCurrentBackendAuthHeaders(session: Session): HeadersInit {
-  return session.token ? tokenAuthHeaders(session) : userIdAuthHeaders(session)
+  return tokenAuthHeaders(session)
 }

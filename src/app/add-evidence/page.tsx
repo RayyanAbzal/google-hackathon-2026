@@ -124,7 +124,7 @@ function SummaryBar({
         {[
           { label: 'Type', value: claimType },
           { label: 'Document', value: documentValue },
-          { label: 'Points if verified', value: '+15', valueColor: '#40e56c' },
+          { label: 'Points if verified', value: `+${CLAIM_TYPE_POINTS[claimType]}`, valueColor: '#40e56c' },
           { label: 'Review', value: claimResult ? 'Gemini complete' : '~2 hours' },
         ].map(({ label, value, valueColor }) => (
           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>

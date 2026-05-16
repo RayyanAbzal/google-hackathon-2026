@@ -82,7 +82,7 @@ export default function Sidebar({ active, session: sessionOverride, mode = 'auto
                 {session.username ? `@${session.username}` : 'Username not set'}
               </div>
               <div style={{ fontSize: 11, color: '#8c90a1', fontFamily: 'monospace', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 150 }}>
-                {session.user_id}
+                {session.node_id}
               </div>
             </div>
           </div>

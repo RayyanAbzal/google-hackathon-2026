@@ -5,11 +5,11 @@ import { useRouter } from 'next/navigation'
 import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
 import Icon from '@/components/civic/Icon'
-import type { ApiResponse, Session, NotificationPreferences } from '@/types'
+import type { Session, NotificationPreferences } from '@/types'
 import { getInitials, protectedFetch, requireSession, updateStoredSession } from '@/app/_lib/session'
 
-type Tab = 'Profile' | 'Security' | 'Notifications' | 'Privacy'
-const TABS: Tab[] = ['Profile', 'Security', 'Notifications', 'Privacy']
+type Tab = 'Profile' | 'Notifications'
+const TABS: Tab[] = ['Profile', 'Notifications']
 
 interface ProfileRecord {
   id: string
@@ -32,6 +32,7 @@ export default function SettingsPage() {
   const [saveError, setSaveError] = useState('')
   const [saveMessage, setSaveMessage] = useState('')
   const [savingProfile, setSavingProfile] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const [prefs, setPrefs] = useState<NotificationPreferences>({
     vouch_received: true,
     claim_verified: true,
@@ -45,20 +46,22 @@ export default function SettingsPage() {
 
   useEffect(() => {
     if (!session) return
-    setName(session.display_name)
-    setUsernameValue(session.username ?? '')
-    setLoadingProfile(true)
-    protectedFetch<ProfileRecord>(`/api/users/node/${session.node_id}`, session)
-      .then((json) => {
-        if (json.success) {
-          setName(json.data.display_name)
-          setUsernameValue(json.data.username ?? '')
-        } else {
-          setSaveError(json.error ?? 'Unable to load profile from the database')
-        }
-      })
-      .catch(() => setSaveError('Unable to load profile from the database'))
-      .finally(() => setLoadingProfile(false))
+    queueMicrotask(() => {
+      setName(session.display_name)
+      setUsernameValue(session.username ?? '')
+      setLoadingProfile(true)
+      protectedFetch<ProfileRecord>(`/api/users/node/${session.node_id}`, session)
+        .then((json) => {
+          if (json.success) {
+            setName(json.data.display_name)
+            setUsernameValue(json.data.username ?? '')
+          } else {
+            setSaveError(json.error ?? 'Unable to load profile from the database')
+          }
+        })
+        .catch(() => setSaveError('Unable to load profile from the database'))
+        .finally(() => setLoadingProfile(false))
+    })
   }, [session])
 
   async function handleSaveProfile() {
@@ -110,6 +113,20 @@ export default function SettingsPage() {
     }
   }
 
+  function handleDeleteAccount() {
+    if (!confirmDelete) {
+      setConfirmDelete(true)
+      setSaveMessage('')
+      setSaveError('Click Delete account again to confirm.')
+      return
+    }
+
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem('civictrust_session')
+    }
+    router.replace('/login')
+  }
+
   return (
     <div style={{ background: '#10141a', minHeight: '100vh', color: '#dfe2eb' }}>
       <TopBar />
@@ -154,12 +171,6 @@ export default function SettingsPage() {
             )
           })}
         </div>
-
-        {activeTab !== 'Profile' && activeTab !== 'Notifications' && (
-          <div className="bento" style={{ color: '#8c90a1', fontSize: 14, textAlign: 'center', padding: 48 }}>
-            Coming soon
-          </div>
-        )}
 
         {activeTab === 'Notifications' && (
           <div className="bento">
@@ -303,12 +314,12 @@ export default function SettingsPage() {
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
                   <label style={{ fontSize: 13, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
-                    User ID
+                    Node ID
                   </label>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
                       className="field-input"
-                      value={session?.user_id ?? ''}
+                      value={session?.node_id ?? ''}
                       disabled
                       style={{ fontFamily: 'monospace', opacity: 0.6 }}
                       readOnly
@@ -319,7 +330,7 @@ export default function SettingsPage() {
                     </button>
                   </div>
                   <p style={{ fontSize: 12, color: '#424655', marginTop: 6 }}>
-                    Your User ID is permanent and cannot be changed.
+                    Your Node ID is permanent and cannot be changed.
                   </p>
                 </div>
               </div>
@@ -357,55 +368,11 @@ export default function SettingsPage() {
               </div>
             </div>
 
-            {/* Sessions section */}
-            <div className="bento" style={{ marginBottom: 28 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 20px' }}>Devices signed in</h2>
-              <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                {[
-                  { icon: 'laptop_mac', label: 'MacBook Pro', detail: 'Last active now', isCurrent: true },
-                  { icon: 'smartphone', label: 'iPhone 15', detail: 'Last active 2 days ago', isCurrent: false },
-                ].map((device) => (
-                  <div
-                    key={device.label}
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: 12,
-                      padding: '12px 16px',
-                      borderRadius: 10,
-                      background: '#10141a',
-                      border: '1px solid #424655',
-                    }}
-                  >
-                    <Icon name={device.icon} size={20} style={{ color: '#8c90a1' }} />
-                    <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14, fontWeight: 600 }}>{device.label}</div>
-                      <div style={{ fontSize: 12, color: '#8c90a1', marginTop: 2 }}>{device.detail}</div>
-                    </div>
-                    {device.isCurrent ? (
-                      <span style={{ fontSize: 12, color: '#40e56c', fontWeight: 600 }}>Current</span>
-                    ) : (
-                      <button
-                        style={{
-                          background: 'transparent',
-                          border: 'none',
-                          color: '#ffb4ab',
-                          fontSize: 13,
-                          cursor: 'pointer',
-                          fontWeight: 500,
-                        }}
-                      >
-                        Sign out
-                      </button>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-
             {/* Footer */}
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
               <button
+                type="button"
+                onClick={handleDeleteAccount}
                 style={{
                   background: 'transparent',
                   border: 'none',
@@ -415,7 +382,7 @@ export default function SettingsPage() {
                   fontWeight: 500,
                 }}
               >
-                Delete account
+                {confirmDelete ? 'Confirm delete account' : 'Delete account'}
               </button>
               <div style={{ display: 'flex', gap: 10 }}>
                 <button className="btn-ghost" type="button" onClick={() => {
@@ -423,6 +390,7 @@ export default function SettingsPage() {
                   setUsernameValue(session?.username ?? '')
                   setSaveError('')
                   setSaveMessage('')
+                  setConfirmDelete(false)
                 }}>
                   Cancel
                 </button>
