@@ -1,10 +1,18 @@
 import { createClient } from "@supabase/supabase-js";
 
-function createSupabaseClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-  if (!url || !key) throw new Error("Supabase env vars not set");
-  return createClient(url, key);
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+if (!supabaseUrl || !supabaseAnonKey) {
+  throw new Error("Supabase env vars not set");
 }
 
-export const supabase = createSupabaseClient();
+// Client-side / public operations (respects RLS)
+export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+
+// Server-side only — bypasses RLS. Never expose to the browser.
+export const supabaseAdmin = createClient(
+  supabaseUrl,
+  supabaseServiceRoleKey ?? supabaseAnonKey
+);

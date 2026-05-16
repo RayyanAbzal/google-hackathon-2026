@@ -1,0 +1,46 @@
+import { supabaseAdmin } from "./supabase";
+import { calculateScore, getTier } from "@/types";
+import type { TrustTier } from "@/types";
+
+export async function recalculateUserScore(
+  userId: string
+): Promise<{ score: number; tier: TrustTier }> {
+  const [{ count: claimsCount }, { count: vouchesCount }, vouchersResult] =
+    await Promise.all([
+      supabaseAdmin
+        .from("claims")
+        .select("*", { count: "exact", head: true })
+        .eq("user_id", userId)
+        .eq("status", "verified"),
+      supabaseAdmin
+        .from("vouches")
+        .select("*", { count: "exact", head: true })
+        .eq("vouchee_id", userId),
+      supabaseAdmin
+        .from("vouches")
+        .select("voucher_id")
+        .eq("vouchee_id", userId),
+    ]);
+
+  // Check if any voucher is a gov anchor
+  const voucherIds = (vouchersResult.data ?? []).map((v) => v.voucher_id);
+  let gov_vouched = false;
+  if (voucherIds.length > 0) {
+    const { count } = await supabaseAdmin
+      .from("gov_anchors")
+      .select("*", { count: "exact", head: true })
+      .in("user_id", voucherIds);
+    gov_vouched = (count ?? 0) > 0;
+  }
+
+  const score = calculateScore({
+    claims_verified: claimsCount ?? 0,
+    vouches_received: vouchesCount ?? 0,
+    gov_vouched,
+  });
+  const tier = getTier(score);
+
+  await supabaseAdmin.from("users").update({ score, tier }).eq("id", userId);
+
+  return { score, tier };
+}

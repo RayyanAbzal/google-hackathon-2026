@@ -1,9 +1,25 @@
-import { NextResponse } from 'next/server'
-import type { ApiResponse } from '@/types'
+import { supabaseAdmin } from "@/lib/supabase";
+import type { ApiResponse, Claim } from "@/types";
 
-// GET /api/claims/[userId]
-// Owner: Aryan
-// Returns: all claims for a user with vouch counts — requires auth
-export async function GET(): Promise<NextResponse<ApiResponse<null>>> {
-  return NextResponse.json({ success: false, data: null, error: 'Not implemented' }, { status: 501 })
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ userId: string }> }
+): Promise<Response> {
+  const { userId } = await params;
+
+  if (!userId) {
+    return Response.json({ success: false, error: "userId is required" } satisfies ApiResponse<never>, { status: 400 });
+  }
+
+  const { data, error } = await supabaseAdmin
+    .from("claims")
+    .select("*")
+    .eq("user_id", userId)
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    return Response.json({ success: false, error: "Failed to fetch claims" } satisfies ApiResponse<never>, { status: 500 });
+  }
+
+  return Response.json({ success: true, data: data as Claim[] } satisfies ApiResponse<Claim[]>);
 }
