@@ -11,9 +11,9 @@ After a solar flare wipes all digital records, people prove identity using physi
 **Demo story (4 min):**
 ```
 Sarah registers → uploads passport → gets BLK-XXXXX-LDN node ID
-→ uploads medical degree → score rises to 30 (Partial)
+→ uploads medical degree → score rises to 15 (Unverified)
+→ submits NHS employer letter → score 30 → Verified tier
 → Dr. Osei (pre-seeded) QR-vouches Sarah → score 40
-→ second vouch → score hits 50 → Verified tier
 → Doctor pin appears on London map in Southwark
 → Yellow Pages: search "Doctor" → "Southwark: 3 verified doctors"
 ```
@@ -22,11 +22,10 @@ Sarah registers → uploads passport → gets BLK-XXXXX-LDN node ID
 
 | Score | Tier | Colour |
 |-------|------|--------|
-| 0-29 | Unverified | Red |
-| 30-49 | Partial | Orange |
-| 50-89 | Verified | Green |
-| 90-94 | Trusted | Amber |
-| 95-100 | Gov Official | Gold |
+| 0-24 | Unverified | Red |
+| 25-59 | Verified | Green |
+| 60-89 | Trusted | Amber |
+| 90-100 | Gov Official | Gold |
 
 ---
 
@@ -357,10 +356,10 @@ In `src/app/add-evidence/page.tsx`: the wizard form collects doc type + file. On
 - [ ] Register as Sarah Mitchell + passport upload → node ID issued, tier: Unverified
 - [ ] Login → set @sarah_mitchell username
 - [ ] Submit medical degree → Gemini reads "UCL Medicine" → score 15, tier: Unverified
-- [ ] Submit NHS employer letter → score 30, tier: Partial
+- [ ] Submit NHS employer letter → score 30, tier: Verified
 - [ ] Bad actor test: upload doc with wrong name → rejected ("name doesn't match")
 - [ ] Login as Dr. Osei (`BLK-00471-LDN` / `password123`) → QR-vouch Sarah → score 40
-- [ ] Second vouch → score 50 → tier: **Verified** → Doctor pin appears on Southwark
+- [ ] Doctor pin appears on Southwark map
 - [ ] Map: 200+ pins visible, counter shows "1,847 / 9,000,000"
 - [ ] Yellow Pages: search "Doctor" → "Southwark: 3 verified doctors"
 - [ ] Yellow Pages: search "insulin" → returns relevant results

@@ -43,7 +43,7 @@ See `docs/PLAN.md` for the full plan.
 
 - Auth: node ID + password. No email. No facial recognition.
 - Mandatory doc at signup: passport OR driving licence. Everyone starts Unverified.
-- Score: 0-29 Unverified, 30-49 Partial, 50-89 Verified, 90-94 Trusted, 95+ Gov Official
+- Score: 0-24 Unverified, 25-59 Verified, 60-89 Trusted, 90-100 Gov Official
 - Score formula: `min(100, claims_verified * 15 + vouches_received * 10 + gov_vouched * 20)`
 - 3 claim types: Identity, Credential, Work
 - Yellow Pages (/find): public search by skill OR resource. Profiles need login to view.
@@ -89,7 +89,7 @@ Conventional commits. ASCII only. Imperative mood. No trailing period.
 
 When working on frontend/UI:
 - Use shadcn/ui components — do not build primitives from scratch
-- Tailwind v4 utility classes only — no inline styles
+- Tailwind v4 utility classes preferred. Inline styles allowed where Tailwind is insufficient.
 - Mobile-first responsive layout
 - Keep components under 200 lines — extract if larger
 - Judges see the demo on a laptop — optimise for that viewport

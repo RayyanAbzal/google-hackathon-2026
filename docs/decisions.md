@@ -44,11 +44,11 @@
 
 ## ADR-005: Yellow Pages is public — profiles need Verified status
 
-**Decision:** `/find` page requires no login to search. Viewing individual profiles requires login AND Verified (score 50+).
+**Decision:** `/find` page requires no login to search. Viewing individual profiles requires login AND Verified (score 25+).
 
 **Context:** Public search maximises reach (any survivor can find a doctor). Profile privacy prevents mass scraping.
 
-**Consequences:** Unverified/Partial users who log in are redirected to their profile with a "submit a claim" prompt instead of the profile they tried to view.
+**Consequences:** Unverified users who log in are redirected to their profile with a "submit a claim" prompt instead of the profile they tried to view.
 
 ---
 

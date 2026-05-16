@@ -262,10 +262,10 @@ Set `USE_FALLBACKS=true` in `.env.local` — activates mock data from `src/lib/f
 - [ ] Register as Sarah Mitchell + Doctor tag + passport upload → node ID issued, tier: Unverified
 - [ ] First login → set username to @sarah_mitchell
 - [ ] Submit medical degree → Gemini reads "UCL Medicine" → score 15, tier: Unverified
-- [ ] Submit NHS employer letter → score 30, tier: Partial
+- [ ] Submit NHS employer letter → score 30, tier: Verified
 - [ ] Bad actor test: upload doc with wrong name → rejected ("name doesn't match")
-- [ ] Dr. Osei (pre-seeded, score 74) QR-vouches Sarah → score 40, still Partial
-- [ ] A second vouch → score 50 → tier: **Verified** → Doctor pin appears on London map in Southwark
+- [ ] Dr. Osei (pre-seeded, score 74) QR-vouches Sarah → score 40, still Verified
+- [ ] Doctor pin appears on London map in Southwark
 - [ ] Map: 200+ pins visible, counter shows "1,847 / 9,000,000"
 - [ ] Yellow Pages (/find): search "Doctor" → shows "Southwark: 3 verified doctors"
 - [ ] Yellow Pages: search "insulin" (resource) → returns relevant results

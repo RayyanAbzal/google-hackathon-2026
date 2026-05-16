@@ -1,52 +1,42 @@
 # WORKLOG
 
-**Updated:** 2026-05-16 (session 11)
+**Updated:** 2026-05-16 (session 12)
 
 ## Active task
-Idle — DB provisioned, schema aligned, seed scripts fixed, pushed to dev
+DB + seed fully operational — gov_anchors renamed to gov_officials, seed run, 207 users live
 
 ## Phase
 implementing
 
 ## Files changed this session
-- `supabase/migrations/0001_init.sql` — full rewrite: password_hash, skill nullable, drop help_posts, rename gov_officials -> gov_anchors, add CHECK constraints, sync RLS policies to live DB
-- `src/lib/CLAUDE.md` — gov_officials -> gov_anchors table name
-- `src/lib/fallbacks.ts` — expand FALLBACK_USERS to 20 boroughs, remove FALLBACK_HELP_POSTS (feature cut)
-- `src/components/map/HeatMap.tsx` — implement D3 choropleth + skill pins (was TODO stub)
-- `src/components/map/SkillPin.tsx` — implement SVG circle with gov ring variant
-- `docs/TASKS.md` — mark Aryan's Supabase setup items done (schema + RLS applied via MCP), flag Realtime as still outstanding
-- `scripts/seed.ts` — fix gov_officials -> gov_anchors (was reverted by hook/process)
-- `scripts/seedGov.ts` — fix gov_officials -> gov_anchors (same)
-- `package.json` / `package-lock.json` — install d3 + @types/d3
-- `PLAN.md` (root) — DELETED (duplicate of docs/PLAN.md)
-- `ROLES.md` (root) — DELETED (stale, covered by AGENTS.md)
+- `scripts/seed.ts` — `gov_anchors` -> `gov_officials`, added realtime websocket bypass for Node 21
+- `scripts/seedGov.ts` — same two fixes
+- `src/lib/score.ts` — `gov_anchors` -> `gov_officials` in DB query
+- `src/types/index.ts` — removed stale comment "DB table is gov_anchors"
+- `supabase/migrations/0001_init.sql` — all `gov_anchors` refs -> `gov_officials`
+- `src/lib/CLAUDE.md` — table name updated
 
 **Supabase (via MCP):**
-- Renamed `gov_officials` -> `gov_anchors` in live DB
-- Fixed claims RLS: was SELECT WHERE status='verified' only — changed to SELECT all
-- Added missing INSERT policies for all tables
-- Added `gov_anchors_insert` policy
-- Confirmed all 4 tables live: users, claims, vouches, gov_anchors (all RLS enabled, 0 rows)
-- GEMINI_API_KEY added to .env.local
+- Confirmed project `GDGC Hackathon 2026` (syffciafllpqgxcvdaih) ACTIVE_HEALTHY
+- Confirmed all 4 tables: users, claims, vouches, gov_officials (RLS enabled)
+- Confirmed RLS: SELECT-only policies on all tables, writes via service role (correct)
+- Applied migration: `ALTER TABLE gov_anchors RENAME TO gov_officials`
+- Seed run: 207 users, 663 verified claims, 0 vouches, 6 gov_officials rows
 
 ## Next step
-Run seed script once Aryan confirms Realtime is enabled:
-```
-npx tsx scripts/seed.ts --wipe
-```
-Then verify 200+ rows in Supabase dashboard.
+Continue with uncommitted map work — `HeatMap.tsx` + `SkillPin.tsx` need live borough data wired in. Verify map renders with seeded boroughs.
 
 ## Open questions
-- Aryan: Enable Realtime on `users` table — Supabase dashboard > Database > Replication > Tables > users > toggle on
+- Aryan: Enable Realtime on `users` table (Supabase dashboard > Database > Replication > Tables > users > toggle on)
 - Aryan: does /api/auth/register call Gemini at signup, or deferred to claims only?
 - Tao: /api/find ETA? Blocks Yellow Pages demo step
-- `skill` defaults to 'Other' at signup — Settings page enough, or needs dedicated edit flow?
+- `skill` defaults to 'Other' at signup — profile edit page needed?
 
 ## Key decisions — LOCKED
 
-**DB table name:** `gov_anchors` (NOT gov_officials). Both seed scripts and migration now aligned. DB renamed via MCP migration.
+**DB table name:** `gov_officials` (renamed from gov_anchors). All code, seeds, migration now aligned.
 
-**Gemini API:** staying with Gemini (not Claude) — GDGC = Google hackathon, judges are Google-affiliated, strategic advantage.
+**Gemini API:** staying with Gemini (not Claude) — GDGC = Google hackathon, strategic advantage.
 
 **Frontend design:** Tactical Resilience dark theme (bg #10141a, primary #b0c6ff, secondary #40e56c). Inline styles for design token colours — not Tailwind classes for colour values. Do not switch patterns.
 
@@ -58,7 +48,9 @@ Then verify 200+ rows in Supabase dashboard.
 
 **Score formula:** `min(100, claims_verified * 15 + vouches_received * 10 + gov_vouched ? 20 : 0)`
 
-**Score thresholds:** 0-29 Unverified | 30-49 Partial | 50-89 Verified | 90-94 Trusted | 95+ Gov Official
+**Score thresholds:** 0-24 Unverified | 25-59 Verified | 60-89 Trusted | 90-100 Gov Official
+
+**Seed:** 207 users live (6 gov + Dr. Osei + 200 Londoners). Password: password123 | Gov: govpassword99. Re-run with --wipe before demo.
 
 **Dedup:** doc content hash is global — same document cannot be used across any account.
 
