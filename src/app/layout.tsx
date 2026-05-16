@@ -1,10 +1,6 @@
 import type { Metadata } from "next";
-import { Inter, JetBrains_Mono } from "next/font/google";
-import "./globals.css";
 import { SidebarProvider } from "@/components/civic/SidebarProvider";
-
-const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
-const mono = JetBrains_Mono({ subsets: ["latin"], variable: "--font-geist-mono" });
+import "./globals.css";
 
 export const metadata: Metadata = {
   title: "CivicTrust — London Mesh",
@@ -19,7 +15,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`antialiased dark ${inter.variable} ${mono.variable}`}
+      className="antialiased dark"
       suppressHydrationWarning
     >
       <head>
