@@ -7,7 +7,6 @@ import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
 import Icon from '@/components/civic/Icon'
 import DocumentCameraCapture from '@/components/claims/DocumentCameraCapture'
-import { calculateScore } from '@/types'
 import type { Claim, ClaimType as ApiClaimType, DocumentAnalysis, Session, TrustTier } from '@/types'
 import { protectedFetch, requireSession, updateStoredSession } from '@/app/_lib/session'
 
@@ -154,12 +153,6 @@ function SummaryBar({
 export default function AddEvidencePage() {
   const router = useRouter()
   const [session, setSession] = useState<Session | null>(null)
-  const [scoreBreakdown, setScoreBreakdown] = useState<{
-    passport_count: number
-    other_doc_count: number
-    vouches_received: number
-    gov_vouched: boolean
-  } | null>(null)
   const [step, setStep] = useState(1)
   const [claimType, setClaimType] = useState<ClaimType>('Identity')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -182,28 +175,8 @@ export default function AddEvidencePage() {
   }, [previewUrl])
 
   useEffect(() => {
-    queueMicrotask(() => {
-      const current = requireSession(router)
-      setSession(current)
-      if (!current) return
-      protectedFetch<{ score: number; tier: TrustTier; passport_count: number; other_doc_count: number; vouches_received: number; gov_vouched: boolean }>(
-        `/api/score/${current.user_id}`, current
-      )
-        .then(json => { if (json.success) setScoreBreakdown(json.data) })
-        .catch(() => {})
-    })
+    queueMicrotask(() => setSession(requireSession(router)))
   }, [router])
-
-  const predictedScore = useMemo(() => {
-    if (!scoreBreakdown) return null
-    const isPassport = CLAIM_TYPE_TO_DOC[claimType] === 'passport'
-    return calculateScore({
-      passport_count: scoreBreakdown.passport_count + (isPassport ? 1 : 0),
-      other_doc_count: scoreBreakdown.other_doc_count + (isPassport ? 0 : 1),
-      vouches_received: scoreBreakdown.vouches_received,
-      gov_vouched: scoreBreakdown.gov_vouched,
-    })
-  }, [scoreBreakdown, claimType])
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     setSelectedFile(e.target.files?.[0] ?? null)
