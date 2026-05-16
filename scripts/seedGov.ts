@@ -28,7 +28,8 @@ function loadEnv(): Record<string, string> {
 const env = loadEnv()
 const supabase = createClient(
   env.NEXT_PUBLIC_SUPABASE_URL!,
-  env.SUPABASE_SERVICE_ROLE_KEY!
+  env.SUPABASE_SERVICE_ROLE_KEY!,
+  { realtime: { transport: class {} as unknown as typeof WebSocket } }
 )
 
 function hashPassword(password: string): string {
