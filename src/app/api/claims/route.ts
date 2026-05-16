@@ -61,16 +61,15 @@ export async function POST(request: Request): Promise<Response> {
   // Hash computed here — dedup is route logic, not Gemini's concern
   const content_hash = createHash("sha256").update(image_base64).digest("hex");
 
-  // Per-user duplicate document check
+  // Global duplicate document check — same doc cannot be used across any account
   const { data: dupCheck } = await supabaseAdmin
     .from("claims")
     .select("id")
-    .eq("user_id", user.id)
     .eq("content_hash", content_hash)
     .single();
 
   if (dupCheck) {
-    return Response.json({ success: false, error: "You have already submitted this document" } satisfies ApiResponse<never>, { status: 409 });
+    return Response.json({ success: false, error: "This document has already been registered" } satisfies ApiResponse<never>, { status: 409 });
   }
 
   // Analyse document via Gemini
@@ -126,7 +125,14 @@ export async function POST(request: Request): Promise<Response> {
     .select("*")
     .single();
 
-  if (error || !claim) {
+  if (error) {
+    const isDuplicateDoc = error.code === "23505";
+    return Response.json(
+      { success: false, error: isDuplicateDoc ? "This document has already been registered" : "Failed to store claim" } satisfies ApiResponse<never>,
+      { status: isDuplicateDoc ? 409 : 500 }
+    );
+  }
+  if (!claim) {
     return Response.json({ success: false, error: "Failed to store claim" } satisfies ApiResponse<never>, { status: 500 });
   }
 
