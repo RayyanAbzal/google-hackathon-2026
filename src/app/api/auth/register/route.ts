@@ -10,9 +10,10 @@ import type { ApiResponse, MandatoryDocType } from "@/types";
 interface RegisterBody {
   display_name: string;
   password: string;
+  skill: string;
+  borough: string;
   doc_image_base64?: string;
   doc_type?: MandatoryDocType;
-  borough?: string;
 }
 
 interface RegisterResult {

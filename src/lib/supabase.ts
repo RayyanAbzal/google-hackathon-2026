@@ -8,10 +8,12 @@ if (!supabaseUrl || !supabaseAnonKey) {
   throw new Error("Supabase env vars not set");
 }
 
-// Client-side / public operations (respects RLS)
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
-// Server-side only — bypasses RLS. Never expose to the browser.
+if (!supabaseServiceRoleKey && typeof window === "undefined") {
+  throw new Error("SUPABASE_SERVICE_ROLE_KEY is not set");
+}
+
 export const supabaseAdmin = createClient(
   supabaseUrl,
   supabaseServiceRoleKey ?? supabaseAnonKey

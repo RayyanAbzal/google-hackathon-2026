@@ -8,10 +8,12 @@ CREATE TABLE users (
   username TEXT UNIQUE,
   display_name TEXT NOT NULL,
   skill TEXT NOT NULL,
-  pin_hash TEXT NOT NULL,
-  score INTEGER DEFAULT 0,
-  tier TEXT DEFAULT 'unverified',
-  borough TEXT,
+  password_hash TEXT NOT NULL,
+  score INTEGER DEFAULT 0 CHECK (score >= 0 AND score <= 100),
+  tier TEXT DEFAULT 'unverified' CHECK (
+    tier IN ('unverified', 'partial', 'verified', 'trusted', 'gov_official')
+  ),
+  borough TEXT NOT NULL,
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -19,8 +21,8 @@ CREATE TABLE users (
 CREATE TABLE claims (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  type TEXT NOT NULL,
-  status TEXT DEFAULT 'pending',
+  type TEXT NOT NULL CHECK (type IN ('identity', 'credential', 'work')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'verified', 'rejected')),
   doc_type TEXT NOT NULL,
   extracted_name TEXT,
   extracted_institution TEXT,
@@ -48,16 +50,16 @@ CREATE TABLE help_posts (
   skill_tag TEXT,
   resource_tag TEXT,
   borough TEXT NOT NULL,
-  urgency TEXT DEFAULT 'medium',
+  urgency TEXT DEFAULT 'medium' CHECK (urgency IN ('low', 'medium', 'high')),
   expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '24 hours',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- gov_officials
-CREATE TABLE gov_officials (
+-- gov_anchors
+CREATE TABLE gov_anchors (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  level INTEGER NOT NULL,
+  level INTEGER NOT NULL CHECK (level IN (0, 1)),
   organisation TEXT NOT NULL
 );
 
@@ -67,7 +69,7 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE claims ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vouches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE help_posts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE gov_officials ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gov_anchors ENABLE ROW LEVEL SECURITY;
 
 -- Anyone can read all users (public directory)
 CREATE POLICY "users_read_all" ON users FOR SELECT USING (true);
@@ -89,6 +91,28 @@ CREATE POLICY "help_posts_read_auth" ON help_posts FOR SELECT USING (true);
 -- Users can insert their own help posts
 CREATE POLICY "help_posts_insert_own" ON help_posts FOR INSERT WITH CHECK (auth.uid() = author_id);
 
+-- Gov anchors readable by authenticated users
+CREATE POLICY "gov_anchors_read_auth" ON gov_anchors FOR SELECT USING (true);
 -- ─── Realtime ─────────────────────────────────────────────────────────────────
 -- Enable realtime on users table in Supabase dashboard:
 -- Database > Replication > Tables > users > toggle on
+-- Anti-scam: same document hash cannot be reused
+CREATE UNIQUE INDEX idx_claims_content_hash_unique
+ON claims(content_hash)
+WHERE content_hash IS NOT NULL;
+
+-- Tao's future APIs
+CREATE INDEX idx_users_skill_borough_score
+ON users(skill, borough, score);
+
+CREATE INDEX idx_help_posts_borough_expires
+ON help_posts(borough, expires_at);
+
+CREATE INDEX idx_vouches_voucher_created
+ON vouches(voucher_id, created_at);
+
+CREATE INDEX idx_claims_user_created
+ON claims(user_id, created_at);
+
+CREATE INDEX idx_claims_user_status
+ON claims(user_id, status);
