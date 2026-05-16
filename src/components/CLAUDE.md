@@ -1,28 +1,39 @@
-# Components — Owner: Hemish
+# Components — Hemish
 
-## Priority order (build top to bottom)
+## Owner: Hemish
+All reusable UI components live here. Pages (Maalav) import from here.
 
-1. `trust/TrustRing.tsx` — THE hero visual. Score ring with Framer Motion animation.
-2. `trust/ScoreBadge.tsx` — Tier pill badge.
-3. `trust/ProfileCard.tsx` — Full profile: TrustRing + ScoreBadge + buttons.
-4. `claims/ClaimCard.tsx` — Single claim with flag button.
-5. `claims/ClaimForm.tsx` — Doc upload form, calls POST /api/claims.
-6. `trust/VouchQR.tsx` — QR display + camera scan. Add `html5-qrcode` when you need it.
-7. `trust/HelpPostCard.tsx` + `HelpPostForm.tsx`
+## Components to build
 
-## Visual rules (20pts of rubric — make it beautiful)
+| Component | File | Purpose |
+|---|---|---|
+| TrustRing | `trust/TrustRing.tsx` | Animated SVG score ring. Prop: `score: number`. Animates on change. |
+| ProfileCard | `trust/ProfileCard.tsx` | User card: username, score ring, tier badge, skill tag, claim list |
+| ClaimCard | `claims/ClaimCard.tsx` | Single claim with vouch count, status badge, flag button |
+| ClaimForm | `claims/ClaimForm.tsx` | Upload doc form. File input + claim type selector. |
+| VouchQR | `trust/VouchQR.tsx` | Shows QR for user's node ID. Also has scanner mode. |
+| SkillPin | `map/SkillPin.tsx` | D3 pin for map — skill icon + colour by type |
+| HelpPostCard | `trust/HelpPostCard.tsx` | Help request card — content, skill/resource tag, urgency, respond button |
+| ScoreBadge | `trust/ScoreBadge.tsx` | Verified / Unverified / Trusted / Gov badge |
 
-- Dark theme: background `#0a0a0f`, cards `#111118`
-- shadcn/ui components only — no primitives from scratch
-- Tailwind v4 utility classes — no inline styles
-- Mobile-first responsive
+## Rules
+- shadcn/ui components only — do not build primitives from scratch
+- Tailwind v4 utility classes only — no inline styles
 - All components under 200 lines — extract if larger
-- Score ring is the most important visual
+- Import types from `src/types/index.ts`
+- No API calls inside components — accept data via props
+- Hemish owns the visual language. Make it dark, clean, premium.
 
-## Import rules
+## Priority order
+1. TrustRing (needed on profile page — demo hero visual)
+2. ProfileCard
+3. ClaimCard + ClaimForm
+4. VouchQR
+5. ScoreBadge
+6. HelpPostCard
+7. SkillPin (needed for map — coordinate with Ray)
 
-- All types from `src/types/index.ts` — never define types in component files
-- Use `src/lib/supabase.ts` if you need DB access (prefer passing data via props)
-- `framer-motion` is installed — use for TrustRing animation
-- `qrcode` is installed — use for QR generation in VouchQR
-- `html5-qrcode` — install yourself when you build the scan mode
+## The score ring
+This is the most important component. Score animates from old value to new value on update.
+Use Framer Motion for the animation. SVG circle with stroke-dasharray.
+Colour: green for Verified, amber for Partial, red for Unverified.

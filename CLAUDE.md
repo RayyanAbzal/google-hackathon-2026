@@ -20,16 +20,41 @@ This project runs in hackathon mode. Speed > perfection.
 - `any` still banned — use typed alternatives
 - `unknown` may be loosened to typed if it is blocking progress
 
+## App: CivicTrust (name TBD)
+
+BLACKOUT theme — trust score from physical docs + peer vouching + London heatmap.
+See `docs/PLAN.md` for the full plan.
+
 ## Layer ownership
 
 | Area | Owner | Path |
 |------|-------|------|
-| Full-stack lead, Gemini, heatmap, seed | Ray | all of `src/` |
-| Backend / API routes (core) | Aryan | `src/app/api/` |
-| Backend / API routes (features) | Tao | `src/app/api/` (find, help, rate limiting) |
-| Frontend / UI components | Hemish | `src/components/` |
-| Pages / routing | Maalav | `src/app/` (non-API) |
-| Shared types | All | `src/types/` |
+| Full-stack lead, Gemini, DB, heatmap | Ray | All of `src/` |
+| Backend API (auth, claims, vouch, score) + Supabase | Aryan | `src/app/api/` |
+| Backend API (rate limit, realtime, find) | Tao | `src/app/api/` |
+| UI Components | Hemish | `src/components/` |
+| Pages + Routing | Maalav | `src/app/` (non-API) |
+| Shared types | All (read only) | `src/types/` |
+| Lib / Supabase / Gemini | Ray | `src/lib/` |
+
+**Each area has its own CLAUDE.md with specific instructions.**
+
+## Key decisions
+
+- Auth: node ID + 4-digit PIN. No email. No facial recognition.
+- Mandatory doc at signup: passport OR driving licence. Everyone starts Unverified.
+- Score: 0-29 Unverified, 30-49 Partial, 50-89 Verified, 90-94 Trusted, 95+ Gov Official
+- Score formula: `min(100, claims_verified * 15 + vouches_received * 10 + gov_vouched * 20)`
+- 3 claim types: Identity, Credential, Work
+- Yellow Pages (/find): public search by skill OR resource. Profiles need login to view.
+- Post for help: CUT — not building this feature
+- All demo data is fake and pre-seeded — Ray runs seed script before demo
+
+## Database — Ray owns this
+
+Ray creates and manages all Supabase tables, migrations, and RLS policies.
+Do not write SQL or touch the Supabase dashboard without checking with Ray first.
+Use `src/lib/supabase.ts` for all DB access.
 
 ## Git workflow
 
@@ -92,3 +117,5 @@ Flip this if any API fails during the demo.
 | `supabase/migrations/0001_init.sql` | Full DB schema — run in Supabase SQL editor |
 | `scripts/seed.ts` | Seed 200 fake Londoners + gov anchors (Ray) |
 | `.env.local.example` | Copy to `.env.local` and fill in keys |
+| `docs/PLAN.md` | Full implementation plan — read this first |
+| `docs/TASKS.md` | Per-person task list with all routes and components |

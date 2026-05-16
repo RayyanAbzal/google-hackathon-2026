@@ -1,49 +1,39 @@
-# Pages — Owner: Maalav
+# Pages + Routing — Maalav
 
-## Priority order (build top to bottom — nothing works without auth)
+## Owner: Maalav
+All page files live here. Import components from `src/components/`. Do not build UI primitives here.
 
-1. `(auth)/register/page.tsx` — 3-step form, calls POST /api/auth/register
-2. `(auth)/login/page.tsx` — node ID + PIN, calls POST /api/auth/login
-3. `profile/[username]/page.tsx` — protected, realtime score updates
-4. `map/page.tsx` — protected, embeds Ray's HeatMap + SkillPin
-5. `find/page.tsx` — public Yellow Pages
-6. `help/page.tsx` — protected, HelpPostForm + HelpPostCards
-7. `page.tsx` (landing) — do last
+## Pages to build
 
-## Session handling (copy-paste this into every protected page)
+| Route | File | Owner | Notes |
+|---|---|---|---|
+| `/` | `page.tsx` | Maalav | Landing — hero text + register CTA + login link |
+| `/register` | `(auth)/register/page.tsx` | Maalav | Registration form. Mandatory doc upload. |
+| `/login` | `(auth)/login/page.tsx` | Maalav | Node ID + PIN form. |
+| `/profile/[username]` | `profile/[username]/page.tsx` | Maalav | User profile. Shows score ring, claims, vouch QR. Requires login. |
+| `/map` | `map/page.tsx` | Maalav | D3 heatmap + skill pins + live counter. Ray provides the D3 component. |
+| `/find` | `find/page.tsx` | Maalav | Yellow Pages — public. Skill + resource search, area filter, map + list. |
+| `/help` | `help/page.tsx` | Maalav | Post for help + list of active posts in area. |
 
-```typescript
-'use client'
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import type { Session } from '@/types'
+## Rules
+- Use `src/components/` for all UI elements — do not write raw HTML forms
+- Tailwind v4 only — no inline styles
+- Pages fetch data via API routes — do not call Supabase directly from pages
+- All pages except `/`, `/find` require auth — redirect to `/login` if no session
+- Mobile-responsive but optimise for laptop (demo is on a laptop)
 
-// Inside the component:
-const router = useRouter()
-useEffect(() => {
-  const raw = localStorage.getItem('civictrust_session')
-  if (!raw) { router.replace('/login'); return }
-  const session: Session = JSON.parse(raw)
-  // use session.node_id, session.score, session.tier, etc.
-}, [router])
-```
+## Priority order
+1. `/register` + `/login` — team cannot test anything without auth
+2. `/profile/[username]` — needed to demo the score ring
+3. `/map` — demo wow moment
+4. `/find` — Yellow Pages, public
+5. `/help` — post for help
+6. `/` — landing page (last, after everything works)
 
-## Navigation
+## Session handling
+Check for session in `localStorage` (key: `civictrust_session`).
+If no session on a protected page, redirect to `/login`.
+Session object: `{ node_id: string, username: string, score: number }`
 
-- Shared navbar: Logo | Map | Find | Help | Profile
-- "Login / Register" if no session, "Profile" if logged in
-- Build this once, use it on every page
-
-## Import rules
-
-- All types from `src/types/index.ts`
-- Components from `src/components/` — Hemish builds these, import by name
-- Realtime: `subscribeToUserScore` from `src/lib/realtime.ts`
-- API calls: fetch to `/api/...` routes — Aryan + Tao build these
-
-## Dependency chain
-
-- Auth pages (register/login) — needs Aryan's routes working
-- Profile page — needs Hemish's ProfileCard + ClaimCard + VouchQR
-- Map page — needs Ray's HeatMap + SkillPin components
-- Find/Help pages — needs Tao's find/help routes
+## Demo path pages used
+Register → Profile → Map → Find (in that order in the demo)

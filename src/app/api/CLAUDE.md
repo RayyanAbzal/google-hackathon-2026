@@ -1,29 +1,38 @@
-# API Routes — Backend Owners: Aryan + Tao
+# API Routes — Aryan + Tao
 
-## Aryan owns (core auth + identity)
-- `auth/register/` `auth/login/` `auth/username/`
-- `claims/` `claims/[userId]/`
-- `vouch/` `vouch/flag/`
-- `users/[username]/`
-- `score/[userId]/`
+## Owners
+- **Aryan**: auth, claims, vouch, score
+- **Tao**: rate limiting, realtime, find (Yellow Pages), help (post for help)
+- **Ray**: database schema + Supabase setup (do not touch supabase.ts without Ray)
 
-## Tao owns (features + rate limiting)
-- `find/`
-- `help/`
-- Rate limiting via `src/middleware.ts` (must stay at that path for Next.js to pick it up)
+## Route map
 
-## Rules — apply to every route
+| Route | Owner | Purpose |
+|---|---|---|
+| `POST /api/auth/register` | Aryan | Create user, validate mandatory doc |
+| `POST /api/auth/login` | Aryan | Node ID + PIN auth, return session |
+| `PATCH /api/auth/username` | Aryan | Set @username after first login |
+| `POST /api/claims` | Aryan | Submit new claim, trigger Gemini Vision |
+| `GET /api/claims/[userId]` | Aryan | Get user's claims list |
+| `POST /api/vouch` | Aryan | Mutual vouch — update both scores |
+| `POST /api/vouch/flag` | Aryan | Flag a claim as fraudulent, trigger penalty |
+| `GET /api/score/[userId]` | Aryan | Get current trust score + tier |
+| `GET /api/users/[username]` | Aryan | Get public profile (requires auth) |
+| `GET /api/find` | Tao | Yellow Pages search — skill or resource |
+| `POST /api/help` | Tao | Post a help request |
+| `GET /api/help` | Tao | List help posts by borough |
 
-- Return envelope always: `{ success: boolean, data: T | null, error: string | null }`
-- Use `calculateScore()` and `getTier()` from `src/types/index.ts` — never redefine
-- Use `supabase` from `src/lib/supabase.ts` — never create a new client
-- Never expose raw Supabase errors — catch and return `{ success: false, error: 'Something went wrong' }`
-- All write routes require auth (check session header or body — coordinate with Maalav)
-- `zod` for input validation at every route boundary
+## Rules
+- Every route returns `ApiResponse<T>` from `src/types/index.ts`
+- Use `src/lib/supabase.ts` for DB — do not create new clients
+- Rate limit: 5 vouches per 24h, 3 claims per 10 min (Tao implements middleware)
+- Never return raw Supabase errors to the client — wrap in `{ success: false, error: 'message' }`
+- Validate input at route level — use Zod schemas
 
-## Dependency chain
+## Score calc
+Use `calculateScore()` and `getTier()` from `src/types/index.ts`. Do not implement score logic inline.
 
-1. Ray creates DB schema + env vars (do this first — everyone else is blocked)
-2. Aryan implements auth routes (register, login)
-3. Maalav can build register/login pages once step 2 is done
-4. Tao can implement rate limiting middleware once Aryan's routes exist
+## Anti-scam (backend only)
+- Name consistency: Gemini returns `extracted_name` — compare against `user.display_name`
+- Doc dedup: hash claim content before insert, reject if hash exists for this user
+- Penalty: when a claim is flagged, find all vouchers of that user and subtract 15pts each

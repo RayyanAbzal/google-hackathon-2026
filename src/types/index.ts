@@ -1,34 +1,21 @@
-// ─── Unions ───────────────────────────────────────────────────────────────────
+// CivicTrust — shared types
+// All team members import from here. Do not define types elsewhere.
 
-export type TrustTier = 'unverified' | 'verified' | 'trusted' | 'gov_official'
-
-export type Skill = 'Doctor' | 'Engineer' | 'Legal' | 'Builder'
+export type SkillTag = 'Doctor' | 'Engineer' | 'Legal' | 'Builder' | 'Nurse' | 'Other'
 
 export type ClaimType = 'identity' | 'credential' | 'work'
 
-export type DocType =
-  | 'passport'
-  | 'driving_licence'
-  | 'degree'
-  | 'medical_licence'
-  | 'employer_letter'
-  | 'company_id'
-  | 'national_id'
-
-export type Urgency = 'low' | 'medium' | 'high'
-
 export type ClaimStatus = 'pending' | 'verified' | 'rejected'
 
-// ─── DB Interfaces (mirror SQL schema exactly) ────────────────────────────────
+export type TrustTier = 'unverified' | 'partial' | 'verified' | 'trusted' | 'gov_official'
 
 export interface User {
   id: string
-  node_id: string
-  username: string | null
+  node_id: string          // BLK-XXXXX-LDN
+  username: string | null  // @handle, set after first login
   display_name: string
-  skill: Skill
-  pin_hash: string
-  score: number
+  skill: SkillTag
+  score: number            // 0–100
   tier: TrustTier
   borough: string | null
   created_at: string
@@ -39,11 +26,10 @@ export interface Claim {
   user_id: string
   type: ClaimType
   status: ClaimStatus
-  doc_type: DocType
-  extracted_name: string | null
+  doc_type: string         // 'passport' | 'degree' | 'employer_letter' etc.
+  extracted_name: string   // from Gemini Vision
   extracted_institution: string | null
-  confidence: number | null
-  content_hash: string | null
+  confidence: number       // 0–1 from Gemini
   vouches: number
   flags: number
   created_at: string
@@ -56,70 +42,38 @@ export interface Vouch {
   created_at: string
 }
 
-export interface HelpPost {
-  id: string
-  author_id: string
-  content: string
-  skill_tag: Skill | null
-  resource_tag: string | null
-  borough: string
-  urgency: Urgency
-  expires_at: string
-  created_at: string
-}
-
 export interface GovAnchor {
   id: string
   user_id: string
-  level: number
-  organisation: string
+  level: 0 | 1             // 0 = coalition seed, 1 = institutional
+  organisation: string     // 'NHS' | 'Met Police' | 'London Council'
 }
 
-// ─── API envelope ─────────────────────────────────────────────────────────────
-
-export interface ApiResponse<T> {
+// API response envelope — use for all API routes
+export interface ApiResponse<T = null> {
   success: boolean
   data: T | null
   error: string | null
 }
 
-export interface PaginatedApiResponse<T> extends ApiResponse<T[]> {
-  meta: {
-    total: number
-    page: number
-    limit: number
-  }
+// Trust score calculation
+export interface ScoreInput {
+  claims_verified: number
+  vouches_received: number
+  gov_vouched: boolean
 }
 
-// ─── Client session (stored in localStorage as civictrust_session) ────────────
-
-export interface Session {
-  node_id: string
-  username: string | null
-  display_name: string
-  score: number
-  tier: TrustTier
-  skill: Skill
+export function calculateScore(input: ScoreInput): number {
+  const base = input.claims_verified * 15 + input.vouches_received * 10
+  const govBonus = input.gov_vouched ? 20 : 0
+  return Math.min(100, base + govBonus)
 }
 
-// ─── Gemini document analysis result ─────────────────────────────────────────
-
-export interface DocumentAnalysis {
-  extracted_name: string | null
-  doc_type: DocType
-  confidence: number
-  institution: string | null
-}
-
-// ─── Score logic (single source of truth — import from here, never redefine) ──
-
-export function calculateScore(claimsVerified: number, vouchesReceived: number): number {
-  return Math.min(100, claimsVerified * 15 + vouchesReceived * 10)
-}
-
+// Score thresholds: 0-29 Unverified, 30-49 Partial, 50-89 Verified, 90-94 Trusted, 95+ Gov Official
 export function getTier(score: number): TrustTier {
   if (score >= 95) return 'gov_official'
   if (score >= 90) return 'trusted'
   if (score >= 50) return 'verified'
+  if (score >= 30) return 'partial'
   return 'unverified'
 }
