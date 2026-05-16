@@ -1,6 +1,6 @@
 'use client'
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { CircleMarker, GeoJSON, MapContainer, Popup, TileLayer } from 'react-leaflet'
 import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet'
 import type { Feature, FeatureCollection } from 'geojson'
@@ -78,7 +78,7 @@ export function HeatMap({
   const heatColorScale = useMemo(
     () => d3.scaleLinear<string>()
       .domain([0, maxWeightedCount])
-      .range(['#0b1220', '#17346a'])
+      .range(['#0b1220', '#7cc4ff'])
       .clamp(true),
     [maxWeightedCount]
   )
@@ -91,8 +91,8 @@ export function HeatMap({
     const base = heatColorScale(count)
 
     return {
-      fillColor: isSelected ? (d3.color(base)?.brighter(0.8)?.formatHex() ?? base) : base,
-      fillOpacity: count > 0 ? (isSelected ? 0.94 : 0.88) : 0.22,
+      fillColor: isSelected ? (d3.color(base)?.brighter(0.45)?.formatHex() ?? base) : base,
+      fillOpacity: count > 0 ? (isSelected ? 0.94 : 0.88) : 0.18,
       color: isSelected ? '#7dd3fc' : '#1e293b',
       weight: isSelected ? 2 : 0.8,
     }
@@ -108,7 +108,7 @@ export function HeatMap({
     layer.on({
       mouseover: (e: LeafletMouseEvent) => {
         const path = e.target as { setStyle: (s: PathOptions) => void; bringToFront: () => void }
-        path.setStyle({ color: '#60a5fa', weight: 1.8, fillOpacity: 0.95 })
+        path.setStyle({ color: '#60a5fa', weight: 2 })
         path.bringToFront()
       },
       mouseout: (e: LeafletMouseEvent) => {
@@ -137,8 +137,6 @@ export function HeatMap({
     )
   }
 
-  const heatColor = activeSkill === 'All' ? '#3b82f6' : SKILL_COLORS[activeSkill]
-
   return (
     <MapContainer
       center={[51.505, -0.09]}
@@ -160,61 +158,6 @@ export function HeatMap({
         onEachFeature={onEachBorough}
       />
 
-      {insights.map((insight, index) => {
-        const center = centroids[insight.borough]
-        if (!center || insight.weightedCount <= 0) return null
-
-        const [lat, lng] = center
-        const radius = 14 + Math.sqrt(insight.weightedCount) * 6.5
-        const auraRadius = radius + 11
-        const coreRadius = Math.max(8, radius * 0.58)
-        const isSelected = insight.borough === selectedBorough
-        const auraOpacity = isSelected ? 0.16 : 0.1
-        const coreOpacity = isSelected ? 0.98 : 0.9
-
-        const position = [lat + jitterDeg(index, 0.005), lng + jitterDeg(index + 9, 0.008)] as [number, number]
-
-        return (
-          <Fragment key={`heat-${insight.borough}`}>
-            <CircleMarker
-              key={`heat-aura-${insight.borough}`}
-              center={position}
-              radius={auraRadius}
-              interactive={false}
-              pathOptions={{
-                fillColor: heatColor,
-                fillOpacity: auraOpacity,
-                color: heatColor,
-                weight: 0.4,
-              }}
-            />
-            <CircleMarker
-              key={`heat-body-${insight.borough}`}
-              center={position}
-              radius={radius}
-              interactive={false}
-              pathOptions={{
-                fillColor: heatColor,
-                fillOpacity: isSelected ? 0.28 : 0.2,
-                color: heatColor,
-                weight: 1,
-              }}
-            />
-            <CircleMarker
-              key={`heat-core-${insight.borough}`}
-              center={position}
-              radius={coreRadius}
-              interactive={false}
-              pathOptions={{
-                fillColor: heatColor,
-                fillOpacity: coreOpacity,
-                color: isSelected ? '#dbeafe' : 'rgba(255,255,255,0.55)',
-                weight: isSelected ? 2 : 1,
-              }}
-            />
-          </Fragment>
-        )
-      })}
 
       {pois.map((poi, index) => {
         const center = centroids[poi.borough]
@@ -227,12 +170,12 @@ export function HeatMap({
           <CircleMarker
             key={`poi-${poi.borough}-${poi.type}-${index}`}
             center={[lat + jitterDeg(index + 50, 0.006), lng + jitterDeg(index + 60, 0.01)]}
-            radius={poi.type === 'risk_alert' ? 10 : 8}
+            radius={poi.type === 'risk_alert' ? 11 : 10}
             pathOptions={{
-              fillColor: `${color}22`,
-              fillOpacity: 1,
-              color,
-              weight: 1.8,
+              fillColor: color,
+              fillOpacity: 0.85,
+              color: '#ffffff',
+              weight: 1.5,
               dashArray: poi.type === 'risk_alert' ? '4 3' : undefined,
             }}
           >
