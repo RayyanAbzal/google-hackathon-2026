@@ -1,8 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CircleMarker, GeoJSON, MapContainer, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
-import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { CircleMarker, GeoJSON, MapContainer, Marker, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
+import L from 'leaflet'
+import type { GeoJSON as LeafletGeoJSON, Layer, LeafletMouseEvent, PathOptions } from 'leaflet'
 import type { Feature, FeatureCollection } from 'geojson'
 import * as d3 from 'd3'
 import 'leaflet/dist/leaflet.css'
@@ -68,7 +69,7 @@ function MapResetController({ active }: { active: boolean }) {
   const map = useMap()
   useEffect(() => {
     if (!active) return
-    map.flyTo([51.505, -0.09], 10, { duration: 0.8 })
+    map.flyTo([51.505, -0.09], 10, { duration: 1.2 })
   }, [active, map])
   return null
 }
@@ -83,6 +84,7 @@ interface HeatMapProps {
   focusedBorough?: string | null
   popupListing?: PopupListing | null
   onPopupClose?: () => void
+  resetToOverview?: boolean
 }
 
 const SKILL_COLORS: Record<SkillTag, string> = {
@@ -115,11 +117,13 @@ export function HeatMap({
   focusedBorough,
   popupListing,
   onPopupClose,
+  resetToOverview = false,
 }: HeatMapProps) {
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null)
   const [centroids, setCentroids] = useState<CentroidMap>({})
   const [mapError, setMapError] = useState<string | null>(null)
   const [resetView, setResetView] = useState(false)
+  const geojsonLayerRef = useRef<LeafletGeoJSON | null>(null)
 
   useEffect(() => {
     fetch('/london-boroughs.json')
@@ -160,25 +164,46 @@ export function HeatMap({
     const insight = lookup[name]
     const count = insight?.weightedCount ?? 0
     const isSelected = name === selectedBorough
+    const hasSelection = !!selectedBorough
     const base = heatColorScale(count)
 
+    if (isSelected) {
+      return {
+        fillColor: '#38bdf8',
+        fillOpacity: 0.96,
+        color: '#ffffff',
+        weight: 3,
+      }
+    }
+
     if (count === 0) {
-      const dimmed = activeSkill !== 'All'
+      const dimmed = activeSkill !== 'All' || hasSelection
       return {
         fillColor: '#1a2235',
-        fillOpacity: isSelected ? 0.7 : (dimmed ? 0.15 : 0.55),
-        color: isSelected ? '#7dd3fc' : '#2a3550',
-        weight: isSelected ? 2 : 0.6,
+        fillOpacity: dimmed ? 0.1 : 0.55,
+        color: '#2a3550',
+        weight: 0.6,
       }
     }
 
     return {
-      fillColor: isSelected ? (d3.color(base)?.brighter(0.45)?.formatHex() ?? base) : base,
-      fillOpacity: isSelected ? 0.94 : 0.88,
-      color: isSelected ? '#7dd3fc' : '#1e293b',
-      weight: isSelected ? 2 : 0.8,
+      fillColor: base,
+      fillOpacity: hasSelection ? 0.45 : 0.88,
+      color: '#1e293b',
+      weight: 0.8,
     }
   }, [heatColorScale, lookup, selectedBorough, activeSkill])
+
+  // Always-current ref so stale onEachFeature closures still call latest boroughStyle
+  const boroughStyleRef = useRef(boroughStyle)
+  boroughStyleRef.current = boroughStyle
+
+  // Imperatively update GeoJSON styles — avoids remounting the layer on selection change
+  useEffect(() => {
+    if (geojsonLayerRef.current) {
+      geojsonLayerRef.current.setStyle(boroughStyle)
+    }
+  }, [boroughStyle])
 
   const onEachBorough = useCallback((feature: Feature, layer: Layer) => {
     const name = (feature.properties as Record<string, string>)['LAD13NM'] ?? ''
@@ -186,18 +211,21 @@ export function HeatMap({
     layer.on({
       mouseover: (e: LeafletMouseEvent) => {
         const path = e.target as { setStyle: (s: PathOptions) => void; bringToFront: () => void }
-        path.setStyle({ color: '#60a5fa', weight: 2 })
-        path.bringToFront()
+        const isSelected = name === selectedBorough
+        if (!isSelected) {
+          path.setStyle({ ...boroughStyleRef.current(feature), color: '#60a5fa', weight: 2, fillOpacity: 0.75 })
+          path.bringToFront()
+        }
       },
       mouseout: (e: LeafletMouseEvent) => {
         const path = e.target as { setStyle: (s: PathOptions) => void }
-        path.setStyle(boroughStyle(feature))
+        path.setStyle(boroughStyleRef.current(feature))
       },
       click: () => {
         onBoroughClick?.(name)
       },
     })
-  }, [boroughStyle, lookup, onBoroughClick])
+  }, [selectedBorough, onBoroughClick])
 
   if (!geojson) {
     return (
@@ -223,21 +251,40 @@ export function HeatMap({
     >
       <MapResizer sidebarWidth={sidebarWidth} />
       <MapFlyController borough={focusedBorough} centroids={centroids} />
-      <MapResetController active={resetView} />
+      <MapResetController active={resetView || resetToOverview} />
       <TileLayer
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         subdomains="abcd"
         maxZoom={19}
+        keepBuffer={6}
       />
 
       <GeoJSON
-        key={`${selectedBorough ?? '__none__'}__${activeSkill}`}
+        ref={geojsonLayerRef}
         data={geojson}
         style={boroughStyle}
         onEachFeature={onEachBorough}
       />
 
+      {Object.entries(centroids).map(([name, pos]) => {
+        const isSelected = name === selectedBorough
+        return (
+          <Marker
+            key={`label-${name}`}
+            position={pos}
+            interactive={false}
+            icon={L.divIcon({
+              className: '',
+              html: isSelected
+                ? `<div style="width:200px;margin-left:-100px;text-align:center;font-size:13px;font-weight:800;color:#ffffff;letter-spacing:0.08em;text-shadow:0 1px 6px rgba(0,0,0,0.95),0 0 12px rgba(0,0,0,0.7);pointer-events:none;font-family:inherit">${name.toUpperCase()}</div>`
+                : `<div style="width:160px;margin-left:-80px;text-align:center;font-size:9px;font-weight:600;color:rgba(255,255,255,0.38);letter-spacing:0.06em;text-shadow:0 1px 3px rgba(0,0,0,0.8);pointer-events:none;font-family:inherit">${name.toUpperCase()}</div>`,
+              iconSize: [0, 0],
+              iconAnchor: [0, 0],
+            })}
+          />
+        )
+      })}
 
       {pois.map((poi, index) => {
         const center = centroids[poi.borough]
