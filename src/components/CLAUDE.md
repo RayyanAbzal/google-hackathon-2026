@@ -3,39 +3,40 @@
 ## Owner: Hemish
 All reusable UI components live here. Pages (Maalav) import from here.
 
-## Components to build
+## CURRENT STATE (2026-05-16)
 
-| Component | File | Purpose |
+The civic design system is shipped. Most planned components are now superseded by inline implementations in the pages. Hemish should focus on wiring real data, not rebuilding the visual layer.
+
+## Already built — src/components/civic/
+
+| Component | File | Notes |
 |---|---|---|
-| TrustRing | `trust/TrustRing.tsx` | Animated SVG score ring. Prop: `score: number`. Animates on change. |
-| ScoreBadge | `trust/ScoreBadge.tsx` | Tier badge — Unverified/Partial/Verified/Trusted/Gov Official |
-| ProfileCard | `trust/ProfileCard.tsx` | User card: username, score ring, tier badge, skill tag, claim list |
-| ClaimCard | `claims/ClaimCard.tsx` | Single claim with vouch count, status badge, flag button |
-| ClaimForm | `claims/ClaimForm.tsx` | Upload doc form. File input + claim type selector. |
-| VouchQR | `trust/VouchQR.tsx` | Shows QR for user's node ID. Also has scanner mode. |
-| SkillPin | `map/SkillPin.tsx` | D3 pin for map — skill icon + colour by type |
+| TopBar | `civic/TopBar.tsx` | Done. Notifications + avatar popups. |
+| Sidebar | `civic/Sidebar.tsx` | Done. Identity card + nav. |
+| TierBadge | `civic/TierBadge.tsx` | Done. Replaces ScoreBadge. |
+| Icon | `civic/Icon.tsx` | Done. Material Symbols wrapper. |
+
+## Still useful — these exist but may need connecting to real data
+
+| Component | File | Status |
+|---|---|---|
+| SkillPin | `map/SkillPin.tsx` | Exists — coordinate with Ray for map wiring |
+| HeatMap | `map/HeatMap.tsx` | Exists — Ray owns, used in `/map` |
+| ClaimCard | `claims/ClaimCard.tsx` | Exists stub — update if dashboard/evidence needs it |
+| ClaimForm | `claims/ClaimForm.tsx` | Exists stub — the add-evidence page has its own flow |
+
+## Superseded — do NOT rebuild these
+
+- `TrustRing` — score ring SVG is inline in `dashboard/page.tsx`
+- `ScoreBadge` — replaced by `TierBadge` in `civic/`
+- `ProfileCard` — the Dashboard page is the profile now
+- `VouchQR` — QR is inline in `vouch/page.tsx`
 
 ## Rules
-- shadcn/ui components only — do not build primitives from scratch
-- Tailwind v4 utility classes only — no inline styles
-- All components under 200 lines — extract if larger
 - Import types from `src/types/index.ts`
 - No API calls inside components — accept data via props
-- Hemish owns the visual language. Make it dark, clean, premium.
+- Design token colours: use the same inline style pattern as the civic components (`#10141a`, `#b0c6ff` etc)
+- `getTier()` from `src/types/index.ts` — never hardcode tier thresholds
 
-## Priority order
-1. TrustRing (needed on profile page — demo hero visual)
-2. ProfileCard
-3. ClaimCard + ClaimForm
-4. VouchQR
-5. ScoreBadge
-6. SkillPin (needed for map — coordinate with Ray)
-
-## The score ring
-This is the most important component. Score animates from old value to new value on update.
-Use Framer Motion for the animation. SVG circle with stroke-dasharray.
-Colour by tier: red = Unverified (<30), orange = Partial (30-49), green = Verified (50-89), amber = Trusted (90-94), gold = Gov Official (95+).
-
-## Score tiers (for badge colours)
+## Score tiers
 0-29 Unverified, 30-49 Partial, 50-89 Verified, 90-94 Trusted, 95+ Gov Official
-Use `getTier()` from `src/types/index.ts` — never hardcode tier thresholds.

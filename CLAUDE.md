@@ -41,7 +41,7 @@ See `docs/PLAN.md` for the full plan.
 
 ## Key decisions
 
-- Auth: node ID + 4-digit PIN. No email. No facial recognition.
+- Auth: node ID + password. No email. No facial recognition.
 - Mandatory doc at signup: passport OR driving licence. Everyone starts Unverified.
 - Score: 0-29 Unverified, 30-49 Partial, 50-89 Verified, 90-94 Trusted, 95+ Gov Official
 - Score formula: `min(100, claims_verified * 15 + vouches_received * 10 + gov_vouched * 20)`
@@ -103,6 +103,22 @@ Every feature must connect to the runnable demo. If it cannot be shown in 4 minu
 `src/lib/fallbacks.ts` contains mock data for all external services.
 Toggle `USE_FALLBACKS=true` in `.env.local` to activate.
 Flip this if any API fails during the demo.
+
+## Skills — invoke these by name
+
+| Trigger | Skill |
+|---|---|
+| Before committing / "ready to PR" | `ship-check` |
+| "review this" / after implementing | `code-review` |
+| After adding auth or API routes | `security-review` |
+| "audit the project" | `context-audit` |
+| "add endpoint" / "new API route" | `add-api-route` |
+| Architectural decision to record | `documentation-and-adrs` |
+| "what should I build next" | `project-insights` |
+| Before building any new feature | `superpowers:brainstorming` |
+| "gather requirements" / new feature spec | `superpowers:requirements` |
+
+**Plugin note:** `claude-plugins-official` injects 42 skills per session. Disable for read-only/research sessions: `~/.claude/settings.json` → remove from plugins list. Re-enable for implementation sessions.
 
 ## Key files
 

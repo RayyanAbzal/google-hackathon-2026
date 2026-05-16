@@ -1,76 +1,74 @@
 # WORKLOG
 
-**Updated:** 2026-05-16 14:05 NZST
+**Updated:** 2026-05-16 (session 11)
 
 ## Active task
-Docs + config sync complete — team ready to build on dev branch
+Idle — DB provisioned, schema aligned, seed scripts fixed, pushed to dev
 
 ## Phase
-Implementation (starting — scaffold + docs locked, coding begins)
+implementing
 
 ## Files changed this session
-- `docs/PLAN.md` — full rewrite to match final brainstorm spec (5 tiers, 7 problems, flows, registration with mandatory doc, no help posts)
-- `docs/TASKS.md` — full rewrite (per-person tasks, score logic, shared types block, demo checklist)
-- `CLAUDE.md` — merged dev + main versions, removed help posts, added partial tier, updated ownership table + key decisions
-- `src/app/api/CLAUDE.md` — removed help routes, added partial tier to score thresholds, updated Aryan owns Supabase
-- `src/app/CLAUDE.md` — removed /help page, updated priority order and session object shape
-- `src/components/CLAUDE.md` — removed HelpPostCard, added 5-tier colour mapping to score ring
-- `src/lib/CLAUDE.md` — removed help_posts table, cleaned up file list
-- `src/types/index.ts` — added `partial` to TrustTier, updated getTier() for 5 tiers, added gov_vouched bonus to calculateScore
-- `src/app/api/help/route.ts` — DELETED (help posts cut)
-- `src/app/help/page.tsx` — DELETED (help posts cut)
-- `src/components/trust/HelpPostCard.tsx` — DELETED (help posts cut)
-- `src/components/trust/HelpPostForm.tsx` — DELETED (help posts cut)
+- `supabase/migrations/0001_init.sql` — full rewrite: password_hash, skill nullable, drop help_posts, rename gov_officials -> gov_anchors, add CHECK constraints, sync RLS policies to live DB
+- `src/lib/CLAUDE.md` — gov_officials -> gov_anchors table name
+- `src/lib/fallbacks.ts` — expand FALLBACK_USERS to 20 boroughs, remove FALLBACK_HELP_POSTS (feature cut)
+- `src/components/map/HeatMap.tsx` — implement D3 choropleth + skill pins (was TODO stub)
+- `src/components/map/SkillPin.tsx` — implement SVG circle with gov ring variant
+- `docs/TASKS.md` — mark Aryan's Supabase setup items done (schema + RLS applied via MCP), flag Realtime as still outstanding
+- `scripts/seed.ts` — fix gov_officials -> gov_anchors (was reverted by hook/process)
+- `scripts/seedGov.ts` — fix gov_officials -> gov_anchors (same)
+- `package.json` / `package-lock.json` — install d3 + @types/d3
+- `PLAN.md` (root) — DELETED (duplicate of docs/PLAN.md)
+- `ROLES.md` (root) — DELETED (stale, covered by AGENTS.md)
+
+**Supabase (via MCP):**
+- Renamed `gov_officials` -> `gov_anchors` in live DB
+- Fixed claims RLS: was SELECT WHERE status='verified' only — changed to SELECT all
+- Added missing INSERT policies for all tables
+- Added `gov_anchors_insert` policy
+- Confirmed all 4 tables live: users, claims, vouches, gov_anchors (all RLS enabled, 0 rows)
+- GEMINI_API_KEY added to .env.local
 
 ## Next step
-Ray: create Supabase project → share URL + anon key → wire `src/lib/supabase.ts` → implement `analyseDocument()` in `src/lib/gemini.ts` → write and run `scripts/seed.ts`
+Run seed script once Aryan confirms Realtime is enabled:
+```
+npx tsx scripts/seed.ts --wipe
+```
+Then verify 200+ rows in Supabase dashboard.
 
 ## Open questions
-- App name still TBD (CivicTrust is placeholder)
-- Aryan to confirm Supabase project created and SQL schema run
+- Aryan: Enable Realtime on `users` table — Supabase dashboard > Database > Replication > Tables > users > toggle on
+- Aryan: does /api/auth/register call Gemini at signup, or deferred to claims only?
+- Tao: /api/find ETA? Blocks Yellow Pages demo step
+- `skill` defaults to 'Other' at signup — Settings page enough, or needs dedicated edit flow?
 
 ## Key decisions — LOCKED
 
-**Cut this session:**
-- Post for help (/help) — removed from docs, tasks, and codebase entirely
-- Voice input — removed from not-building list (was never on the table)
-- Tinder swipe gesture — removed from not-building list
+**DB table name:** `gov_anchors` (NOT gov_officials). Both seed scripts and migration now aligned. DB renamed via MCP migration.
 
-**Score thresholds (final):**
-- 0–29: Unverified
-- 30–49: Partial
-- 50–89: Verified
-- 90–94: Trusted
-- 95+: Gov Official
+**Gemini API:** staying with Gemini (not Claude) — GDGC = Google hackathon, judges are Google-affiliated, strategic advantage.
 
-**Score formula:**
-`score = min(100, claims_verified * 15 + vouches_received * 10 + gov_vouched ? 20 : 0)`
+**Frontend design:** Tactical Resilience dark theme (bg #10141a, primary #b0c6ff, secondary #40e56c). Inline styles for design token colours — not Tailwind classes for colour values. Do not switch patterns.
 
-**Registration:** mandatory doc (passport OR driving licence) at signup. Node ID issued immediately. @username set after first login.
+**Components superseded:** TrustRing, ScoreBadge, ProfileCard, VouchQR — implemented inline in pages. Do not rebuild. TopBar, Sidebar, TierBadge, Icon live in `src/components/civic/`.
 
-**Yellow Pages (/find):** public search by skill OR resource. Viewing profiles requires login.
+**Profile removed:** /profile/[username] redirects to /dashboard. Dashboard IS the profile.
 
-**Git workflow:** dev is the working branch. No worktrees. Branch off dev, merge back to dev. Ray syncs dev → main before demo.
+**Auth:** node_id OR @username + password. Session in localStorage key `civictrust_session`. Min 6 char password, SHA256 hashed.
 
-**Branch state:** dev = main = f4f2067
+**Score formula:** `min(100, claims_verified * 15 + vouches_received * 10 + gov_vouched ? 20 : 0)`
 
-**Problems solved (7/8):** P01, P02, P03, P04, P06, P07, P08. P05 out of scope.
+**Score thresholds:** 0-29 Unverified | 30-49 Partial | 50-89 Verified | 90-94 Trusted | 95+ Gov Official
 
-**Gov hierarchy:**
-- L0: 3 hardcoded seed accounts, score 100 (T+6h coalition)
-- L1: NHS admin, Met Police, council — pre-seeded, score 100, GOV badge, 2x vouch weight
-- L2: Trusted (90+) — vouched by L1 or 3+ L2, path to L0 within 3 hops
-- L3: Verified (50+) — general public, appear on map
+**Dedup:** doc content hash is global — same document cannot be used across any account.
+
+**Vouch:** vouchee score recalculates on vouch. Voucher penalty (-15) fires only on flagged claim.
+
+**Git workflow:** dev = integration. Never commit to main. Ray merges dev -> main before demo.
 
 **Team roles:**
-- Ray: full-stack lead, Gemini Vision, seed script, heatmap (D3), QR vouch glue
+- Ray: full-stack lead, Gemini Vision, seed scripts, heatmap (D3), realtime
 - Aryan: Supabase setup + API (auth, claims, vouch, flag, score)
-- Tao: API (rate limiting, realtime, Yellow Pages /find)
-- Hemish: UI components (score ring, profile card, forms, QR, polish)
-- Maalav: pages + routing (/register, /login, /profile, /map, /find, /)
-
-**Build phases:**
-1. (~3h) Seed script + DB schema + register + login
-2. (~4h) Claims + Gemini Vision + score + profile UI
-3. (~3h) QR vouch flow + vouch/flag + penalty logic
-4. (~4h) Heatmap + map pins + Yellow Pages + polish + demo
+- Tao: /api/find, rate limiting middleware, seedGov
+- Hemish: civic components done; now wiring dashboard claims + vouch confirm
+- Maalav: all pages built; now wiring auth guards + real session data + add-evidence submit

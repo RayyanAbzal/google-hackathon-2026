@@ -1,10 +1,6 @@
-'use client'
+import { redirect } from 'next/navigation'
 
-// Owner: Maalav
-// Profile page — requires auth (redirect to /login if no session)
-// Fetches GET /api/users/[username] + GET /api/claims/[userId]
-// Renders: ProfileCard + ClaimCards + ClaimForm + VouchQR
-// Subscribes to realtime score updates via subscribeToUserScore()
+// Profile is now the Dashboard — redirect for backwards compat
 export default function ProfilePage() {
-  return <div>Profile — TODO (Maalav)</div>
+  redirect('/dashboard')
 }
