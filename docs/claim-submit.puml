@@ -9,76 +9,75 @@ title CivicTrust — Claim Submission Flow
 
 |#dae8fc|User|
 start
-:Select claim type\n(Identity / Credential / Work);
+:Select claim type\n(identity / credential / work);
 :Photograph or upload doc;
 
 |#fff2cc|Frontend|
-:POST /api/claims/submit\n(doc image + claim type);
+:Encode image as base64;
+:POST /api/claims\n{type, doc_type, image_base64};
 
 |#e1d5e7|API|
-:Check rate limit\n(max 3 submissions / 10 min);
+:verifyAuth — validate JWT;
+if (Authenticated?) then (no)
+  :Return 401;
+  stop
+else (yes)
+endif
+
+:Rate limit check\n(max 3 submissions / 10 min per user);
 if (Rate limit exceeded?) then (yes)
-  :Return 429;
+  :Return 429 — "wait 10 minutes";
   |#fff2cc|Frontend|
-  :Show cooldown timer;
+  :Show cooldown message;
   stop
 else (no)
 endif
 
-:Forward doc image to Gemini Vision;
-
-|#d5e8d4|Gemini Vision|
-:Extract: name, doc type,\ninstitution, date;
-:Return structured JSON;
-
-|#e1d5e7|API|
-if (Extraction successful?) then (no)
-  :Return 422 — unreadable doc;
+:SHA-256 hash of image_base64 -> content_hash;
+:Global dedup check\n(content_hash exists in ANY claim across all users?);
+if (Duplicate?) then (yes)
+  :Return 409 — "This document has already been registered";
   |#fff2cc|Frontend|
-  :Prompt: "Upload a clearer image";
+  :Show rejection message;
+  stop
+else (no)
+endif
+
+if (USE_FALLBACKS = true?) then (yes)
+  :Skip Gemini — use mock analysis\n(extracted_name = display_name, confidence = 0.9);
+else (no)
+  :analyseDocument(image_base64, doc_type)\n-> Gemini Vision;
+
+  |#d5e8d4|Gemini Vision|
+  :Extract: extracted_name, doc_type,\ninstitution, confidence score;
+  :Return DocumentAnalysis JSON;
+
+  |#e1d5e7|API|
+endif
+
+:Name consistency check\n(partial match: display_name contains extracted_name\nor vice versa) AND confidence >= 0.5;
+if (Match passes?) then (no)
+  :status = "rejected";
+  :Insert rejected claim row\n(stored for audit trail);
+  :Return 422 — "name does not match\nor document unreadable";
+  |#fff2cc|Frontend|
+  :Show rejection reason;
   stop
 else (yes)
+  :status = "verified";
+  :Insert verified claim row;
 endif
 
-:Name consistency check\n(doc name vs user's registered name);
-if (Names match?) then (no)
-  :Return 422 — name mismatch;
-  |#fff2cc|Frontend|
-  :Show rejection: "Name does not match";
-  stop
-else (yes)
-endif
-
-:Doc dedup check\n(SHA-256 hash already seen?);
-if (Duplicate doc?) then (yes)
-  :Return 409 — already submitted;
-  |#fff2cc|Frontend|
-  :Show "This document was already submitted";
-  stop
-else (no)
-endif
-
-:Store claim as Verified;
-:Update score: +15;
-:Check new tier threshold;
-if (Score >= 50?) then (yes)
-  :Set tier = Verified;
-  :Appear on map + Yellow Pages;
-else (no)
-  if (Score >= 30?) then (yes)
-    :Set tier = Partial;
-  else (no)
-  endif
-endif
-
-:Return 201 + new score + tier;
+:recalculateUserScore(user_id)\n= min(100, verified_claims*15\n+ vouches*10 + gov_vouched*20);
+:Update user row (score, tier);
+:Return 201\n{claim, new_score, tier};
 
 |#fff2cc|Frontend|
 :Animate score ring to new value;
-:Show success toast;
+:Show success toast + claim in list;
 
 |#dae8fc|User|
-:See updated score and claim in list;
+:See updated score and verified claim;
 
 stop
 @enduml

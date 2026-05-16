@@ -10,65 +10,56 @@ title CivicTrust — User Registration Flow
 |#dae8fc|User|
 start
 :Enter display name;
-:Set password;
-:Upload mandatory doc\n(Passport **or** Driving Licence — min 1 required);
+:Set password (min 6 chars);
+:Select mandatory doc type\n(passport  or  driving_licence);
+:Upload doc image (optional — for Gemini analysis);
+:Optional: select borough;
 
 |#fff2cc|Frontend|
-:Validate required fields;
-if (Fields complete?) then (no)
-  :Show inline error;
+:Validate required fields\n(display_name, password, doc_type);
+if (Password >= 6 chars?) then (no)
+  :Show: "Password must be at least 6 characters";
   |#dae8fc|User|
   :Fix and resubmit;
   |#fff2cc|Frontend|
 else (yes)
-  :POST /api/auth/register;
+endif
+if (doc_type is passport or driving_licence?) then (no)
+  :Show: "Select a valid document type";
+  stop
+else (yes)
+  :POST /api/auth/register\n{display_name, password, doc_type,\ndoc_image_base64?, borough?};
 endif
 
 |#e1d5e7|API|
-:Receive registration payload;
-:Forward doc image to Gemini Vision;
-
-|#d5e8d4|Gemini Vision|
-:Extract name, doc type, issuing authority;
-:Return structured JSON;
-
-|#e1d5e7|API|
-if (Extraction successful?) then (no)
-  :Return 422 — unreadable doc;
+:Validate payload;
+:hashPassword(password);
+:generateNodeId() — BLK-XXXXX-LDN;
+:Insert user row in Supabase\n(score=0, tier=unverified);
+if (Insert fails?) then (yes)
+  :Return 500;
   |#fff2cc|Frontend|
-  :Prompt: "Upload a clearer image";
-  stop
-else (yes)
-endif
-
-:Check name match\n(doc name vs entered name);
-if (Names match?) then (no)
-  :Return 422 — name mismatch;
-  |#fff2cc|Frontend|
-  :Show rejection reason;
-  stop
-else (yes)
-endif
-
-:Check doc dedup\n(hash already seen?);
-if (Duplicate?) then (yes)
-  :Return 409 — already submitted;
-  |#fff2cc|Frontend|
-  :Show rejection reason;
+  :Show generic error;
   stop
 else (no)
 endif
+:signToken(user_id) — JWT;
+:Return 201\n{token, user_id, node_id};
 
-:Create user row in Supabase\n(score = 0, tier = Unverified);
-:Generate Node ID — BLK-XXXXX-LDN;
-:Return 201 + node_id;
+note right
+  Gemini Vision doc analysis at
+  registration is planned (CLAUDE.md)
+  but not yet implemented in the route.
+  Doc image is accepted but not analysed here.
+  Full analysis happens on claim submit.
+end note
 
 |#fff2cc|Frontend|
-:Store session token on device;
-:Display Node ID to user;
+:Store session in localStorage;
+:Redirect to Profile page;
 
 |#dae8fc|User|
-:Set @username\n(first-login prompt);
+:Prompted: set @username\n(PATCH /api/auth/username\n3-20 chars, letters/numbers/underscores);
 
 stop
 @enduml

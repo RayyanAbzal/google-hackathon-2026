@@ -5,7 +5,7 @@ skinparam roundcorner 8
 skinparam activityBorderColor #444444
 skinparam activityArrowColor #333333
 
-title CivicTrust — Yellow Pages (Find) Flow
+title CivicTrust — Yellow Pages (Find) Flow\n[/api/find owned by Tao — stub returning 501]
 
 |#dae8fc|Visitor (any user)|
 start
@@ -14,37 +14,43 @@ start
 :Optional: filter by borough\n(Southwark / Hackney / etc.);
 
 |#fff2cc|Frontend|
-:GET /api/find?skill=...&area=...;
+:GET /api/find?skill=...&borough=...;
 
-|#e1d5e7|API|
-:Query Supabase for Verified users\n(score >= 50, matching skill + area);
-:Return aggregated results\n(count per borough, anonymous pins — no names);
-
-|#fff2cc|Frontend|
-:Render map with skill pins;
-:Render result list\n("3 verified doctors in Southwark");
+|#e1d5e7|API (Tao)|
+:No auth required;
+:Query Supabase:\nVerified users (score >= 50)\nmatching skill + borough;
+:Aggregate results by borough\n{borough, skill, count, avg_score};
 
 note right
-  Names never shown in public results.
-  Only: skill + borough + count.
+  Names never returned.
+  Only: borough + skill + count + avg_score.
+  Response shape: ApiResponse<AggResult[]>
 end note
 
-|#dae8fc|Visitor (any user)|
-:Tap a result to view profile;
+:Return 200 + aggregated results;
 
-|#e1d5e7|API|
-:Check session cookie;
+|#fff2cc|Frontend|
+:Render map with anonymous skill pins\n(no names, no addresses);
+:Render list:\n"3 verified doctors in Southwark";
+
+|#dae8fc|Visitor (any user)|
+:Tap a result pin / list entry;
+
+|#fff2cc|Frontend|
+:Check session in localStorage;
 if (Logged in?) then (no)
-  :Return 401;
-  |#fff2cc|Frontend|
-  :Redirect to Login with return URL;
+  :Redirect to Login\nwith return URL;
   stop
 else (yes)
 endif
 
-:Fetch user's own trust tier;
-if (Viewer tier >= Verified (score 50+)?) then (no)
-  :Return 403 — insufficient tier;
+:GET /api/users/[username] or score/[userId];
+
+|#e1d5e7|API|
+:verifyAuth — validate JWT;
+:Fetch viewer's own tier;
+if (Viewer tier >= verified (score 50+)?) then (no)
+  :Return 403;
   |#fff2cc|Frontend|
   :Redirect to Profile page;
   :Show: "Submit a claim to reach Verified";
@@ -52,7 +58,7 @@ if (Viewer tier >= Verified (score 50+)?) then (no)
 else (yes)
 endif
 
-:Return full profile data\n(name, score, skill, borough, claims summary);
+:Return full profile\n{display_name, score, skill, borough,\nclaims summary, tier};
 
 |#fff2cc|Frontend|
 :Render full profile view;
