@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
 import Icon from '@/components/civic/Icon'
 import DocumentCameraCapture from '@/components/claims/DocumentCameraCapture'
+import { calculateScore } from '@/types'
 import type { Claim, ClaimType as ApiClaimType, Session, TrustTier } from '@/types'
 import { protectedFetch, requireSession, updateStoredSession } from '@/app/_lib/session'
 
@@ -83,7 +84,7 @@ function SummaryBar({ claimType, step }: { claimType: ClaimType; step: number })
         {[
           { label: 'Type', value: claimType },
           { label: 'Document', value: step >= 3 ? 'UK Passport' : '—' },
-          { label: 'Points if verified', value: '+15', valueColor: '#40e56c' },
+          { label: 'Points if verified', value: `+${CLAIM_TYPE_POINTS[claimType]}`, valueColor: '#40e56c' },
           { label: 'Analysis', value: 'Instant' },
         ].map(({ label, value, valueColor }) => (
           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
@@ -112,6 +113,12 @@ function SummaryBar({ claimType, step }: { claimType: ClaimType; step: number })
 export default function AddEvidencePage() {
   const router = useRouter()
   const [session, setSession] = useState<Session | null>(null)
+  const [scoreBreakdown, setScoreBreakdown] = useState<{
+    passport_count: number
+    other_doc_count: number
+    vouches_received: number
+    gov_vouched: boolean
+  } | null>(null)
   const [step, setStep] = useState(1)
   const [claimType, setClaimType] = useState<ClaimType>('Identity')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -122,8 +129,28 @@ export default function AddEvidencePage() {
   const fileRef = useRef<HTMLInputElement>(null)
 
   useEffect(() => {
-    queueMicrotask(() => setSession(requireSession(router)))
+    queueMicrotask(() => {
+      const current = requireSession(router)
+      setSession(current)
+      if (!current) return
+      protectedFetch<{ score: number; tier: TrustTier; passport_count: number; other_doc_count: number; vouches_received: number; gov_vouched: boolean }>(
+        `/api/score/${current.user_id}`, current
+      )
+        .then(json => { if (json.success) setScoreBreakdown(json.data) })
+        .catch(() => {})
+    })
   }, [router])
+
+  const predictedScore = useMemo(() => {
+    if (!scoreBreakdown) return null
+    const isPassport = CLAIM_TYPE_TO_DOC[claimType] === 'passport'
+    return calculateScore({
+      passport_count: scoreBreakdown.passport_count + (isPassport ? 1 : 0),
+      other_doc_count: scoreBreakdown.other_doc_count + (isPassport ? 0 : 1),
+      vouches_received: scoreBreakdown.vouches_received,
+      gov_vouched: scoreBreakdown.gov_vouched,
+    })
+  }, [scoreBreakdown, claimType])
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     setSelectedFile(e.target.files?.[0] ?? null)
@@ -195,6 +222,7 @@ export default function AddEvidencePage() {
       })
       if (updated) setSession(updated)
       setStatusMessage(`Claim verified. Score is now ${json.data.new_score}.`)
+      setTimeout(() => router.push('/dashboard'), 1500)
     } catch {
       setError('Could not submit the claim. Try again.')
       setStatusMessage('')
@@ -503,7 +531,7 @@ export default function AddEvidencePage() {
                   }}
                 >
                   <span style={{ fontSize: 14, color: '#c2c6d8' }}>
-                    Your score: {session?.score ?? 0} → <strong style={{ color: '#40e56c' }}>{Math.min(100, (session?.score ?? 0) + CLAIM_TYPE_POINTS[claimType])}</strong> (+{CLAIM_TYPE_POINTS[claimType]} pts if verified)
+                    Your score: {session?.score ?? 0} → <strong style={{ color: '#40e56c' }}>{predictedScore ?? '…'}</strong> (+{CLAIM_TYPE_POINTS[claimType]} pts if verified)
                   </span>
                   <button
                     onClick={submitClaim}
