@@ -3,23 +3,23 @@
 **Updated:** 2026-05-16 (latest session)
 
 ## Active task
-Landing page fixes — sidebar removed, "I need help now" button removed, merge conflict resolved
+/find page UI/UX fixes — layout overlap, Aid Hub badge clip, hydration error, borough click guard
 
 ## Phase
-implementing
+debugging
 
 ## Files changed this session
-- `src/app/_components/LandingContent.tsx` — removed Sidebar + useSidebar import; removed "I need help now" button; main has no marginLeft offset
-- `src/app/dashboard/page.tsx` — resolved merge conflict: kept HEAD action buttons (Share Node ID + Add evidence); took incoming empty-state message for evidence section
-- `src/components/civic/svg/MeshGraph.tsx` — coords rounded to 2dp (hydration fix, already in HEAD)
+- `src/app/find/page.tsx` — moved DENSITY HEATMAP overlay to bottom-left (was top-left, clashed with Leaflet zoom controls); borough click guard (only accept BOROUGHS list, ignore clicks on Redbridge/etc.); grid gap 20→16px; right column gets minWidth:0 + corrected maxHeight calc; YPListing columns tightened; paddingTop:14 on scroll container to fix Aid Hub badge clip
+- `src/components/civic/SidebarProvider.tsx` — fixed hydration mismatch: collapsed state now starts false (matches SSR), localStorage read moved to useEffect after mount
 
 ## Next step
-Visual QA in browser — landing shows no sidebar, single CTA button; dashboard has action buttons + empty evidence state
+Visual QA in browser — verify Aid Hub badge shows fully, no hydration error in console, borough clicks on non-listed boroughs do nothing
 
 ## Open questions
-- Hemish keeps reverting LandingContent to include Sidebar — confirm with him that landing is intentionally sidebar-free
+- None blocking
 
 ## Key decisions
-- Landing page: no sidebar, no "I need help now" button — single CTA ("Create your node") only
-- Dashboard merge conflict: kept HEAD action buttons, took incoming empty-state message
-- Previous decisions still apply (scoring formula, tiers, E2E path, seed script)
+- SidebarProvider: always hydrate collapsed=false, apply localStorage in useEffect — SSR/client parity
+- Borough click: silently ignore clicks on boroughs not in BOROUGHS array (no toast, no state change)
+- Aid Hub badge fix: paddingTop on scroll container, not restructuring the badge positioning
+- Previous decisions still apply (no sidebar on landing, single CTA, scoring formula, tiers, E2E path)

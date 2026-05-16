@@ -1,12 +1,15 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect, useCallback } from 'react'
+import dynamic from 'next/dynamic'
 import { useSidebar } from '@/components/civic/SidebarProvider'
 import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
-import ContourMap from '@/components/civic/svg/ContourMap'
-import LondonBoroughs from '@/components/civic/svg/LondonBoroughs'
-import HeatLayer from '@/components/civic/svg/HeatLayer'
+import type { MapPOI, MapUser } from '@/components/map/map-data'
+import { FALLBACK_USERS, USE_FALLBACKS } from '@/lib/fallbacks'
+import { supabase } from '@/lib/supabase'
+
+const HeatMap = dynamic(() => import('@/components/map/HeatMap').then(m => m.HeatMap), { ssr: false })
 
 const CATEGORIES = ['Medical', 'Legal', 'Engineering', 'Trades']
 const BOROUGHS = ['Southwark', 'Lambeth', 'Hackney']
@@ -64,22 +67,12 @@ const ALL_RESULTS: Result[] = [
   { refCode: 'E8·201', icon: 'plumbing', iconColor: '#b0c6ff', title: 'Water Engineer', sub: 'Pipes · Sanitation', dist: '0.6 km · E8', avail: 'Available now', availColor: '#b0c6ff', tier: 'T2', tierColor: '#b0c6ff', note: 'Water safety assessments', category: 'Engineering', subCategory: 'ENGINEERING · STRUCTURAL & UTILITIES', borough: 'Hackney', prof: 'Engineer', detail: 'Water systems engineer assessing pipe integrity.', contact: 'Hackney Aid Hub, utilities team.' },
 ]
 
-const HEAT_POINTS = [
-  { x: 330, y: 320, r: 130, color: '#b0c6ff', intensity: 0.65 },
-  { x: 260, y: 360, r: 100, color: '#b0c6ff', intensity: 0.50 },
-  { x: 290, y: 250, r:  90, color: '#b0c6ff', intensity: 0.45 },
-  { x: 200, y: 280, r:  80, color: '#fbbf24', intensity: 0.40 },
-  { x: 430, y: 290, r: 100, color: '#b0c6ff', intensity: 0.40 },
-  { x: 460, y: 380, r:  70, color: '#b0c6ff', intensity: 0.35 },
-  { x: 140, y: 200, r:  80, color: '#b0c6ff', intensity: 0.30 },
-  { x: 380, y: 180, r:  60, color: '#b0c6ff', intensity: 0.30 },
-]
-
-const HUB_PINS = [
-  { x: 330, y: 320, label: "A · Guy's", color: '#b0c6ff' },
-  { x: 260, y: 360, label: 'B · Borough', color: '#b0c6ff' },
-  { x: 200, y: 280, label: 'C · Lambeth', color: '#fbbf24' },
-  { x: 430, y: 290, label: 'D · Tower H.', color: '#b0c6ff' },
+const POIS: MapPOI[] = [
+  { borough: 'Southwark', type: 'aid_hub', label: "Guy's Aid Hub" },
+  { borough: 'Lambeth', type: 'aid_hub', label: 'Brixton Aid Centre' },
+  { borough: 'Hackney', type: 'aid_hub', label: 'Hackney Aid Hub' },
+  { borough: 'Westminster', type: 'aid_hub', label: 'NHS Emergency HQ' },
+  { borough: 'Camden', type: 'aid_hub', label: 'UCH Field Station' },
 ]
 
 interface YPListingProps {
@@ -104,7 +97,7 @@ function YPListing({ refCode, icon, iconColor, title, sub, dist, avail, availCol
       onClick={onDetails}
       style={{
         display: 'grid',
-        gridTemplateColumns: '56px 32px 1fr 100px 120px 44px',
+        gridTemplateColumns: '52px 32px 1fr 88px 108px 40px',
         alignItems: 'center',
         gap: 10,
         padding: '11px 14px',
@@ -168,6 +161,8 @@ function YPSection({ title, count, children }: YPSectionProps) {
   )
 }
 
+const VERIFIED_TIERS = ['verified', 'trusted', 'gov_official'] as const
+
 export default function FindPage() {
   const [activeCategory, setActiveCategory] = useState('Medical')
   const [activeBorough, setActiveBorough] = useState('Southwark')
@@ -175,6 +170,24 @@ export default function FindPage() {
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<Result | null>(null)
   const { width: sidebarWidth } = useSidebar()
+
+  const [mapUsers, setMapUsers] = useState<MapUser[]>(USE_FALLBACKS ? (FALLBACK_USERS as MapUser[]) : [])
+
+  const fetchUsers = useCallback(async () => {
+    if (USE_FALLBACKS) return
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('node_id, username, display_name, borough, skill, tier')
+        .in('tier', [...VERIFIED_TIERS])
+      if (error) throw error
+      setMapUsers((data ?? []) as MapUser[])
+    } catch {
+      setMapUsers(FALLBACK_USERS as MapUser[])
+    }
+  }, [])
+
+  useEffect(() => { void fetchUsers() }, [fetchUsers])
 
   const filtered = ALL_RESULTS.filter(r => {
     const catMatch = r.category === activeCategory
@@ -307,45 +320,22 @@ export default function FindPage() {
           </div>
 
           {/* Main: map + scrollable results */}
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: 20, alignItems: 'flex-start' }}>
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.15fr', gap: 16, alignItems: 'flex-start' }}>
 
             {/* MAP COLUMN — sticky */}
             <div style={{ position: 'sticky', top: 80, display: 'flex', flexDirection: 'column', gap: 10 }}>
               <div style={{ position: 'relative', height: 480, border: '1px solid rgba(66,70,85,0.5)', borderRadius: 10, overflow: 'hidden', background: '#0a0e14' }}>
-                <ContourMap width={580} height={480} seed={4} />
-                <LondonBoroughs
-                  width={580}
-                  height={480}
-                  highlights={[activeBorough]}
+                <HeatMap
+                  users={mapUsers}
+                  pois={POIS}
+                  selectedBorough={activeBorough}
+                  activeSkill="All"
                   onBoroughClick={(name) => { if (BOROUGHS.includes(name)) setActiveBorough(name) }}
                 />
-                <HeatLayer width={580} height={480} points={HEAT_POINTS} />
 
-                {/* Hub pins */}
-                <svg viewBox="0 0 580 480" style={{ position: 'absolute', inset: 0, width: '100%', height: '100%', pointerEvents: 'none' }}>
-                  {HUB_PINS.map((h, i) => (
-                    <g key={i}>
-                      <circle cx={h.x} cy={h.y} r="7" fill={h.color} stroke="#10141a" strokeWidth="1.5" />
-                      <text x={h.x + 10} y={h.y + 4} fontFamily="JetBrains Mono, monospace" fontSize="10" fill="#dfe2eb" fontWeight="700">{h.label}</text>
-                    </g>
-                  ))}
-                  <circle cx="310" cy="330" r="4" fill="#b0c6ff" />
-                  <circle cx="310" cy="330" r="9" fill="none" stroke="#b0c6ff" strokeOpacity="0.55" />
-                  <text x="318" y="326" fontFamily="JetBrains Mono, monospace" fontSize="9" fill="#b0c6ff">YOU</text>
-                </svg>
-
-                <div style={{ position: 'absolute', top: 12, left: 12, padding: '7px 12px', background: 'rgba(16,20,26,0.92)', border: '1px solid rgba(66,70,85,0.5)', borderRadius: 6 }}>
+                <div style={{ position: 'absolute', bottom: 12, left: 12, padding: '7px 12px', background: 'rgba(16,20,26,0.92)', border: '1px solid rgba(66,70,85,0.5)', borderRadius: 6, zIndex: 500, pointerEvents: 'none' }}>
                   <span className="meta">DENSITY HEATMAP</span>
-                  <div style={{ fontSize: 13, fontWeight: 700, marginTop: 3 }}>Verified medics nearby</div>
-                </div>
-
-                <div style={{ position: 'absolute', bottom: 12, left: 12, right: 12, padding: '8px 12px', background: 'rgba(16,20,26,0.92)', border: '1px solid rgba(66,70,85,0.5)', borderRadius: 6, display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                    <span className="meta">HEAT</span>
-                    <div style={{ height: 8, width: 120, borderRadius: 999, background: 'linear-gradient(90deg, #424655, #2a3f6e, #b0c6ff)' }} />
-                    <span className="mono" style={{ fontSize: 9, color: '#8c90a1', letterSpacing: '0.08em' }}>NONE — DENSE</span>
-                  </div>
-                  <span className="mono" style={{ fontSize: 9, color: '#8c90a1', letterSpacing: '0.06em' }}>SCALE · 500m</span>
+                  <div style={{ fontSize: 13, fontWeight: 700, marginTop: 3 }}>Verified people nearby</div>
                 </div>
               </div>
 
@@ -368,7 +358,7 @@ export default function FindPage() {
             </div>
 
             {/* SCROLLABLE RESULTS COLUMN */}
-            <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 240px)', overflowY: 'auto', paddingRight: 2 }}>
+            <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, maxHeight: 'calc(100vh - 220px)', overflowY: 'auto', paddingTop: 14, paddingRight: 2 }}>
 
               {/* Featured aid hub */}
               <div style={{ border: '2px solid #b0c6ff', borderRadius: 8, padding: 16, background: 'rgba(176,198,255,0.04)', marginBottom: 16, position: 'relative', flexShrink: 0 }}>
