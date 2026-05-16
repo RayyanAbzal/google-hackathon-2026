@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
 import Icon from '@/components/civic/Icon'
-import EgoGraph from '@/components/civic/svg/EgoGraph'
+import { useSidebar } from '@/components/civic/SidebarProvider'
 import type { Claim, Session } from '@/types'
 import { getDisplayFirstName, protectedFetch, requireSession } from '@/app/_lib/session'
 
@@ -32,20 +32,20 @@ function claimBadge(status: string): string {
 }
 
 const ACTIVITY = [
-  { icon: 'done_all', title: 'Medical Degree verified', sub: 'Dr. Aris Thorne · gov. voucher', time: '2h', color: '#40e56c' },
-  { icon: 'handshake', title: 'New vouch from Hemish R.', sub: '+5 pts · community', time: '8h', color: '#b0c6ff' },
-  { icon: 'hub', title: 'Connected to Southwark hub', sub: 'mesh edge added', time: '1d', color: '#b0c6ff' },
-  { icon: 'person_add', title: 'Account created', sub: 'welcome to the mesh', time: '2w', color: '#8c90a1' },
+  { icon: 'done_all', title: 'Medical Degree verified', sub: 'Vouched by Dr. Aris Thorne', time: '2 hours ago', color: '#40e56c' },
+  { icon: 'handshake', title: 'New vouch from Hemish R.', sub: 'Regular vouch · +5 pts', time: '8 hours ago', color: '#b0c6ff' },
+  { icon: 'person_add', title: 'Account created', sub: 'Welcome to the mesh.', time: '2 weeks ago', color: '#8c90a1' },
 ]
 
 const FALLBACK_EVIDENCE = [
-  { icon: 'id_card', title: 'Passport', sub: '6 vouches · 2 gov.', color: '#40e56c', badge: 'VERIFIED' },
-  { icon: 'school', title: 'Medical Degree (MBBS)', sub: '4 vouches · UCL', color: '#40e56c', badge: 'VERIFIED' },
-  { icon: 'receipt_long', title: 'Utility bill — Southwark', sub: 'awaiting 2 more vouches', color: '#fbbf24', badge: 'PENDING' },
+  { icon: 'id_card', title: 'Passport', sub: '6 vouches', color: '#40e56c', badge: 'VERIFIED' },
+  { icon: 'school', title: 'Medical Degree', sub: '2 vouches', color: '#40e56c', badge: 'VERIFIED' },
+  { icon: 'receipt_long', title: 'Utility bill', sub: 'Awaiting review', color: '#fbbf24', badge: 'PENDING' },
 ]
 
 export default function DashboardPage() {
   const router = useRouter()
+  const { width: sidebarWidth } = useSidebar()
   const [session, setSession] = useState<Session | null>(null)
   const [claims, setClaims] = useState<Claim[]>([])
 
@@ -69,24 +69,21 @@ export default function DashboardPage() {
   const tier = session?.tier ?? 'unverified'
 
   const tierLabel = useMemo(() => {
-    if (tier === 'gov_official') return 'TIER 3 · GOVERNMENT VERIFIED'
-    if (tier === 'trusted') return 'TIER 2 · TRUSTED'
-    if (tier === 'verified') return 'TIER 1 · VERIFIED'
-    return 'TIER 0 · UNVERIFIED'
+    if (tier === 'gov_official') return 'Tier 3 · Government Verified'
+    if (tier === 'trusted') return 'Tier 2 · Trusted'
+    if (tier === 'verified') return 'Tier 1 · Verified'
+    return 'Tier 0 · Unverified'
   }, [tier])
 
   const tierColor = useMemo(() => {
-    if (tier === 'gov_official' || tier === 'trusted') return '#40e56c'
+    if (tier === 'gov_official') return '#40e56c'
+    if (tier === 'trusted') return '#40e56c'
     if (tier === 'verified') return '#b0c6ff'
     return '#8c90a1'
   }, [tier])
 
-  const ptsToNext = useMemo(() => {
-    if (score >= 91) return null
-    if (score >= 55) return `${91 - score} PTS TO GOV. VERIFIED`
-    if (score >= 20) return `${55 - score} PTS TO TRUSTED`
-    return `${20 - score} PTS TO VERIFIED`
-  }, [score])
+  const verifiedClaims = useMemo(() => claims.filter(c => c.status === 'verified').length, [claims])
+  const vouchesReceived = useMemo(() => claims.reduce((acc, c) => acc + (c.vouches ?? 0), 0), [claims])
 
   const evidenceRows = useMemo(() => {
     if (claims.length === 0) return FALLBACK_EVIDENCE
@@ -106,140 +103,132 @@ export default function DashboardPage() {
       <TopBar />
       <Sidebar active="dashboard" session={session} />
 
-      <main style={{ marginLeft: 240, padding: '80px 36px 36px 36px' }}>
+      <main style={{ marginLeft: sidebarWidth, padding: '80px 36px 36px 36px', transition: 'margin-left 0.2s ease' }}>
 
-        {/* Header row */}
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 32 }}>
           <div>
-            <span className="meta">{tierLabel}</span>
-            <h1 style={{ fontSize: 38, fontWeight: 700, letterSpacing: '-0.02em', margin: '8px 0 4px' }}>
+            <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 4px' }}>
               Welcome back, {firstName}.
             </h1>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#c2c6d8', fontSize: 14 }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#40e56c' }}>stethoscope</span>
+            <p style={{ color: '#c2c6d8', fontSize: 15, margin: 0 }}>
               {session?.username ? `@${session.username}` : 'Your account'} · Southwark, London
-            </div>
+            </p>
           </div>
-          <div style={{ display: 'flex', gap: 8 }}>
-            <Link href="/vouch" style={{ padding: '10px 16px', border: '1px solid #424655', borderRadius: 8, background: '#181c22', color: '#dfe2eb', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
-              <Icon name="qr_code_2" size={16} /> Share Node ID
-            </Link>
-            <Link href="/add-evidence" style={{ padding: '10px 16px', background: '#b0c6ff', color: '#002d6f', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
-              <Icon name="add" size={16} /> Add evidence
-            </Link>
-          </div>
+          <Link href="/vouch" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', border: '1px solid #424655', borderRadius: 8, background: '#181c22', color: '#dfe2eb', fontSize: 13, textDecoration: 'none' }}>
+            <Icon name="qr_code_2" size={16} /> Share Node ID
+          </Link>
         </div>
 
-        {/* Top row: ego graph + score ring */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 18, marginBottom: 18 }}>
+        {/* Top row: score ring + 3 metric cards */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 20, marginBottom: 20 }}>
 
-          <div style={{ border: '1px solid rgba(66,70,85,0.5)', borderRadius: 14, padding: 20, background: '#181c22' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-              <span className="meta">YOUR TRUST NETWORK</span>
-              <span className="meta" style={{ color: '#40e56c' }}>+45 PTS THIS WEEK</span>
-            </div>
-            <div style={{ height: 300, marginTop: 6 }}>
-              <EgoGraph width={680} height={300} count={9} />
-            </div>
-            <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#c2c6d8' }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#40e56c', display: 'inline-block' }} />
-                Gov. voucher
-              </div>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#c2c6d8' }}>
-                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#b0c6ff', display: 'inline-block' }} />
-                Community voucher
-              </div>
-            </div>
-          </div>
-
-          <div style={{ border: '1px solid rgba(66,70,85,0.5)', borderRadius: 14, padding: 24, background: '#181c22', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
-            <span className="meta">TRUST SCORE</span>
-            <div style={{ position: 'relative', width: 200, height: 200, marginTop: 12 }}>
+          {/* Trust score */}
+          <div style={{ border: '1px solid #424655', borderRadius: 12, padding: 20, background: '#181c22', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+            <div style={{ fontSize: 14, color: '#c2c6d8', marginBottom: 16 }}>Trust score</div>
+            <div style={{ position: 'relative', width: 160, height: 160 }}>
               <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
-                <circle cx="50" cy="50" r="44" fill="none" stroke="#424655" strokeWidth="3" />
+                <circle cx="50" cy="50" r="44" fill="none" stroke="#31353c" strokeWidth="3" />
                 <circle
                   cx="50" cy="50" r="44"
                   fill="none"
                   stroke="#40e56c"
                   strokeWidth="4"
-                  strokeDasharray={`${CIRCUMFERENCE}`}
-                  strokeDashoffset={`${dashOffset}`}
+                  strokeDasharray={CIRCUMFERENCE}
+                  strokeDashoffset={dashOffset}
                   strokeLinecap="round"
                 />
               </svg>
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: 56, fontWeight: 700, lineHeight: 1, letterSpacing: '-0.04em' }}>{score}</span>
+                <span style={{ fontSize: 46, fontWeight: 700, lineHeight: 1, letterSpacing: '-0.03em' }}>{score}</span>
                 <span style={{ fontSize: 12, color: '#8c90a1', marginTop: 4 }}>out of 100</span>
               </div>
             </div>
-            <div style={{ marginTop: 14, padding: '6px 12px', borderRadius: 999, background: `${tierColor}12`, border: `1px solid ${tierColor}55`, color: tierColor, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em' }}>
+            <div style={{ marginTop: 16, padding: '4px 12px', borderRadius: 9999, background: `${tierColor}18`, border: `1px solid ${tierColor}55`, color: tierColor, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textAlign: 'center' }}>
               {tierLabel}
             </div>
-            {ptsToNext && (
-              <div className="mono" style={{ fontSize: 11, color: '#8c90a1', marginTop: 14 }}>{ptsToNext}</div>
-            )}
+          </div>
+
+          {/* Verified claims */}
+          <div style={{ border: '1px solid #424655', borderRadius: 12, padding: 20, background: '#181c22' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 22, color: '#40e56c', display: 'block' }}>fact_check</span>
+            <div style={{ fontSize: 32, fontWeight: 700, marginTop: 12, lineHeight: 1 }}>
+              {claims.length > 0 ? `+${verifiedClaims}` : '+15'}
+            </div>
+            <div style={{ fontSize: 14, color: '#c2c6d8', marginTop: 8 }}>Verified claims</div>
+          </div>
+
+          {/* Vouches received */}
+          <div style={{ border: '1px solid #424655', borderRadius: 12, padding: 20, background: '#181c22' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 22, color: '#b0c6ff', display: 'block' }}>group</span>
+            <div style={{ fontSize: 32, fontWeight: 700, marginTop: 12, lineHeight: 1 }}>
+              {claims.length > 0 ? `+${vouchesReceived}` : '+30'}
+            </div>
+            <div style={{ fontSize: 14, color: '#c2c6d8', marginTop: 8 }}>Vouches received</div>
+          </div>
+
+          {/* Government vouches */}
+          <div style={{ border: '1px solid #424655', borderRadius: 12, padding: 20, background: '#181c22' }}>
+            <span className="material-symbols-outlined" style={{ fontSize: 22, color: '#ffb599', display: 'block' }}>account_balance</span>
+            <div style={{ fontSize: 32, fontWeight: 700, marginTop: 12, lineHeight: 1 }}>+20</div>
+            <div style={{ fontSize: 14, color: '#c2c6d8', marginTop: 8 }}>Government vouches</div>
           </div>
         </div>
 
         {/* Bottom row: evidence + activity */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 18 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
 
-          <div style={{ border: '1px solid rgba(66,70,85,0.5)', borderRadius: 14, padding: 22, background: '#181c22' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 18 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Your evidence</h2>
-              <span className="meta">
-                {evidenceRows.length} ITEMS · {evidenceRows.filter(e => e.badge === 'PENDING').length} PENDING
-              </span>
+          {/* Evidence */}
+          <div style={{ border: '1px solid #424655', borderRadius: 12, padding: 22, background: '#181c22' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
+              <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>Your evidence</h2>
+              <Link href="/add-evidence" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(176,198,255,0.1)', border: '1px solid rgba(176,198,255,0.35)', borderRadius: 8, color: '#b0c6ff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
+                <Icon name="add" size={16} /> Add claim
+              </Link>
             </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
               {evidenceRows.map((e, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 14, border: '1px solid rgba(66,70,85,0.5)', borderRadius: 10, background: '#10141a' }}>
-                  <div style={{ width: 42, height: 42, borderRadius: 10, background: `${e.color}18`, border: `1px solid ${e.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 20, color: e.color }}>{e.icon}</span>
+                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 16, border: '1px solid #424655', borderRadius: 10, background: '#10141a' }}>
+                  <div style={{ width: 44, height: 44, borderRadius: 10, background: `${e.color}18`, border: `1px solid ${e.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 22, color: e.color }}>{e.icon}</span>
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{e.title}</div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
                     <div style={{ fontSize: 12, color: '#8c90a1', marginTop: 2 }}>{e.sub}</div>
                   </div>
-                  <span style={{ padding: '3px 10px', borderRadius: 999, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: e.color, background: `${e.color}1a`, border: `1px solid ${e.color}55` }}>
+                  <span style={{ padding: '3px 8px', borderRadius: 9999, fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: e.color, background: `${e.color}18`, border: `1px solid ${e.color}55`, flexShrink: 0 }}>
                     {e.badge}
                   </span>
                 </div>
               ))}
-              <Link
-                href="/add-evidence"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px', border: '1.5px dashed #424655', borderRadius: 10, color: '#8c90a1', fontSize: 13, textDecoration: 'none' }}
-              >
-                <Icon name="add" size={16} /> Add another claim
+
+              <Link href="/add-evidence" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 16, border: '1.5px dashed #424655', borderRadius: 10, color: '#8c90a1', textDecoration: 'none', cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(176,198,255,0.4)')} onMouseLeave={e => (e.currentTarget.style.borderColor = '#424655')}>
+                <div style={{ width: 44, height: 44, borderRadius: 10, background: '#0a0e14', border: '1px solid #424655', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                  <Icon name="add" size={22} />
+                </div>
+                <div>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>Add another claim</div>
+                  <div style={{ fontSize: 12, color: '#8c90a1', marginTop: 2 }}>Work ID, residency, degree</div>
+                </div>
               </Link>
             </div>
           </div>
 
-          <div style={{ border: '1px solid rgba(66,70,85,0.5)', borderRadius: 14, padding: 22, background: '#181c22' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 18 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Activity</h2>
-              <span className="meta">LAST 7 DAYS</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
+          {/* Activity */}
+          <div style={{ border: '1px solid #424655', borderRadius: 12, padding: 22, background: '#181c22' }}>
+            <h2 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 16px' }}>Recent activity</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
               {ACTIVITY.map((a, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex', gap: 14,
-                    paddingTop: i === 0 ? 0 : 14,
-                    paddingBottom: 14,
-                    borderBottom: i < ACTIVITY.length - 1 ? '1px solid rgba(66,70,85,0.35)' : 'none',
-                  }}
-                >
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: `${a.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 14, color: a.color }}>{a.icon}</span>
+                <div key={i} style={{ display: 'flex', gap: 12 }}>
+                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: `${a.color}18`, border: `1px solid ${a.color}40`, color: a.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                    <Icon name={a.icon} size={14} />
                   </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{a.title}</div>
-                    <div style={{ fontSize: 12, color: '#8c90a1', marginTop: 2 }}>{a.sub}</div>
+                  <div>
+                    <div style={{ fontWeight: 600, fontSize: 14 }}>{a.title}</div>
+                    <div style={{ fontSize: 12, color: '#c2c6d8', marginTop: 2 }}>{a.sub}</div>
+                    <div style={{ fontSize: 11, color: '#8c90a1', marginTop: 4 }}>{a.time}</div>
                   </div>
-                  <span className="meta">{a.time}</span>
                 </div>
               ))}
             </div>
