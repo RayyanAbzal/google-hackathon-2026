@@ -20,17 +20,41 @@ This project runs in hackathon mode. Speed > perfection.
 - `any` still banned — use typed alternatives
 - `unknown` may be loosened to typed if it is blocking progress
 
-## Layer ownership
+## App: CivicTrust (name TBD)
 
-Roles TBD — assign after briefing. Until then, coordinate before touching shared files.
+BLACKOUT theme — trust score from physical docs + peer vouching + London heatmap.
+See `docs/PLAN.md` for the full plan.
+
+## Layer ownership
 
 | Area | Owner | Path |
 |------|-------|------|
-| TBD | Ray | TBD |
-| TBD | Aryan | TBD |
-| TBD | Hemish | TBD |
-| TBD | Maalav | TBD |
-| Types | All | `src/types/` |
+| Full-stack lead, Gemini, DB, heatmap | Ray | All of `src/` |
+| Backend API (auth, claims, vouch, score) | Aryan | `src/app/api/` |
+| Backend API (rate limit, realtime, find, help) | Tao | `src/app/api/` |
+| UI Components | Hemish | `src/components/` |
+| Pages + Routing | Maalav | `src/app/` (non-API) |
+| Shared types | All (read only) | `src/types/` |
+| Lib / Supabase / Gemini | Ray | `src/lib/` |
+
+**Each area has its own CLAUDE.md with specific instructions.**
+
+## Key decisions
+
+- Auth: node ID + 4-digit PIN. No email. No facial recognition.
+- Mandatory doc at signup: passport OR driving licence
+- Score: 0–49 Unverified, 50–89 Verified, 90–94 Trusted, 95+ Gov Official
+- Score formula: `min(100, claims_verified * 15 + vouches_received * 10)`
+- 3 claim types: Identity, Credential, Work
+- Yellow Pages (/find): public search by skill OR resource
+- Post for help (/help): registered users post requests, Verified users respond
+- All demo data is fake and pre-seeded — Ray runs seed script before demo
+
+## Database — Ray owns this
+
+Ray creates and manages all Supabase tables, migrations, and RLS policies.
+Do not write SQL or touch the Supabase dashboard without checking with Ray first.
+Use `src/lib/supabase.ts` for all DB access.
 
 ## Frontend design with Claude Code
 
