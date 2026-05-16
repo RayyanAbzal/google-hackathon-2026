@@ -1,194 +1,347 @@
 # CivicTrust — Roadmap & Progress
 
-> BLACKOUT · GDGC UOA 2026 · Last updated: 2026-05-16
+> BLACKOUT · GDGC UOA 2026 · Updated: 2026-05-16
 
 ---
 
 ## What we're building
 
-After a solar flare wipes all digital records, people need a way to prove who they are using physical documents and peer trust. CivicTrust lets you:
+After a solar flare wipes all digital records, people prove identity using physical documents and peer trust. CivicTrust assigns a trust score via Gemini document analysis + peer vouching, displayed on a live London heatmap.
 
-1. Register with a passport or driving licence
-2. Submit documents to build a trust score
-3. Vouch for people you know
-4. Appear on a London map so others can find verified doctors, engineers, and tradespeople
-
----
-
-## Demo path (the 4-minute story)
-
+**Demo story (4 min):**
 ```
 Sarah registers → uploads passport → gets BLK-XXXXX-LDN node ID
-→ uploads medical degree → score rises
-→ Dr. Osei (pre-seeded) scans her QR and vouches
+→ uploads medical degree → score rises to 30 (Partial)
+→ Dr. Osei (pre-seeded) QR-vouches Sarah → score 40
 → second vouch → score hits 50 → Verified tier
 → Doctor pin appears on London map in Southwark
 → Yellow Pages: search "Doctor" → "Southwark: 3 verified doctors"
 ```
 
----
-
-## Score tiers
+**Score formula:** `min(100, claims_verified × 15 + vouches × 10 + gov_vouched × 20)`
 
 | Score | Tier | Colour |
 |-------|------|--------|
-| 0–29 | Unverified | Red |
-| 30–49 | Partial | Orange |
-| 50–89 | Verified | Green |
-| 90–94 | Trusted | Amber |
-| 95–100 | Gov Official | Gold |
-
-Formula: `min(100, claims_verified × 15 + vouches_received × 10 + gov_vouched × 20)`
+| 0-29 | Unverified | Red |
+| 30-49 | Partial | Orange |
+| 50-89 | Verified | Green |
+| 90-94 | Trusted | Amber |
+| 95-100 | Gov Official | Gold |
 
 ---
 
-## Overall status
+## Team snapshot
 
-| Area | Owner | Status |
-|------|-------|--------|
-| DB schema + migrations | Ray | DONE |
-| Auth API (register/login/username) | Aryan | DONE |
-| Claims API | Aryan | DONE |
-| Vouch API | Aryan | DONE |
-| Users API | Aryan | DONE |
-| Score API | Aryan | DONE |
-| Find API (Yellow Pages) | Tao | NOT STARTED |
-| Rate limiting middleware | Tao | NOT STARTED |
-| Realtime subscription helper | Tao | NOT STARTED |
-| HeatMap component | Ray | DONE |
-| SkillPin component | Ray | DONE |
-| TrustRing component | Hemish | STUB (9 lines) |
-| ScoreBadge component | Hemish | STUB (10 lines) |
-| ProfileCard component | Hemish | STUB (11 lines) |
-| ClaimCard component | Hemish | STUB (10 lines) |
-| ClaimForm component | Hemish | STUB (17 lines) |
-| VouchQR component | Hemish | STUB (16 lines) |
-| Register page | Maalav | DONE (132 lines) |
-| Login page | Maalav | DONE (97 lines) |
-| Dashboard page | Maalav | DONE (364 lines) |
-| Map page | Maalav | DONE (181 lines) |
-| Find page | Maalav | DONE (137 lines) |
-| Vouch page | Maalav | DONE (349 lines) |
-| Add Evidence page | Maalav | DONE (415 lines) |
-| Settings page | Maalav | DONE (265 lines) |
-| Landing page | Maalav | DONE (116 lines) |
-| Seed script (200 Londoners) | Ray | IN PROGRESS |
-| Gov seed script | Ray/Tao | IN PROGRESS |
-| Supabase realtime enabled | Aryan | NEEDS CONFIRM |
-| RLS policies set | Aryan | NEEDS CONFIRM |
+| Person | Role | Progress | Status |
+|--------|------|----------|--------|
+| Ray | Full-stack lead, DB, AI, map | 6 done / 2 remaining | 🟡 Nearly done |
+| Aryan | Backend API + Supabase setup | 9 done / 2 confirmations needed | 🟡 Nearly done |
+| Tao | Find API + rate limiting | 1 done / 3 remaining | 🔴 Needs work |
+| Hemish | UI shell + wiring | 4 done / 2 remaining | 🟡 Nearly done |
+| Maalav | Pages + routing | 9 done / 3 wiring tasks | 🟡 Nearly done |
 
 ---
 
-## Detailed breakdown
+## Project roadmap
 
-### Backend API routes
+### Phase 1 — Foundation
+- [x] DB schema — all 4 tables (`supabase/migrations/0001_init.sql`)
+- [x] Shared types (`src/types/index.ts`)
+- [x] Supabase client (`src/lib/supabase.ts`)
+- [x] Auth helpers — bcrypt hashing, JWT signing, token verification (`src/lib/auth.ts`)
+- [x] Score calculation logic (`src/lib/score.ts`)
+- [x] Gemini document analysis (`src/lib/gemini.ts`)
+- [x] Realtime score subscription helper (`src/lib/realtime.ts`)
+- [x] Fallback mock data (`src/lib/fallbacks.ts`)
 
-| Route | Status | Notes |
-|-------|--------|-------|
-| `POST /api/auth/register` | DONE | Password hashed, node_id generated, doc analysed via Gemini |
-| `POST /api/auth/login` | DONE | node_id or @username + password |
-| `PATCH /api/auth/username` | DONE | Set @handle after first login |
-| `POST /api/claims` | DONE | Gemini analysis, name match, dedup hash, score recalc |
-| `GET /api/claims/[userId]` | DONE | Returns all claims with vouch counts |
-| `POST /api/vouch` | DONE | Score >= 50 required, rate-limited, score recalc |
-| `POST /api/vouch/flag` | DONE | Penalises vouchers -15pts each |
-| `GET /api/users/[username]` | DONE | Public profile, requires auth + score >= 50 |
-| `GET /api/score/[userId]` | DONE | Current score + tier |
-| `GET /api/find` | NOT STARTED | Returns grouped skill/borough counts |
+### Phase 2 — Backend API
+- [x] `POST /api/auth/register` — doc upload, Gemini analysis, node ID generation
+- [x] `POST /api/auth/login` — node_id or @username + password, returns JWT
+- [x] `PATCH /api/auth/username` — set @handle after first login
+- [x] `POST /api/claims` — doc analysis, name-match check, dedup hash, score recalc
+- [x] `GET /api/claims/[userId]` — all claims with vouch counts, auth required
+- [x] `POST /api/vouch` — score gate (>=50), duplicate check, score recalc
+- [x] `POST /api/vouch/flag` — flags claim, penalises all vouchers -15pts
+- [x] `GET /api/users/[username]` — public profile, 403 if viewer score < 50
+- [x] `GET /api/score/[userId]` — current score + tier
+- [ ] `GET /api/find` — Yellow Pages grouped counts — **TAO** 🔴
+- [ ] Rate limiting middleware (`src/middleware.ts`) — **TAO** 🔴
 
-### Frontend components
+### Phase 3 — UI Shell
+- [x] TopBar — fixed nav, notifications popup, avatar menu + sign out
+- [x] Sidebar — fixed left nav, identity card, tier progress bar, active state
+- [x] TierBadge — all 5 tiers with correct colours
+- [x] Icon — Material Symbols Outlined wrapper
+- [ ] Wire dashboard evidence cards → `GET /api/claims/[userId]` — **HEMISH** 🟡
+- [ ] Wire vouch confirm button → `POST /api/vouch` — **HEMISH** 🟡
 
-The Tactical Resilience design system is shipped. Civic shell components are complete. The old planned components (TrustRing, ProfileCard etc.) are superseded by inline implementations in the pages — do not rebuild them.
+### Phase 4 — Pages
+- [x] Landing (`/`) — hero, CTAs, lore
+- [x] Register (`/register`) — 2-step: display name + password, then doc upload
+- [x] Login (`/login`) — node_id or @username + password, session to localStorage
+- [x] Dashboard (`/dashboard`) — profile, claims, score ring (inline SVG)
+- [x] Map (`/map`) — HeatMap + SkillPins
+- [x] Find (`/find`) — UI complete, waiting on API
+- [x] Vouch (`/vouch`) — QR inline SVG, waiting on wiring
+- [x] Add Evidence (`/add-evidence`) — wizard flow UI complete
+- [x] Settings (`/settings`) — username update, password change
+- [x] Profile redirect (`/profile/[username]`) — redirects to `/dashboard`
+- [ ] Auth guards on protected pages — **MAALAV** 🔴 (anyone can hit /dashboard now)
+- [ ] Wire real session data into pages — **MAALAV** 🔴 (hardcoded "Sarah Mitchell" everywhere)
+- [ ] Wire add-evidence submit → `POST /api/claims` — **MAALAV** 🟡
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| TopBar | DONE | Fixed nav, notifications popup, avatar menu + sign out |
-| Sidebar | DONE | Fixed left nav, identity card, tier progress bar, active state |
-| TierBadge | DONE | Replaces ScoreBadge — all 5 tiers |
-| Icon | DONE | Material Symbols Outlined wrapper |
-| TrustRing | SUPERSEDED | Score ring is inline SVG in dashboard/page.tsx |
-| ScoreBadge | SUPERSEDED | Replaced by TierBadge in src/components/civic/ |
-| ProfileCard | SUPERSEDED | Dashboard IS the profile now |
-| VouchQR | SUPERSEDED | QR is inline SVG in vouch/page.tsx |
-| ClaimCard | STUB — low priority | Dashboard evidence cards are inline; only needed if wiring real data |
-| ClaimForm | STUB — low priority | Add-evidence page has its own wizard flow |
-
-### Pages
-
-| Page | Route | Status | Notes |
-|------|-------|--------|-------|
-| Landing | `/` | DONE | Hero + CTAs |
-| Register | `/register` | DONE | 2-step: details + doc upload |
-| Login | `/login` | DONE | node_id or @username + password |
-| Dashboard | `/dashboard` | DONE | Profile + claims — uses stub components |
-| Map | `/map` | DONE | HeatMap + SkillPin embedded |
-| Find | `/find` | DONE (UI only) | UI done, API not started |
-| Vouch | `/vouch` | DONE (UI only) | UI done, VouchQR is a stub |
-| Add Evidence | `/add-evidence` | DONE (UI only) | UI done, ClaimForm is a stub |
-| Settings | `/settings` | DONE | Username update, password change |
-| Profile redirect | `/profile/[username]` | DONE | Redirects to `/dashboard` |
-
-### Infrastructure
-
-| Item | Status |
-|------|--------|
-| DB schema (`supabase/migrations/0001_init.sql`) | DONE |
-| Seed script (`scripts/seed.ts`) | IN PROGRESS |
-| Gov seed (`scripts/seedGov.ts`) | IN PROGRESS |
-| Fallback toggle (`USE_FALLBACKS=true`) | DONE |
-| Supabase realtime on `users` table | NEEDS CONFIRM |
-| RLS policies | NEEDS CONFIRM |
-| London GeoJSON for HeatMap | DONE (embedded in component) |
+### Phase 5 — Demo prep
+- [ ] Supabase realtime enabled on `users` table — **ARYAN** 🟡
+- [ ] RLS policies confirmed — **ARYAN** 🟡
+- [ ] Run seed: `npx tsx scripts/seedGov.ts && npx tsx scripts/seed.ts` — **RAY** 🟡
+- [ ] Full demo path rehearsed end-to-end
+- [ ] Bad actor path tested (wrong-name doc → rejected)
+- [ ] `USE_FALLBACKS=true` tested (app works if Gemini down)
 
 ---
 
-## Critical path to demo
-
-In order — each step unblocks the next.
+## Critical path
 
 ```
-1. Maalav: add auth guards to protected pages   ← BLOCKING — anyone can hit /dashboard now
-2. Maalav: wire session data into pages         ← BLOCKING — hardcoded "Sarah Mitchell" everywhere
-3. Maalav: wire add-evidence submit → POST /api/claims
-4. Hemish: wire dashboard evidence → GET /api/claims/[userId]
-5. Hemish: wire vouch confirm → POST /api/vouch
-6. Tao: implement /api/find                     ← BLOCKING Yellow Pages real results
-7. Tao: implement realtime helper               ← BLOCKING live score updates
-8. Aryan: confirm RLS + realtime on             ← BLOCKING live data
-9. Ray: run seed scripts                        ← BLOCKING map population
-10. All: full demo path rehearsal
+BLOCKING RIGHT NOW:
+  Maalav: auth guards + real session data   ← unauthed users can see everything
+  Tao: /api/find                            ← Yellow Pages shows no results
+
+NEEDED FOR FULL DEMO:
+  Hemish: wire claims + vouch calls         ← dashboard shows placeholder data
+  Maalav: wire add-evidence submit          ← form does nothing on submit
+  Aryan: confirm RLS + realtime             ← live score updates won't fire
+  Ray: run seed scripts                     ← map is empty
+
+LAST:
+  Full demo rehearsal x2
 ```
 
 ---
 
-## Demo checklist
+---
 
-- [ ] Seed run — 200 users + Gov Officials + Dr. Osei visible on map
+## RAY — Full-stack lead
+
+> DB schema, AI integration, map components, seed data
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | DB schema — all 4 tables | ✅ Done |
+| 2 | `src/lib/gemini.ts` — `analyseDocument()` + `generateText()` | ✅ Done |
+| 3 | `src/lib/realtime.ts` — `subscribeToUserScore()` | ✅ Done |
+| 4 | `src/lib/score.ts` — `recalculateUserScore()` | ✅ Done |
+| 5 | `src/components/map/HeatMap.tsx` — D3 choropleth by borough | ✅ Done |
+| 6 | `src/components/map/SkillPin.tsx` — coloured circle per skill | ✅ Done |
+| 7 | Run seed scripts against live Supabase | ⏳ Pending |
+| 8 | Confirm live counter on map page subscribes to realtime | ⏳ Pending |
+
+### Remaining tasks
+
+**Task 7 — Run seeds**
+```bash
+npx tsx scripts/seedGov.ts   # run first — seed.ts depends on gov accounts
+npx tsx scripts/seed.ts
+# or wipe and re-seed:
+npx tsx scripts/seed.ts --wipe
+```
+Creates: 3 Gov Officials + NHS/Met/Council anchors + Dr. Osei (BLK-00471-LDN, score 74, Southwark) + 200 fake Londoners
+
+**Task 8 — Live counter**
+Map page should show "X / 9,000,000 verified" — confirm it's hooked up to realtime subscription.
+
+### Demo day responsibilities
+- Run seed script the morning of demo
+- Flip `USE_FALLBACKS=true` if Gemini fails mid-demo
+- Merge `dev → main` before presenting
+
+---
+
+## ARYAN — Backend API + Supabase
+
+> All core API routes done. Two Supabase confirmations needed.
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | `POST /api/auth/register` | ✅ Done |
+| 2 | `POST /api/auth/login` | ✅ Done |
+| 3 | `PATCH /api/auth/username` | ✅ Done |
+| 4 | `POST /api/claims` | ✅ Done |
+| 5 | `GET /api/claims/[userId]` | ✅ Done |
+| 6 | `POST /api/vouch` | ✅ Done |
+| 7 | `POST /api/vouch/flag` | ✅ Done |
+| 8 | `GET /api/users/[username]` | ✅ Done |
+| 9 | `GET /api/score/[userId]` | ✅ Done |
+| 10 | Supabase realtime enabled on `users` table | ⏳ Confirm |
+| 11 | RLS policies active | ⏳ Confirm |
+
+### Remaining tasks
+
+**Task 10 — Enable realtime**
+Supabase dashboard → Settings → Database → Replication → enable `users` table.
+Required for live score ring animation on dashboard.
+
+**Task 11 — Confirm RLS**
+Policies needed:
+- `users`: `SELECT` for all authenticated users
+- `users`: `UPDATE` where `auth.uid() = id` (own row only)
+- Insert/delete only via service role key (API routes already use this)
+
+---
+
+## TAO — Find API + rate limiting
+
+> Three tasks not started. Two directly block demo features.
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | `scripts/seedGov.ts` written | ✅ Done |
+| 2 | `GET /api/find` | 🔴 Not started |
+| 3 | Rate limiting middleware (`src/middleware.ts`) | 🔴 Not started |
+| 4 | Confirm seedGov runs clean against live Supabase | ⏳ Pending |
+
+### Task 2 — `GET /api/find` (blocks Yellow Pages page)
+
+```typescript
+// Query params: skill?, resource?, borough?
+// Returns: { success: true, data: [{ borough, skill, count, avg_score }] }
+// No auth required
+// Example: GET /api/find?skill=Doctor&borough=Southwark
+// → [{ borough: 'Southwark', skill: 'Doctor', count: 3, avg_score: 67 }]
+```
+
+### Task 3 — Rate limiting middleware (blocks vouch spam)
+
+File exists at `src/middleware.ts` — body is a single `return NextResponse.next()` stub.
+
+Rules to enforce:
+- Max 5 vouches per user per 24h — check `vouches` table
+- Max 3 claim submissions per user per 10min — check `claims` table
+- Return `429` + `{ success: false, error: 'Rate limit exceeded' }` if breached
+
+### Task 4 — Run seedGov
+
+Coordinate with Ray. seedGov must run before seed.ts (vouch chains depend on gov accounts existing).
+
+---
+
+## HEMISH — UI components + wiring
+
+> Shell components done. Two API wiring tasks remain.
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | TopBar — nav, notifications, avatar menu | ✅ Done |
+| 2 | Sidebar — identity card, tier progress bar | ✅ Done |
+| 3 | TierBadge — all 5 tiers | ✅ Done |
+| 4 | Icon wrapper (Material Symbols) | ✅ Done |
+| 5 | Wire dashboard evidence cards → `GET /api/claims/[userId]` | 🟡 Remaining |
+| 6 | Wire vouch confirm → `POST /api/vouch` | 🟡 Remaining |
+
+### Component status note
+
+The original planned components (TrustRing as separate file, ProfileCard, ScoreBadge, VouchQR) are superseded — they are implemented inline in the pages directly. Do not rebuild them as separate components.
+
+ClaimCard and ClaimForm stubs exist but are low priority — dashboard evidence cards and add-evidence wizard are both handled inline in page files.
+
+### Task 5 — Wire dashboard evidence cards
+
+In `src/app/dashboard/page.tsx`: fetch `GET /api/claims/[userId]` using the session user_id. Replace the hardcoded placeholder evidence with real claim data.
+
+### Task 6 — Wire vouch confirm
+
+In `src/app/vouch/page.tsx`: on QR scan success (or manual confirm), call `POST /api/vouch` with `{ voucher_id, vouchee_id }`. Handle success (show new score) and error (already vouched, score too low).
+
+---
+
+## MAALAV — Pages + routing
+
+> All 9 pages built. Three wiring tasks remain — two are blocking security issues.
+
+| # | Task | Status |
+|---|------|--------|
+| 1 | Landing (`/`) | ✅ Done |
+| 2 | Register (`/register`) | ✅ Done |
+| 3 | Login (`/login`) | ✅ Done |
+| 4 | Dashboard (`/dashboard`) | ✅ Done |
+| 5 | Map (`/map`) | ✅ Done |
+| 6 | Find (`/find`) | ✅ Done (UI) |
+| 7 | Vouch (`/vouch`) | ✅ Done (UI) |
+| 8 | Add Evidence (`/add-evidence`) | ✅ Done (UI) |
+| 9 | Settings (`/settings`) | ✅ Done |
+| 10 | Auth guards on protected pages | 🔴 Blocking |
+| 11 | Wire real session into pages | 🔴 Blocking |
+| 12 | Wire add-evidence submit → `POST /api/claims` | 🟡 Remaining |
+
+### Task 10 — Auth guards (security, blocking)
+
+Protected pages (`/dashboard`, `/map`, `/vouch`, `/add-evidence`, `/settings`) currently have no auth check — anyone can visit them without logging in.
+
+Add at the top of each protected page:
+```typescript
+const sessionStr = localStorage.getItem('civictrust_session')
+if (!sessionStr) redirect('/login')
+const session = JSON.parse(sessionStr) // { node_id, username, display_name, score, tier, skill }
+```
+
+### Task 11 — Real session data (blocking)
+
+Pages currently show hardcoded "Sarah Mitchell" / placeholder values. Wire the `session` object from localStorage into:
+- Dashboard: display real username, score, tier
+- Map: use real user_id for realtime subscription
+- Vouch: pass real node_id as the voucher
+- Settings: pre-fill real username/display_name
+
+### Task 12 — Wire add-evidence submit
+
+In `src/app/add-evidence/page.tsx`: the wizard form collects doc type + file. On submit:
+1. Convert file to base64
+2. Call `POST /api/claims` with `{ user_id, type, doc_image_base64, doc_type }`
+3. Show loading while Gemini processes
+4. On success: show new score + redirect to dashboard
+5. On error: show "name doesn't match" or other error message
+
+---
+
+## Demo checklist — Ray runs before presenting
+
+### Data setup
+- [ ] `npx tsx scripts/seedGov.ts` — gov accounts created
+- [ ] `npx tsx scripts/seed.ts` — 200 Londoners + Dr. Osei seeded
+- [ ] Verify Dr. Osei exists: node_id `BLK-00471-LDN`, score 74, borough Southwark
+
+### Demo path (run through twice)
 - [ ] Register as Sarah Mitchell + passport upload → node ID issued, tier: Unverified
-- [ ] First login → set @sarah_mitchell username
-- [ ] Submit medical degree → score 15, tier: Unverified
+- [ ] Login → set @sarah_mitchell username
+- [ ] Submit medical degree → Gemini reads "UCL Medicine" → score 15, tier: Unverified
 - [ ] Submit NHS employer letter → score 30, tier: Partial
-- [ ] Bad actor test: wrong-name doc → rejected
-- [ ] Dr. Osei QR-vouches Sarah → score 40
-- [ ] Second vouch → score 50 → tier: Verified → Doctor pin on map
+- [ ] Bad actor test: upload doc with wrong name → rejected ("name doesn't match")
+- [ ] Login as Dr. Osei (`BLK-00471-LDN` / `password123`) → QR-vouch Sarah → score 40
+- [ ] Second vouch → score 50 → tier: **Verified** → Doctor pin appears on Southwark
 - [ ] Map: 200+ pins visible, counter shows "1,847 / 9,000,000"
 - [ ] Yellow Pages: search "Doctor" → "Southwark: 3 verified doctors"
 - [ ] Yellow Pages: search "insulin" → returns relevant results
-- [ ] `USE_FALLBACKS=true` tested — app works if Gemini is down
-- [ ] Full demo rehearsed at least twice
+- [ ] Set `USE_FALLBACKS=true` → confirm app still runs
+
+### Passwords
+| Account | Password |
+|---------|----------|
+| All seeded users | `password123` |
+| Gov Officials | `govpassword99` |
+| Dr. Osei node_id | `BLK-00471-LDN` |
 
 ---
 
 ## Marking rubric
 
-| Category | Points | How we score |
-|----------|--------|-------------|
-| Technical | 35 | Working prototype: auth, claims, vouch, map all live |
-| Idea | 30 | Post-disaster identity rebuild — real problem, novel solution |
-| Design | 20 | Dark UI, TrustRing animation, heatmap — Hemish owns this |
-| Presentation | 15 | Sarah's story arc hits all 4 minutes |
+| Category | Points | How we hit it |
+|----------|--------|--------------|
+| **Technical** | **35** | Working auth, claims, vouch, map, realtime — all live with real data |
+| Idea | 30 | Post-disaster identity rebuild — real BLACKOUT problem |
+| Design | 20 | Dark UI, score animations, London heatmap |
+| Presentation | 15 | Sarah's story arc, 4-minute flow, bad actor demo |
 
-**Technical is the biggest category. Working beats beautiful every time.**
+**Technical is the biggest category. A working prototype beats a beautiful broken one.**
 
 ---
 
@@ -199,8 +352,6 @@ In order — each step unblocks the next.
 | Full implementation plan | `docs/PLAN.md` |
 | Per-person task list | `docs/TASKS.md` |
 | Architecture decisions | `docs/decisions.md` |
-| Architecture overview | `docs/architecture.md` |
-| Lore / narrative | `docs/lore.md` |
-| Fallback toggle | `.env.local` → `USE_FALLBACKS=true` |
 | Seed command | `npx tsx scripts/seed.ts` |
 | Gov seed command | `npx tsx scripts/seedGov.ts` |
+| Fallback toggle | `.env.local` → `USE_FALLBACKS=true` |

@@ -1,5 +1,6 @@
 -- CivicTrust — initial schema
 -- Run in Supabase SQL editor (or via Supabase CLI: supabase db push)
+-- NOTE: DB already provisioned. This file is the source of truth for schema review.
 
 -- users
 CREATE TABLE users (
@@ -7,11 +8,11 @@ CREATE TABLE users (
   node_id TEXT UNIQUE NOT NULL,
   username TEXT UNIQUE,
   display_name TEXT NOT NULL,
-  skill TEXT NOT NULL,
-  pin_hash TEXT NOT NULL,
+  skill TEXT DEFAULT 'Other',
+  password_hash TEXT NOT NULL,
   score INTEGER DEFAULT 0,
   tier TEXT DEFAULT 'unverified',
-  borough TEXT,
+  borough TEXT DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
@@ -19,8 +20,8 @@ CREATE TABLE users (
 CREATE TABLE claims (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  type TEXT NOT NULL,
-  status TEXT DEFAULT 'pending',
+  type TEXT NOT NULL CHECK (type IN ('identity', 'credential', 'work')),
+  status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'verified', 'rejected')),
   doc_type TEXT NOT NULL,
   extracted_name TEXT,
   extracted_institution TEXT,
@@ -40,21 +41,8 @@ CREATE TABLE vouches (
   UNIQUE(voucher_id, vouchee_id)
 );
 
--- help_posts
-CREATE TABLE help_posts (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  author_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  content TEXT NOT NULL,
-  skill_tag TEXT,
-  resource_tag TEXT,
-  borough TEXT NOT NULL,
-  urgency TEXT DEFAULT 'medium',
-  expires_at TIMESTAMPTZ DEFAULT NOW() + INTERVAL '24 hours',
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- gov_officials
-CREATE TABLE gov_officials (
+-- gov_anchors (L0 = Emergency Coalition, L1 = NHS/Police/Council)
+CREATE TABLE gov_anchors (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   level INTEGER NOT NULL,
@@ -66,28 +54,25 @@ CREATE TABLE gov_officials (
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE claims ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vouches ENABLE ROW LEVEL SECURITY;
-ALTER TABLE help_posts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE gov_officials ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gov_anchors ENABLE ROW LEVEL SECURITY;
 
--- Anyone can read all users (public directory)
-CREATE POLICY "users_read_all" ON users FOR SELECT USING (true);
--- Users can only update their own row
+-- users
+CREATE POLICY "users_public_read" ON users FOR SELECT USING (true);
 CREATE POLICY "users_update_own" ON users FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "users_insert" ON users FOR INSERT WITH CHECK (true);
 
--- Claims are readable by all authenticated users
+-- claims: all readable (profile page shows pending/rejected to owner)
+-- writes go via service role (bypasses RLS)
 CREATE POLICY "claims_read_all" ON claims FOR SELECT USING (true);
--- Users can insert their own claims
-CREATE POLICY "claims_insert_own" ON claims FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "claims_insert_own" ON claims FOR INSERT WITH CHECK (true);
 
--- Vouches are readable by all
-CREATE POLICY "vouches_read_all" ON vouches FOR SELECT USING (true);
--- Users can insert vouches they make
-CREATE POLICY "vouches_insert_own" ON vouches FOR INSERT WITH CHECK (auth.uid() = voucher_id);
+-- vouches
+CREATE POLICY "vouches_public_read" ON vouches FOR SELECT USING (true);
+CREATE POLICY "vouches_insert" ON vouches FOR INSERT WITH CHECK (true);
 
--- Help posts readable by authenticated users
-CREATE POLICY "help_posts_read_auth" ON help_posts FOR SELECT USING (true);
--- Users can insert their own help posts
-CREATE POLICY "help_posts_insert_own" ON help_posts FOR INSERT WITH CHECK (auth.uid() = author_id);
+-- gov_anchors
+CREATE POLICY "gov_anchors_public_read" ON gov_anchors FOR SELECT USING (true);
+CREATE POLICY "gov_anchors_insert" ON gov_anchors FOR INSERT WITH CHECK (true);
 
 -- ─── Realtime ─────────────────────────────────────────────────────────────────
 -- Enable realtime on users table in Supabase dashboard:

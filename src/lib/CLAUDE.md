@@ -26,7 +26,7 @@ const result = await analyseDocument(imageBase64, 'passport')
 - `users` — id, node_id, username, display_name, skill, score, tier, borough, pin_hash, created_at
 - `claims` — id, user_id, type, status, doc_type, extracted_name, confidence, vouches, flags
 - `vouches` — id, voucher_id, vouchee_id, created_at
-- `gov_officials` — id, user_id, level, organisation
+- `gov_anchors` — id, user_id, level, organisation
 
 ## Fallbacks
 Toggle `USE_FALLBACKS=true` in `.env.local` if Gemini or Supabase is down during demo.

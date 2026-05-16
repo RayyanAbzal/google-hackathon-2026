@@ -115,6 +115,8 @@ Flip this if any API fails during the demo.
 | "add endpoint" / "new API route" | `add-api-route` |
 | Architectural decision to record | `documentation-and-adrs` |
 | "what should I build next" | `project-insights` |
+| Before building any new feature | `superpowers:brainstorming` |
+| "gather requirements" / new feature spec | `superpowers:requirements` |
 
 **Plugin note:** `claude-plugins-official` injects 42 skills per session. Disable for read-only/research sessions: `~/.claude/settings.json` → remove from plugins list. Re-enable for implementation sessions.
 
