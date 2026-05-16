@@ -60,7 +60,7 @@ export async function POST(request: Request): Promise<Response> {
       display_name: display_name.trim(),
       password_hash,
       borough: borough.trim(),
-      ...(skill ? { skill } : {}),
+      skill: skill ?? 'Other',
     })
     .select("id, node_id")
     .single();
