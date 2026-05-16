@@ -97,47 +97,48 @@ function toDisplayListing(row: YPListingRow): DisplayListing {
 }
 
 interface YPListingProps {
-  refCode: string; icon: string; iconColor: string; title: string; sub: string
-  area: string; avail: string; availColor: string; tierLabel: string; tierColor: string
-  note: string; featured?: boolean; isActive?: boolean; onDetails: () => void
+  icon: string; iconColor: string; title: string; sub: string
+  availColor: string; tierLabel: string; tierColor: string
+  score: number; featured?: boolean; isActive?: boolean; onDetails: () => void
 }
 
-function YPListing({ refCode, icon, iconColor, title, sub, area, avail, availColor, tierLabel, tierColor, note, featured, isActive, onDetails }: YPListingProps) {
+function YPListing({ icon, iconColor, title, sub, availColor, tierLabel, tierColor, score, featured, isActive, onDetails }: YPListingProps) {
   return (
     <div
       onClick={onDetails}
       style={{
-        display: 'grid',
-        gridTemplateColumns: '80px 32px 1fr 110px 120px 44px',
+        display: 'flex',
         alignItems: 'center',
         gap: 10,
-        padding: '11px 14px',
+        padding: '10px 14px',
         borderTop: '1px solid rgba(66,70,85,0.4)',
         background: isActive ? `${iconColor}08` : (featured ? 'rgba(251,191,36,0.04)' : 'transparent'),
-        position: 'relative',
         cursor: 'pointer',
         transition: 'background 0.1s',
         borderLeft: isActive ? `2px solid ${iconColor}` : (featured ? '2px solid #fbbf24' : '2px solid transparent'),
       }}
     >
-      <div className="mono" style={{ fontSize: 9, color: '#8c90a1', letterSpacing: '0.04em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{refCode}</div>
-      <div style={{ width: 30, height: 30, borderRadius: 6, background: `${iconColor}18`, border: `1px solid ${iconColor}35`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      {/* Icon */}
+      <div style={{ width: 30, height: 30, borderRadius: 6, background: `${iconColor}18`, border: `1px solid ${iconColor}35`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
         <span className="material-symbols-outlined" style={{ fontSize: 15, color: iconColor }}>{icon}</span>
       </div>
-      <div>
-        <div style={{ fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6 }}>
+      {/* Title + sub */}
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <div style={{ fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {title}
-          {featured && <span className="mono" style={{ fontSize: 9, padding: '2px 5px', background: '#fbbf24', color: '#000', borderRadius: 3, letterSpacing: '0.08em', fontWeight: 700 }}>GOV</span>}
+          {featured && <span className="mono" style={{ fontSize: 9, padding: '2px 5px', background: '#fbbf24', color: '#000', borderRadius: 3, letterSpacing: '0.08em', fontWeight: 700, flexShrink: 0 }}>GOV</span>}
         </div>
-        <div style={{ fontSize: 11, color: '#8c90a1', marginTop: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{sub} · {note}</div>
+        <div style={{ fontSize: 11, color: '#8c90a1', marginTop: 1 }}>{sub}</div>
       </div>
-      <div className="mono" style={{ fontSize: 10, color: '#c2c6d8', letterSpacing: '0.03em', display: 'flex', alignItems: 'center', gap: 3 }}>
-        <span className="material-symbols-outlined" style={{ fontSize: 11, color: '#8c90a1' }}>location_on</span>{area}
+      {/* Score */}
+      <div style={{ textAlign: 'center', flexShrink: 0 }}>
+        <div style={{ fontSize: 17, fontWeight: 800, color: tierColor, letterSpacing: '-0.02em', lineHeight: 1 }}>{score}</div>
+        <div style={{ fontSize: 8, color: '#556074', letterSpacing: '0.06em', marginTop: 2 }}>SCORE</div>
       </div>
-      <div style={{ fontSize: 11, display: 'inline-flex', alignItems: 'center', gap: 5, color: availColor }}>
-        <span style={{ width: 5, height: 5, borderRadius: '50%', background: availColor, boxShadow: `0 0 5px ${availColor}`, display: 'inline-block', flexShrink: 0 }} />{avail}
-      </div>
-      <span className="mono" style={{ padding: '2px 6px', borderRadius: 3, fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: tierColor, background: `${tierColor}1a`, border: `1px solid ${tierColor}50`, textAlign: 'center' }}>{tierLabel}</span>
+      {/* Status dot */}
+      <span style={{ width: 7, height: 7, borderRadius: '50%', background: availColor, boxShadow: `0 0 6px ${availColor}`, display: 'inline-block', flexShrink: 0 }} />
+      {/* Tier badge */}
+      <span className="mono" style={{ padding: '2px 6px', borderRadius: 3, fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: tierColor, background: `${tierColor}1a`, border: `1px solid ${tierColor}50`, textAlign: 'center', flexShrink: 0 }}>{tierLabel}</span>
     </div>
   )
 }
@@ -239,6 +240,7 @@ export default function FindPage() {
       .filter(r => r.borough === activeBorough)
       .filter(r => !q || r.skill.toLowerCase().includes(q) || r.borough.toLowerCase().includes(q) || r.credentials.some(c => c.toLowerCase().includes(q)))
       .map(toDisplayListing)
+      .sort((a, b) => b.score - a.score)
   }, [allListings, activeBorough, search])
 
   const bySubCategory = useMemo(() =>
@@ -394,11 +396,11 @@ export default function FindPage() {
                   {rows.map(r => (
                     <YPListing
                       key={r.nodeId}
-                      refCode={r.refCode} icon={r.icon} iconColor={r.iconColor}
-                      title={r.title} sub={r.sub} area={r.area}
-                      avail={r.avail} availColor={r.availColor}
+                      icon={r.icon} iconColor={r.iconColor}
+                      title={r.title} sub={r.sub}
+                      availColor={r.availColor}
                       tierLabel={r.tierLabel} tierColor={r.tierColor}
-                      note={r.note} featured={r.featured}
+                      score={r.score} featured={r.featured}
                       isActive={r.nodeId === selectedListingId}
                       onDetails={() => {
                         setSelectedListingId(r.nodeId)
