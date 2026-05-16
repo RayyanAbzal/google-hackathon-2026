@@ -326,7 +326,7 @@ export default function AddEvidencePage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 20 }}>
 
           {/* Step content */}
-          <div style={{ gridColumn: step > 2 ? 'span 8' : 'span 12' }}>
+          <div style={{ gridColumn: step === 4 ? 'span 8' : 'span 12' }}>
 
             {step === 1 && (
               <div className="bento">
@@ -665,7 +665,7 @@ export default function AddEvidencePage() {
           </div>
 
           {/* Summary sidebar */}
-          {step > 2 && (
+          {step === 4 && (
             <div style={{ gridColumn: 'span 4' }}>
               <SummaryBar claimType={claimType} step={step} claimResult={claimResult} />
             </div>
