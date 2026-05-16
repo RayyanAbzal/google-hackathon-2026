@@ -1,5 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { hashPassword, generateNodeId, signToken } from "@/lib/auth";
+import { hashPassword, signToken } from "@/lib/auth";
+import { generateUniqueNodeId } from "@/lib/nodeId";
 import type { ApiResponse, MandatoryDocType, SkillTag } from "@/types";
 
 // POST /api/auth/register
@@ -11,8 +12,9 @@ interface RegisterBody {
   display_name: string;
   password: string;
   doc_type: MandatoryDocType;
-  borough: string;
+  borough?: string;
   skill?: SkillTag;
+  doc_image_base64?: string;
 }
 
 interface RegisterResult {
@@ -34,6 +36,20 @@ export async function POST(request: Request): Promise<Response> {
 
   const { display_name, password, doc_type, borough, skill } = body;
 
+  if (!skill?.trim()) {
+    return Response.json(
+      { success: false, error: "skill is required" } satisfies ApiResponse<never>,
+      { status: 400 }
+    );
+  }
+
+  if (!borough?.trim()) {
+    return Response.json(
+      { success: false, error: "borough is required" } satisfies ApiResponse<never>,
+      { status: 400 }
+    );
+  }
+
   if (!display_name?.trim()) {
     return Response.json({ success: false, error: "display_name is required" } satisfies ApiResponse<never>, { status: 400 });
   }
@@ -48,7 +64,22 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ success: false, error: `skill must be one of: ${VALID_SKILLS.join(', ')}` } satisfies ApiResponse<never>, { status: 400 });
   }
 
-  const node_id = generateNodeId();
+  let node_id: string;
+  try {
+    node_id = await generateUniqueNodeId(async (candidate) => {
+      const { data, error } = await supabaseAdmin
+        .from("users")
+        .select("id")
+        .eq("node_id", candidate)
+        .maybeSingle();
+
+      if (error) throw error;
+      return Boolean(data);
+    });
+  } catch {
+    return Response.json({ success: false, error: "Failed to allocate node_id" } satisfies ApiResponse<never>, { status: 500 });
+  }
+
   const password_hash = hashPassword(password);
 
   const { data, error } = await supabaseAdmin
@@ -56,9 +87,9 @@ export async function POST(request: Request): Promise<Response> {
     .insert({
       node_id,
       display_name: display_name.trim(),
+      skill: skill.trim(),
       password_hash,
-      borough: safeBorough,
-      skill: skill ?? 'Other',
+      borough: borough.trim(),
     })
     .select("id, node_id")
     .single();

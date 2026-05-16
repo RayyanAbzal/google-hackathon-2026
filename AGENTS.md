@@ -17,7 +17,7 @@ All AI tools (Claude Code, Copilot, etc.) follow these rules in this repo.
 - No cleanup of pre-existing dead code
 - No `any` — use typed alternatives
 - shadcn/ui components only — do not build UI primitives from scratch
-- Tailwind v4 utility classes — no inline styles
+- Tailwind v4 utility classes preferred. Inline styles allowed where Tailwind is insufficient.
 
 ## Layer ownership
 

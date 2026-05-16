@@ -54,13 +54,24 @@ export interface Vouch {
   created_at: string
 }
 
+export interface HelpPost {
+  id: string
+  user_id: string
+  content: string
+  skill_tag: SkillTag | null
+  resource_tag: string | null
+  borough: string
+  urgency: 'low' | 'medium' | 'high'
+  created_at: string
+}
+
 export interface GovOfficial {
   id: string
   user_id: string
   level: 0 | 1
   organisation: string
 }
-export type GovAnchor = GovOfficial  // DB table is gov_anchors
+export type GovAnchor = GovOfficial
 
 // ─── API response wrapper ──────────────────────────────────────────────────
 
@@ -122,7 +133,7 @@ export interface Session {
   node_id: string
   username: string | null
   display_name: string
-  skill: SkillTag
+  skill: SkillTag | null
   score: number
   tier: TrustTier
 }

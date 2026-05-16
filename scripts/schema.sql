@@ -12,7 +12,7 @@ CREATE TABLE users (
   pin_hash      TEXT NOT NULL,
   score         INTEGER DEFAULT 0,
   tier          TEXT DEFAULT 'unverified',
-  borough       TEXT,
+  borough       TEXT ,
   created_at    TIMESTAMPTZ DEFAULT NOW()
 );
 

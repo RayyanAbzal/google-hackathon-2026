@@ -1,15 +1,12 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import type { ApiResponse, TrustTier } from "@/types";
+import type { ApiResponse, TrustTier, SkillTag } from "@/types";
 
-// GET /api/users/node/[nodeId]
-// No auth required. Used by vouch page to resolve a scanned node ID.
-
-interface PublicUser {
+interface NodeUser {
   id: string;
   node_id: string;
   username: string | null;
   display_name: string;
-  skill: string | null;
+  skill: SkillTag | null;
   score: number;
   tier: TrustTier;
   borough: string | null;
@@ -22,7 +19,10 @@ export async function GET(
   const { nodeId } = await params;
 
   if (!nodeId) {
-    return Response.json({ success: false, error: "nodeId is required" } satisfies ApiResponse<never>, { status: 400 });
+    return Response.json(
+      { success: false, error: "nodeId is required" } satisfies ApiResponse<never>,
+      { status: 400 }
+    );
   }
 
   const { data: user, error } = await supabaseAdmin
@@ -32,11 +32,14 @@ export async function GET(
     .single();
 
   if (error || !user) {
-    return Response.json({ success: false, error: "User not found" } satisfies ApiResponse<never>, { status: 404 });
+    return Response.json(
+      { success: false, error: "User not found" } satisfies ApiResponse<never>,
+      { status: 404 }
+    );
   }
 
   return Response.json({
     success: true,
-    data: user as PublicUser,
-  } satisfies ApiResponse<PublicUser>);
+    data: user as NodeUser,
+  } satisfies ApiResponse<NodeUser>);
 }

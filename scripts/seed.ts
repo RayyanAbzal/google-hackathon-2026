@@ -10,7 +10,7 @@
 // All seed accounts password: password123 | Gov accounts password: govpassword99
 
 import { createClient } from '@supabase/supabase-js'
-import { createHash } from 'crypto'
+import { createHash, randomBytes, scryptSync } from 'crypto'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 import { getTier } from '../src/types/index'
@@ -32,11 +32,14 @@ function loadEnv(): Record<string, string> {
 const env = loadEnv()
 const supabase = createClient(
   env.NEXT_PUBLIC_SUPABASE_URL!,
-  env.SUPABASE_SERVICE_ROLE_KEY!
+  env.SUPABASE_SERVICE_ROLE_KEY!,
+  { realtime: { transport: class {} as unknown as typeof WebSocket } }
 )
 
 function hashPassword(password: string): string {
-  return createHash('sha256').update(password).digest('hex')
+  const salt = randomBytes(16).toString('hex')
+  const key = scryptSync(password, salt, 64).toString('hex')
+  return `scrypt$${salt}$${key}`
 }
 
 function nodeId(n: number): string {
@@ -78,7 +81,7 @@ const DOC_TYPES = ['passport', 'degree', 'employer_letter', 'nhs_card', 'driving
 function targetScore(i: number): number {
   const bucket = i % 10
   if (bucket < 3) return (i % 3) * 10        // 0, 10, 20 — unverified
-  if (bucket < 5) return 30 + (i % 20)        // 30-49 — partial
+  if (bucket < 5) return 30 + (i % 20)        // 30-49 — verified (old "partial" label, thresholds changed)
   if (bucket < 8) return 50 + (i % 35)        // 50-84 — verified
   return 90 + (i % 5)                          // 90-94 — trusted
 }
@@ -139,7 +142,7 @@ async function seedDrOsei(): Promise<void> {
       skill:         'Doctor',
       password_hash: DEMO_PASSWORD,
       score:         74,
-      tier:          'verified',
+      tier:          getTier(74),
       borough:       'Southwark',
     })
     .select('id')
@@ -168,7 +171,7 @@ async function seed(): Promise<void> {
 
   if (wipe) {
     console.log('  --wipe: clearing all data...')
-    await supabase.from('gov_anchors').delete().not('id', 'is', null)
+    await supabase.from('gov_officials').delete().not('id', 'is', null)
     await supabase.from('vouches').delete().not('id', 'is', null)
     await supabase.from('claims').delete().not('id', 'is', null)
     await supabase.from('users').delete().not('id', 'is', null)

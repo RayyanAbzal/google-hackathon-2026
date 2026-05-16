@@ -41,11 +41,10 @@ Goal: find a verified professional near them as quickly as possible.
 
 | Score | Status | Unlocks |
 |---|---|---|
-| 0–29 | Unverified | Can submit claims to verify. Cannot view individual profiles. Cannot vouch others. |
-| 30–49 | Partial | Can request vouches. Cannot view individual profiles. Getting there. |
-| 50–89 | Verified | Can view all profiles. Can vouch others. Appear on map + Yellow Pages. |
-| 90–94 | Trusted | Gov vouch eligible. 2x vouch weight. |
-| 95+ | Gov Official | Pre-seeded NHS/Police/Council. GOV badge on map. |
+| 0–24 | Unverified | Can submit claims. Cannot view individual profiles. Cannot vouch others. |
+| 25–59 | Verified | Can view all profiles. Can vouch others. Appear on map + Yellow Pages. |
+| 60–89 | Trusted | Gov vouch eligible. |
+| 90–100 | Gov Official | Pre-seeded NHS/Police/Council. GOV badge on map. |
 
 **How score is built:**
 
@@ -58,7 +57,8 @@ Goal: find a verified professional near them as quickly as possible.
 
 **Formula (build version):**
 ```
-score = min(100, claims_verified * 15 + vouches_received * 10)
+score = passport*20 + other_doc*15 (max 3 docs) + vouch*5 (max 10) + gov_vouch*20
+// vouch gate: 1 doc=5 vouches, 2 docs=3, 3 docs=2 — below min capped at 19
 // penalty: vouchers.forEach(v => v.score -= 15)
 ```
 
@@ -81,7 +81,7 @@ Warning: if the person you vouch is later found to be fraudulent, your score dro
 
 **Flow 4 — Yellow Pages (search public, profiles need Verified status)**
 Open /find (public page, no login) → Search skill ("Doctor"/"Engineer") OR resource ("insulin"/"water") → Filter by area (Southwark/Hackney/etc.) → See results (map + list, no names shown) → Found: "3 verified doctors nearby"
-Viewing individual profiles requires being logged in AND Verified (score 50+). If logged in but Unverified or Partial: redirect to profile page with prompt to submit a claim. Privacy: no names shown in public search. Only skill + area + count. Anonymous pins on map.
+Viewing individual profiles requires being logged in AND Verified (score 25+). If logged in but Unverified: redirect to profile page with prompt to submit a claim. Privacy: no names shown in public search. Only skill + area + count. Anonymous pins on map.
 
 **Flow 5 — Login**
 Enter node ID (BLK-XXXXX-LDN) → Enter password → Authenticated. Session stored on device.
@@ -110,7 +110,7 @@ Enter node ID (BLK-XXXXX-LDN) → Enter password → Authenticated. Session stor
 ## Government hierarchy — pre-seeded, no UI needed
 
 - **Level 0 — Seed:** 3 hardcoded accounts. Emergency Coalition. Score 100. Trust roots. Deployed T+6h. No UI — seed script only.
-- **Level 1 — Gov Officials:** NHS admin, Met Police, council lead. Pre-seeded. Score 100. GOV badge on map. Vouches carry 2x weight.
+- **Level 1 — Gov Officials:** NHS admin, Met Police, council lead. Pre-seeded. Score 100. GOV badge on map. Vouches grant +20pts (gov_vouched bonus).
 - **Level 2 — Trusted:** Score 90+. Vouched by L1 or 3+ L2 nodes. Trust path traces to L0 within 3 hops. Senior professionals.
 - **Level 3 — Verified:** Score 50+. General public. Vouched by any Verified user. Appear on map with skill pin.
 
@@ -204,9 +204,9 @@ Next.js 16, Tailwind v4, shadcn/ui, D3.js, Supabase, Gemini 2.0 Flash, qrcode.js
 1. **0:00** — Open with lore: "It's T+14h. Sarah is a surgeon. Her hospital locked her out."
 2. **0:30** — Sarah registers. Name + password + uploads passport. Gets BLK-00471-LDN. Score: 0.
 3. **1:00** — Submits medical degree. Gemini reads "UCL Medicine, Dr. Sarah Mitchell." Score: 15.
-4. **1:30** — Submits NHS employer letter. Score: 30. Now Partial.
-5. **2:00** — Dr. Osei (pre-seeded, 74) sees Sarah in area. QR vouch. Sarah → 40pts. Still Partial.
+4. **1:30** — Submits NHS employer letter. Score: 30. Now Verified.
+5. **2:00** — Dr. Osei (pre-seeded, 74) sees Sarah in area. QR vouch. Sarah → 40pts. Still Verified.
    *Show a rejection: bad actor submits mismatched passport → name doesn't match → rejected.*
-6. **2:30** — A second vouch from the community → Sarah hits 50 → **Verified** → Doctor pin appears on map.
+6. **2:30** — Doctor pin appears on map. Sarah is findable.
 7. **3:00** — Map view. 200 Londoners visible. Counter: 1,847 / 9,000,000.
 8. **3:45** — Close: "142 are doctors. The first hospital ward reopens tomorrow because the staff list rebuilt itself. Not from a server. From people."

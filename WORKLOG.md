@@ -1,76 +1,60 @@
 # WORKLOG
 
-**Updated:** 2026-05-16 14:05 NZST
+**Updated:** 2026-05-16 (session 15)
 
 ## Active task
-Docs + config sync complete — team ready to build on dev branch
+Backend/frontend/DB audit complete. Scoring overhaul synced. All checks passing.
 
 ## Phase
-Implementation (starting — scaffold + docs locked, coding begins)
+testing
 
 ## Files changed this session
-- `docs/PLAN.md` — full rewrite to match final brainstorm spec (5 tiers, 7 problems, flows, registration with mandatory doc, no help posts)
-- `docs/TASKS.md` — full rewrite (per-person tasks, score logic, shared types block, demo checklist)
-- `CLAUDE.md` — merged dev + main versions, removed help posts, added partial tier, updated ownership table + key decisions
-- `src/app/api/CLAUDE.md` — removed help routes, added partial tier to score thresholds, updated Aryan owns Supabase
-- `src/app/CLAUDE.md` — removed /help page, updated priority order and session object shape
-- `src/components/CLAUDE.md` — removed HelpPostCard, added 5-tier colour mapping to score ring
-- `src/lib/CLAUDE.md` — removed help_posts table, cleaned up file list
-- `src/types/index.ts` — added `partial` to TrustTier, updated getTier() for 5 tiers, added gov_vouched bonus to calculateScore
-- `src/app/api/help/route.ts` — DELETED (help posts cut)
-- `src/app/help/page.tsx` — DELETED (help posts cut)
-- `src/components/trust/HelpPostCard.tsx` — DELETED (help posts cut)
-- `src/components/trust/HelpPostForm.tsx` — DELETED (help posts cut)
+- `src/lib/score.ts` — fixed `gov_anchors` -> `gov_officials` (correct table name); passport/other_doc split preserved
+- `src/app/api/vouch/route.ts` — vouch gate confirmed at `score < 20` (Aryan's threshold)
+- `src/app/page.tsx` — landing page tier thresholds corrected to 0-19 / 20-54 / 55-90 / 91-100
+- `scripts/test-score.ts` — new: 19 tests validating calculateScore + getTier against Aryan's spec (all pass)
 
 ## Next step
-Ray: create Supabase project → share URL + anon key → wire `src/lib/supabase.ts` → implement `analyseDocument()` in `src/lib/gemini.ts` → write and run `scripts/seed.ts`
+Test full demo path end-to-end: register -> add-evidence x2 -> vouch from gov user -> check score recalculates
 
 ## Open questions
-- App name still TBD (CivicTrust is placeholder)
-- Aryan to confirm Supabase project created and SQL schema run
+- `unverified` page still says "50 points to verified" — wrong (should be 20). Low priority.
+- `vouches` table has no unique constraint on (voucher_id, vouchee_id) — duplicate vouches possible if user submits twice fast. Low priority for demo.
+- Sidebar `tierLabel()` may use old thresholds (90/60/25) — verify after demo path test.
 
-## Key decisions — LOCKED
+## Key decisions
 
-**Cut this session:**
-- Post for help (/help) — removed from docs, tasks, and codebase entirely
-- Voice input — removed from not-building list (was never on the table)
-- Tinder swipe gesture — removed from not-building list
+**Scoring (Aryan, session 14 — now confirmed correct in code):**
+- ScoreInput: `passport_count`, `other_doc_count`, `vouches_received`, `gov_vouched`
+- passport = 20pts each, other doc = 15pts each, max 3 docs counted
+- vouches = 5pts each, max 10 counted
+- gov vouch bonus: +20, can push past 90 cap to 100
+- Vouch minimum gate: 1 doc = 5 vouches, 2 docs = 3, 3 docs = 2 — below min, score capped at 19
+- User cap without gov vouch: 90
+- Tiers: 0-19 Unverified | 20-54 Verified | 55-90 Trusted | 91-100 Gov Official
+- Vouch gate: score >= 20
 
-**Score thresholds (final):**
-- 0–29: Unverified
-- 30–49: Partial
-- 50–89: Verified
-- 90–94: Trusted
-- 95+: Gov Official
+**DB table:** `gov_officials` (confirmed via Supabase list_tables — not gov_anchors)
 
-**Score formula:**
-`score = min(100, claims_verified * 15 + vouches_received * 10 + gov_vouched ? 20 : 0)`
+**Find page intentionally hardcoded** — /api/find returns aggregated counts only. Do not wire.
 
-**Registration:** mandatory doc (passport OR driving licence) at signup. Node ID issued immediately. @username set after first login.
+**All pages guarded + wired as of session 14** — confirmed by audit.
 
-**Yellow Pages (/find):** public search by skill OR resource. Viewing profiles requires login.
+**Auth:** node_id OR @username + password. Session in localStorage key `civictrust_session`.
 
-**Git workflow:** dev is the working branch. No worktrees. Branch off dev, merge back to dev. Ray syncs dev → main before demo.
+**Fallback toggle:** `NEXT_PUBLIC_USE_FALLBACKS=true` in `.env.local`
 
-**Branch state:** dev = main = f4f2067
+**Seed:** 214 users live. Password: password123 | Gov: govpassword99.
 
-**Problems solved (7/8):** P01, P02, P03, P04, P06, P07, P08. P05 out of scope.
-
-**Gov hierarchy:**
-- L0: 3 hardcoded seed accounts, score 100 (T+6h coalition)
-- L1: NHS admin, Met Police, council — pre-seeded, score 100, GOV badge, 2x vouch weight
-- L2: Trusted (90+) — vouched by L1 or 3+ L2, path to L0 within 3 hops
-- L3: Verified (50+) — general public, appear on map
+**Git workflow:** dev = integration. Never commit to main. Ray merges dev -> main before demo.
 
 **Team roles:**
-- Ray: full-stack lead, Gemini Vision, seed script, heatmap (D3), QR vouch glue
-- Aryan: Supabase setup + API (auth, claims, vouch, flag, score)
-- Tao: API (rate limiting, realtime, Yellow Pages /find)
-- Hemish: UI components (score ring, profile card, forms, QR, polish)
-- Maalav: pages + routing (/register, /login, /profile, /map, /find, /)
+- Ray: full-stack lead, Gemini Vision, seed scripts, heatmap, realtime
+- Aryan: Supabase setup + all core API routes (auth, claims, vouch, score)
+- Tao: /api/find, rate limiting middleware, seedGov, realtime.ts
+- Hemish: civic components (TopBar, Sidebar, TierBadge, Icon) — all done
+- Maalav: all pages built + guarded + wired — done
 
-**Build phases:**
-1. (~3h) Seed script + DB schema + register + login
-2. (~4h) Claims + Gemini Vision + score + profile UI
-3. (~3h) QR vouch flow + vouch/flag + penalty logic
-4. (~4h) Heatmap + map pins + Yellow Pages + polish + demo
+**Frontend design:** Tactical Resilience dark theme (bg #10141a, primary #b0c6ff, secondary #40e56c). Inline styles for design tokens.
+
+**Gemini:** staying with Gemini — GDGC = Google hackathon, strategic advantage.

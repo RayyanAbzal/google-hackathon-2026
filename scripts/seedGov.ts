@@ -1,16 +1,11 @@
-// Owner: Tao (coordinate with Ray's seed.ts)
-// Run: npx tsx scripts/seedGov.ts
-// Creates gov hierarchy anchor accounts:
-//   L0 — 3 accounts, score 100, organisation: 'Emergency Coalition'
-//   L1 — NHS admin (score 95), Met Police (score 95), London Council (score 95)
-//
-// IMPORTANT: Run this before seed.ts — vouch chains depend on L0/L1 existing.
+// Owner: Ray/Tao shared
+// Exported helper used by scripts/seed.ts
+// Do not run separately unless debugging gov anchors only.
 
 import { createClient } from '@supabase/supabase-js'
-import { createHash } from 'crypto'
+import { randomBytes, scryptSync } from 'crypto'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
-import { getTier } from '../src/types/index'
 
 function loadEnv(): Record<string, string> {
   const content = readFileSync(resolve(process.cwd(), '.env.local'), 'utf-8')
@@ -28,11 +23,14 @@ function loadEnv(): Record<string, string> {
 const env = loadEnv()
 const supabase = createClient(
   env.NEXT_PUBLIC_SUPABASE_URL!,
-  env.SUPABASE_SERVICE_ROLE_KEY!
+  env.SUPABASE_SERVICE_ROLE_KEY!,
+  { realtime: { transport: class {} as unknown as typeof WebSocket } }
 )
 
 function hashPassword(password: string): string {
-  return createHash('sha256').update(password).digest('hex')
+  const salt = randomBytes(16).toString('hex')
+  const key = scryptSync(password, salt, 64).toString('hex')
+  return `scrypt$${salt}$${key}`
 }
 
 function nodeId(n: number): string {
@@ -56,7 +54,7 @@ const L1_ACCOUNTS = [
 export async function seedGovAnchors(): Promise<void> {
   console.log('  Seeding gov anchors...')
 
-  await supabase.from('gov_anchors').delete().not('id', 'is', null)
+  await supabase.from('gov_officials').delete().not('id', 'is', null)
   await supabase.from('users').delete().in('node_id', [
     ...L0_ACCOUNTS.map(a => nodeId(a.node)),
     ...L1_ACCOUNTS.map(a => nodeId(a.node)),
@@ -80,7 +78,7 @@ export async function seedGovAnchors(): Promise<void> {
       .single()
 
     if (error || !user) { console.error(`  Failed L0 ${acc.name}:`, error?.message); continue }
-    await supabase.from('gov_anchors').insert({ user_id: user.id, level: 0, organisation: 'Emergency Coalition' })
+    await supabase.from('gov_officials').insert({ user_id: user.id, level: 0, organisation: 'Emergency Coalition' })
     console.log(`  ✓ L0 ${acc.name} (${nodeId(acc.node)})`)
   }
 
@@ -102,7 +100,7 @@ export async function seedGovAnchors(): Promise<void> {
       .single()
 
     if (error || !user) { console.error(`  Failed L1 ${acc.name}:`, error?.message); continue }
-    await supabase.from('gov_anchors').insert({ user_id: user.id, level: 1, organisation: acc.org })
+    await supabase.from('gov_officials').insert({ user_id: user.id, level: 1, organisation: acc.org })
     console.log(`  ✓ L1 ${acc.name} (${nodeId(acc.node)})`)
   }
 }
