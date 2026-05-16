@@ -8,18 +8,13 @@ CREATE TABLE users (
   node_id TEXT UNIQUE NOT NULL,
   username TEXT UNIQUE,
   display_name TEXT NOT NULL,
-  skill TEXT NOT NULL,
+  skill TEXT DEFAULT 'Other',
   password_hash TEXT NOT NULL,
   score INTEGER DEFAULT 0 CHECK (score >= 0 AND score <= 100),
   tier TEXT DEFAULT 'unverified' CHECK (
     tier IN ('unverified', 'partial', 'verified', 'trusted', 'gov_official')
   ),
-  borough TEXT NOT NULL,
-  skill TEXT DEFAULT 'Other',
-  password_hash TEXT NOT NULL,
-  score INTEGER DEFAULT 0,
-  tier TEXT DEFAULT 'unverified',
-  borough TEXT DEFAULT '',
+  borough TEXT NOT NULL DEFAULT '',
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
