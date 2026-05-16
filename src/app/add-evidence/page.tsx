@@ -1,13 +1,14 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
 import Icon from '@/components/civic/Icon'
 import DocumentCameraCapture from '@/components/claims/DocumentCameraCapture'
-import type { Claim, ClaimType as ApiClaimType, Session, TrustTier } from '@/types'
+import { calculateScore } from '@/types'
+import type { Claim, ClaimType as ApiClaimType, DocumentAnalysis, Session, TrustTier } from '@/types'
 import { protectedFetch, requireSession, updateStoredSession } from '@/app/_lib/session'
 
 type ClaimType = 'Identity' | 'Credential' | 'Employment' | 'Residency'
@@ -44,8 +45,34 @@ const CLAIM_TYPE_POINTS: Record<ClaimType, number> = {
 
 interface ClaimResult {
   claim: Claim
+  analysis: DocumentAnalysis
   new_score: number
   tier: TrustTier
+  rejection_reason?: 'name_mismatch' | 'low_confidence' | 'unreadable'
+}
+
+function formatDocType(value?: string | null): string {
+  if (!value) return '—'
+  return value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
+}
+
+function formatConfidence(value?: number | null): string {
+  if (typeof value !== 'number') return '—'
+  return `${Math.round(value * 100)}%`
+}
+
+function getConfidenceColor(value?: number | null): string {
+  if (typeof value !== 'number') return '#8c90a1'
+  if (value >= 0.75) return '#40e56c'
+  if (value >= 0.5) return '#f59e0b'
+  return '#ffb4ab'
+}
+
+function getRejectionMessage(reason?: ClaimResult['rejection_reason']): string {
+  if (reason === 'name_mismatch') return 'The name read from the document does not match your profile.'
+  if (reason === 'low_confidence') return 'Gemini could read some details, but confidence was too low.'
+  if (reason === 'unreadable') return 'Gemini could not return readable fields. Check the server log for the raw analysis error, or try a JPEG/PNG image.'
+  return 'The document could not be verified.'
 }
 
 function StepCircle({ n, status }: { n: number; status: 'done' | 'active' | 'pending' }) {
@@ -75,16 +102,31 @@ function StepCircle({ n, status }: { n: number; status: 'done' | 'active' | 'pen
   )
 }
 
-function SummaryBar({ claimType, step }: { claimType: ClaimType; step: number }) {
+function SummaryBar({
+  claimType,
+  step,
+  claimResult,
+}: {
+  claimType: ClaimType
+  step: number
+  claimResult: ClaimResult | null
+}) {
+  const documentValue =
+    claimResult?.analysis.doc_type
+      ? formatDocType(claimResult.analysis.doc_type)
+      : step >= 3
+      ? formatDocType(CLAIM_TYPE_TO_DOC[claimType])
+      : '—'
+
   return (
     <div className="bento" style={{ padding: 20, display: 'flex', flexDirection: 'column', gap: 14 }}>
       <h3 style={{ fontSize: 16, fontWeight: 700, margin: 0 }}>Summary</h3>
       <dl style={{ display: 'flex', flexDirection: 'column', gap: 10, margin: 0 }}>
         {[
           { label: 'Type', value: claimType },
-          { label: 'Document', value: step >= 3 ? 'UK Passport' : '—' },
-          { label: 'Points if verified', value: '+15', valueColor: '#40e56c' },
-          { label: 'Analysis', value: 'Instant' },
+          { label: 'Document', value: documentValue },
+          { label: 'Points if verified', value: `+${CLAIM_TYPE_POINTS[claimType]}`, valueColor: '#40e56c' },
+          { label: 'Review', value: claimResult ? 'Gemini complete' : '~2 hours' },
         ].map(({ label, value, valueColor }) => (
           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
             <dt style={{ color: '#8c90a1' }}>{label}</dt>
@@ -112,6 +154,12 @@ function SummaryBar({ claimType, step }: { claimType: ClaimType; step: number })
 export default function AddEvidencePage() {
   const router = useRouter()
   const [session, setSession] = useState<Session | null>(null)
+  const [scoreBreakdown, setScoreBreakdown] = useState<{
+    passport_count: number
+    other_doc_count: number
+    vouches_received: number
+    gov_vouched: boolean
+  } | null>(null)
   const [step, setStep] = useState(1)
   const [claimType, setClaimType] = useState<ClaimType>('Identity')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -119,26 +167,61 @@ export default function AddEvidencePage() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
+  const [claimResult, setClaimResult] = useState<ClaimResult | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
 
+  const previewUrl = useMemo(
+    () => selectedFile?.type.startsWith('image/') ? URL.createObjectURL(selectedFile) : null,
+    [selectedFile]
+  )
+
   useEffect(() => {
-    queueMicrotask(() => setSession(requireSession(router)))
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl)
+    }
+  }, [previewUrl])
+
+  useEffect(() => {
+    queueMicrotask(() => {
+      const current = requireSession(router)
+      setSession(current)
+      if (!current) return
+      protectedFetch<{ score: number; tier: TrustTier; passport_count: number; other_doc_count: number; vouches_received: number; gov_vouched: boolean }>(
+        `/api/score/${current.user_id}`, current
+      )
+        .then(json => { if (json.success) setScoreBreakdown(json.data) })
+        .catch(() => {})
+    })
   }, [router])
+
+  const predictedScore = useMemo(() => {
+    if (!scoreBreakdown) return null
+    const isPassport = CLAIM_TYPE_TO_DOC[claimType] === 'passport'
+    return calculateScore({
+      passport_count: scoreBreakdown.passport_count + (isPassport ? 1 : 0),
+      other_doc_count: scoreBreakdown.other_doc_count + (isPassport ? 0 : 1),
+      vouches_received: scoreBreakdown.vouches_received,
+      gov_vouched: scoreBreakdown.gov_vouched,
+    })
+  }, [scoreBreakdown, claimType])
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     setSelectedFile(e.target.files?.[0] ?? null)
+    setClaimResult(null)
     setError('')
     setStatusMessage(e.target.files?.[0] ? 'Document ready for review.' : '')
   }
 
   function handleCameraCapture(file: File) {
     setSelectedFile(file)
+    setClaimResult(null)
     setError('')
     setStatusMessage('Photo captured and ready for review.')
   }
 
   function removeSelectedFile() {
     setSelectedFile(null)
+    setClaimResult(null)
     setStatusMessage('')
     setError('')
     if (fileRef.current) fileRef.current.value = ''
@@ -170,7 +253,8 @@ export default function AddEvidencePage() {
 
     setSubmitting(true)
     setError('')
-    setStatusMessage('Submitting claim...')
+    setClaimResult(null)
+    setStatusMessage('Gemini is analysing your document...')
 
     try {
       const imageBase64 = await fileToBase64(selectedFile)
@@ -180,21 +264,31 @@ export default function AddEvidencePage() {
           type: CLAIM_TYPE_TO_API[claimType],
           doc_type: CLAIM_TYPE_TO_DOC[claimType],
           image_base64: imageBase64,
+          mime_type: selectedFile.type || 'image/jpeg',
         }),
       })
 
       if (!json.success) {
+        if (json.data) {
+          setClaimResult(json.data)
+          setError(json.error)
+          setStatusMessage('')
+          setStep(3)
+          return
+        }
         setError(json.error)
         setStatusMessage('')
         return
       }
 
+      setClaimResult(json.data)
       const updated = updateStoredSession({
         score: json.data.new_score,
         tier: json.data.tier,
       })
       if (updated) setSession(updated)
-      setStatusMessage(`Claim verified. Score is now ${json.data.new_score}.`)
+      setStatusMessage(`Gemini verified your document. Score is now ${json.data.new_score}.`)
+      setStep(3)
     } catch {
       setError('Could not submit the claim. Try again.')
       setStatusMessage('')
@@ -272,7 +366,12 @@ export default function AddEvidencePage() {
                     return (
                       <button
                         key={ct.id}
-                        onClick={() => setClaimType(ct.id)}
+                        onClick={() => {
+                          setClaimType(ct.id)
+                          setClaimResult(null)
+                          setStatusMessage('')
+                          setError('')
+                        }}
                         style={{
                           padding: 16,
                           borderRadius: 10,
@@ -382,110 +481,160 @@ export default function AddEvidencePage() {
             {step === 3 && (
               <div className="bento">
                 <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 20px' }}>
-                  Review what we read
+                  Gemini analysis
                 </h2>
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 20 }}>
-                  {/* Passport preview */}
-                  <div style={{ gridColumn: 'span 2' }}>
-                    <div
-                      style={{
-                        borderRadius: 12,
-                        overflow: 'hidden',
-                        background: '#0a0e14',
-                        border: '1px solid #424655',
-                        aspectRatio: '3/4',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexDirection: 'column',
-                        gap: 8,
-                        color: '#8c90a1',
-                      }}
-                    >
-                      <svg
-                        viewBox="0 0 60 80"
-                        width="120"
-                        height="160"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
-                      >
-                        <rect width="60" height="80" rx="4" fill="#1a2540" />
-                        <rect x="4" y="4" width="52" height="72" rx="2" fill="#1e2d50" stroke="#2a3a60" strokeWidth="0.5" />
-                        <circle cx="30" cy="28" r="12" fill="#162038" stroke="#2a3a60" strokeWidth="0.5" />
-                        <circle cx="30" cy="24" r="6" fill="#1a2a48" />
-                        <path d="M18 34 Q30 40 42 34" fill="#162038" />
-                        <rect x="8" y="46" width="44" height="2" rx="1" fill="#2a3a60" />
-                        <rect x="8" y="52" width="36" height="2" rx="1" fill="#2a3a60" />
-                        <rect x="8" y="58" width="28" height="2" rx="1" fill="#2a3a60" />
-                        <rect x="4" y="68" width="52" height="8" rx="0" fill="#111d35" />
-                        <text x="30" y="74" textAnchor="middle" fill="#3a5080" fontSize="4" fontFamily="monospace">
-                          P&lt;GBRMITCHELL&lt;&lt;SARAH&lt;
-                        </text>
-                        <text x="6" y="18" fill="#b0c6ff" fontSize="5" fontWeight="bold">UK</text>
-                        <text x="6" y="24" fill="#8899aa" fontSize="3">PASSPORT</text>
-                      </svg>
-                      <span style={{ fontSize: 11, color: '#424655' }}>Gemini Vision read</span>
-                    </div>
-                  </div>
-
-                  {/* Extracted fields */}
-                  <div
-                    style={{
-                      gridColumn: 'span 3',
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr',
-                      gap: 12,
-                      alignContent: 'start',
-                    }}
-                  >
-                    {[
-                      { label: 'Name on account', value: session?.display_name ?? '—' },
-                      { label: 'Claim type', value: claimType },
-                      { label: 'Document', value: CLAIM_TYPE_TO_DOC[claimType] },
-                      { label: 'Gemini analysis', value: 'Runs on submit' },
-                    ].map(({ label, value }) => (
+                {claimResult ? (
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 20 }}>
+                    <div style={{ gridColumn: 'span 2' }}>
                       <div
-                        key={label}
                         style={{
-                          padding: '10px 12px',
-                          borderRadius: 8,
+                          borderRadius: 12,
+                          overflow: 'hidden',
                           background: '#10141a',
                           border: '1px solid #424655',
+                          aspectRatio: '3/4',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexDirection: 'column',
+                          gap: 12,
+                          color: '#8c90a1',
+                          textAlign: 'center',
+                          padding: 20,
                         }}
                       >
-                        <div style={{ fontSize: 11, color: '#8c90a1', marginBottom: 4 }}>{label}</div>
-                        <div style={{ fontSize: 14, fontWeight: 600, color: '#dfe2eb' }}>{value}</div>
+                        {previewUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={previewUrl}
+                            alt="Uploaded document preview"
+                            style={{
+                              width: '100%',
+                              height: '100%',
+                              objectFit: 'contain',
+                              borderRadius: 8,
+                            }}
+                          />
+                        ) : (
+                          <>
+                            <Icon
+                              name={claimResult.claim.status === 'verified' ? 'verified' : 'report'}
+                              size={52}
+                              style={{
+                                color: claimResult.claim.status === 'verified' ? '#40e56c' : '#ffb4ab',
+                              }}
+                            />
+                            <div style={{ fontSize: 13, color: '#c2c6d8', overflowWrap: 'anywhere' }}>
+                              {selectedFile?.name ?? 'Uploaded document'}
+                            </div>
+                          </>
+                        )}
+                        <span style={{ fontSize: 11, color: '#8c90a1' }}>Gemini Vision analysis complete</span>
                       </div>
-                    ))}
+                    </div>
+
+                    <div
+                      style={{
+                        gridColumn: 'span 3',
+                        display: 'grid',
+                        gridTemplateColumns: '1fr 1fr',
+                        gap: 12,
+                        alignContent: 'start',
+                      }}
+                    >
+                      {[
+                        { label: 'Status', value: claimResult.claim.status, color: claimResult.claim.status === 'verified' ? '#40e56c' : '#ffb4ab' },
+                        { label: 'Extracted name', value: claimResult.analysis.extracted_name ?? 'Not readable' },
+                        { label: 'Document type', value: formatDocType(claimResult.analysis.doc_type) },
+                        { label: 'Country / jurisdiction', value: claimResult.analysis.country ?? 'Not detected' },
+                        { label: 'Institution / issuer', value: claimResult.analysis.institution ?? 'Not detected' },
+                        {
+                          label: 'Confidence',
+                          value: formatConfidence(claimResult.analysis.confidence),
+                          color: getConfidenceColor(claimResult.analysis.confidence),
+                        },
+                      ].map(({ label, value, color }) => (
+                        <div
+                          key={label}
+                          style={{
+                            padding: '10px 12px',
+                            borderRadius: 8,
+                            background: '#10141a',
+                            border: '1px solid #424655',
+                          }}
+                        >
+                          <div style={{ fontSize: 11, color: '#8c90a1', marginBottom: 4 }}>{label}</div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: color ?? '#dfe2eb' }}>{value}</div>
+                        </div>
+                      ))}
+                      {claimResult.rejection_reason && (
+                        <div
+                          style={{
+                            gridColumn: 'span 2',
+                            padding: 12,
+                            borderRadius: 8,
+                            background: 'rgba(255,180,171,0.08)',
+                            border: '1px solid rgba(255,180,171,0.3)',
+                            color: '#ffb4ab',
+                            fontSize: 13,
+                            lineHeight: 1.5,
+                          }}
+                        >
+                          {getRejectionMessage(claimResult.rejection_reason)}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <div style={{ color: '#8c90a1', fontSize: 14 }}>
+                    Upload a document first so Gemini can analyse it.
+                  </div>
+                )}
               </div>
             )}
 
             {step === 4 && (
               <div className="bento">
                 <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 20px' }}>
-                  Ready to submit
+                  Verification result
                 </h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
                   {[
-                    { icon: 'person', label: 'Name match', detail: `${session?.display_name ?? 'Your name'} will be checked against document` },
-                    { icon: 'content_copy', label: 'Duplicate check', detail: 'Document hash checked on submit' },
-                    { icon: 'psychology', label: 'Gemini Vision', detail: `Analysing ${CLAIM_TYPE_TO_DOC[claimType]} on submit` },
+                    {
+                      icon: claimResult?.claim.status === 'verified' ? 'person_check' : 'person_alert',
+                      label: 'Name check',
+                      detail: claimResult?.analysis.extracted_name
+                        ? `${claimResult.analysis.extracted_name} read from document`
+                        : 'No readable name found',
+                    },
+                    {
+                      icon: 'content_copy',
+                      label: 'Duplicate check',
+                      detail: claimResult ? 'No matching document hash found' : 'Pending document analysis',
+                    },
+                    {
+                      icon: claimResult?.claim.status === 'verified' ? 'verified' : 'warning',
+                      label: 'Document status',
+                      detail: claimResult?.claim.status === 'verified'
+                        ? `${formatDocType(claimResult.analysis.doc_type)} verified`
+                        : claimResult?.rejection_reason
+                        ? getRejectionMessage(claimResult.rejection_reason)
+                        : 'Pending verification',
+                    },
                   ].map(({ icon, label, detail }) => (
                     <div
                       key={label}
                       style={{
                         padding: 16,
                         borderRadius: 10,
-                        background: 'rgba(64,229,108,0.06)',
-                        border: '1px solid rgba(64,229,108,0.25)',
+                        background: claimResult?.claim.status === 'rejected' ? 'rgba(255,180,171,0.08)' : 'rgba(64,229,108,0.06)',
+                        border: claimResult?.claim.status === 'rejected' ? '1px solid rgba(255,180,171,0.3)' : '1px solid rgba(64,229,108,0.25)',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 8,
                       }}
                     >
-                      <Icon name={icon} size={22} style={{ color: '#40e56c' }} />
+                      <Icon name={icon} size={22} style={{ color: claimResult?.claim.status === 'rejected' ? '#ffb4ab' : '#40e56c' }} />
                       <div style={{ fontSize: 14, fontWeight: 600, color: '#dfe2eb' }}>{label}</div>
                       <div style={{ fontSize: 12, color: '#8c90a1' }}>{detail}</div>
                     </div>
@@ -503,28 +652,34 @@ export default function AddEvidencePage() {
                   }}
                 >
                   <span style={{ fontSize: 14, color: '#c2c6d8' }}>
-                    Your score: {session?.score ?? 0} → <strong style={{ color: '#40e56c' }}>{Math.min(100, (session?.score ?? 0) + CLAIM_TYPE_POINTS[claimType])}</strong> (+{CLAIM_TYPE_POINTS[claimType]} pts if verified)
+                    {claimResult?.claim.status === 'verified' ? (
+                      <>
+                        Updated score: <strong style={{ color: '#40e56c' }}>{claimResult.new_score}</strong>
+                      </>
+                    ) : (
+                      <>
+                        Score unchanged: <strong style={{ color: '#ffb4ab' }}>{session?.score ?? claimResult?.new_score ?? 0}</strong>
+                      </>
+                    )}
                   </span>
                   <button
-                    onClick={submitClaim}
-                    disabled={submitting}
+                    onClick={() => router.push('/dashboard')}
                     style={{
                       padding: '10px 24px',
                       borderRadius: 8,
-                      background: 'rgba(64,229,108,0.15)',
-                      border: '1px solid rgba(64,229,108,0.4)',
-                      color: '#40e56c',
+                      background: 'rgba(176,198,255,0.15)',
+                      border: '1px solid rgba(176,198,255,0.4)',
+                      color: '#b0c6ff',
                       fontSize: 14,
                       fontWeight: 700,
-                      cursor: submitting ? 'not-allowed' : 'pointer',
-                      opacity: submitting ? 0.7 : 1,
+                      cursor: 'pointer',
                       display: 'flex',
                       alignItems: 'center',
                       gap: 8,
                     }}
                   >
-                    <Icon name="upload_file" size={16} />
-                    {submitting ? 'Submitting...' : 'Submit claim'}
+                    <Icon name="dashboard" size={16} />
+                    Back to dashboard
                   </button>
                 </div>
                 {(statusMessage || error) && (
@@ -539,7 +694,7 @@ export default function AddEvidencePage() {
           {/* Summary sidebar */}
           {step > 2 && (
             <div style={{ gridColumn: 'span 4' }}>
-              <SummaryBar claimType={claimType} step={step} />
+              <SummaryBar claimType={claimType} step={step} claimResult={claimResult} />
             </div>
           )}
         </div>
@@ -573,12 +728,21 @@ export default function AddEvidencePage() {
           <button
             className="btn-primary"
             onClick={() => {
-              if (step === 4) {
+              if (step === 2) {
                 void submitClaim()
                 return
               }
-              if (step === 2 && !selectedFile) {
-                setError('Choose a document before continuing.')
+              if (step === 3) {
+                if (!claimResult) {
+                  setError('Analyse a document before continuing.')
+                  return
+                }
+                setError('')
+                setStep(4)
+                return
+              }
+              if (step === 4) {
+                router.push('/dashboard')
                 return
               }
               setError('')
@@ -586,7 +750,7 @@ export default function AddEvidencePage() {
             }}
             disabled={submitting}
           >
-            {step === 4 ? (submitting ? 'Submitting...' : 'Submit') : 'Continue'}
+            {step === 2 ? (submitting ? 'Analysing...' : 'Analyse with Gemini') : step === 4 ? 'Done' : 'Continue'}
             <Icon name="arrow_forward" size={16} />
           </button>
         </div>

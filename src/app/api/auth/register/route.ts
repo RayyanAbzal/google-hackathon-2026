@@ -76,7 +76,7 @@ export async function POST(request: Request): Promise<Response> {
       display_name: display_name.trim(),
       skill: skill?.trim() ?? 'Other',
       password_hash,
-      borough: borough?.trim() ?? 'Westminster',
+      borough: safeBorough,
     })
     .select("id, node_id")
     .single();

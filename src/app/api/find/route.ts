@@ -82,7 +82,7 @@ export async function GET(request: Request): Promise<Response> {
   let query = supabaseAdmin
     .from("users")
     .select("borough, skill, score")
-    .gte("score", 20)
+    .gte("score", 55)
     .limit(1000);
 
   if (skill) {

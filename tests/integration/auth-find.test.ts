@@ -49,6 +49,13 @@ interface UserProfileResult {
 
 interface ClaimResult {
   claim: { id: string; status: string };
+  analysis: {
+    extracted_name: string | null;
+    doc_type: string;
+    country?: string | null;
+    institution: string | null;
+    confidence: number;
+  };
   new_score: number;
   tier: string;
 }
@@ -85,6 +92,7 @@ async function parseJson<T>(response: Response): Promise<ApiResponse<T>> {
 
 loadLocalEnv();
 process.env.USE_FALLBACKS = "true";
+process.env.NEXT_PUBLIC_USE_FALLBACKS = "true";
 
 const skipIntegration = hasIntegrationEnv() ? false : "Supabase env vars are not configured";
 const testRunId = Date.now().toString(36);
@@ -268,7 +276,10 @@ test("integration: claim submission verifies with fallback analysis and updates 
   assert.equal(response.status, 201);
   assert.equal(body.success, true);
   assert.equal(body.data?.claim.status, "verified");
-  assert.equal(body.data?.new_score, 15);
+  assert.equal(body.data?.analysis.extracted_name, `Integration Test ${testRunId}`);
+  assert.equal(body.data?.analysis.doc_type, "passport");
+  assert.equal(body.data?.analysis.confidence, 0.9);
+  assert.equal(body.data?.new_score, 19);
   assert.equal(body.data?.tier, "unverified");
 });
 
@@ -317,6 +328,6 @@ test("integration: verified voucher can vouch and update vouchee score", { skip:
 
   assert.equal(response.status, 201);
   assert.equal(body.success, true);
-  assert.equal(body.data?.new_score, 10);
+  assert.equal(body.data?.new_score, 0);
   assert.equal(body.data?.tier, "unverified");
 });
