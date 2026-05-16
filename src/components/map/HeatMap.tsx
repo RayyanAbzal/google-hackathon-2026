@@ -254,6 +254,7 @@ export function HeatMap({
       zoom={10}
       style={{ height: '100%', width: '100%' }}
       zoomControl
+      attributionControl={false}
       preferCanvas
     >
       <MapResizer sidebarWidth={sidebarWidth} />
