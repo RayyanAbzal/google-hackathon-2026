@@ -97,6 +97,7 @@ export interface Session {
   node_id: string
   username: string | null
   display_name: string
+  skill: SkillTag
   score: number
   tier: TrustTier
 }
