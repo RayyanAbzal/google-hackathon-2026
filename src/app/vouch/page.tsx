@@ -350,7 +350,7 @@ export default function VouchPage() {
                   }}
                 >
                   <span style={{ flex: 1, fontSize: 14, color: '#c2c6d8' }}>
-                    Vouch {foundUser.display_name.split(' ')[0]} for +10 points?
+                    Vouch {foundUser.display_name.split(' ')[0]} for +5 points?
                   </span>
                   <button onClick={handleReject} className="btn-ghost">Reject</button>
                   <button
@@ -388,8 +388,7 @@ export default function VouchPage() {
           </div>
         </div>
 
-        {/* Vouch API note — score gate is >=50 in API, but Verified starts at 25 */}
-        {/* If voucher gets a 403, they need score>=50 — known gap, Aryan's code */}
+        {/* Vouch API gate: score >= 20 (Verified). 403 = voucher below threshold. */}
 
         {/* Your identity row */}
         <div style={{ marginTop: 20, display: 'flex', alignItems: 'center', gap: 10 }}>

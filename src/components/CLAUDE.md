@@ -39,4 +39,4 @@ The civic design system is shipped. Most planned components are now superseded b
 - `getTier()` from `src/types/index.ts` — never hardcode tier thresholds
 
 ## Score tiers
-0-24 Unverified, 25-59 Verified, 60-89 Trusted, 90-100 Gov Official
+0-19 Unverified, 20-54 Verified, 55-90 Trusted, 91-100 Gov Official

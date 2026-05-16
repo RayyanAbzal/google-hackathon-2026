@@ -92,7 +92,7 @@ export default function Home() {
                   ['Tier 0', 'Unverified', '0–19 pts', '#8c90a1'],
                   ['Tier 1', 'Verified', '20–54 pts', '#b0c6ff'],
                   ['Tier 2', 'Trusted', '55–90 pts', '#b0c6ff'],
-                  ['Tier 3', 'Gov. Official', '91–100 pts', '#40e56c'],
+                  ['Tier 3', 'Gov Official', '91–100 pts', '#40e56c'],
                 ].map(([t, n, p, col]) => (
                   <div key={t} style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '14px 18px', border: '1px solid rgba(66,70,85,0.5)', borderRadius: 10, background: '#181c22' }}>
                     <div style={{ width: 8, height: 8, borderRadius: '50%', background: col, flexShrink: 0 }} />

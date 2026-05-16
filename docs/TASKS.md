@@ -135,7 +135,7 @@
 ## SHARED — all team
 
 ### Types
-All types in `src/types/index.ts`. Score formula: `min(100, claims_verified * 15 + vouches_received * 10 + gov_vouched * 20)`. Tiers: 0-24 Unverified, 25-59 Verified, 60-89 Trusted, 90+ Gov Official.
+All types in `src/types/index.ts`. Score formula: passport×20 + other_doc×15 (max 3 docs) + vouch×5 (max 10) + gov_vouch×20 (bypasses 90 cap). Vouch gate: 1 doc=5 vouches, 2 docs=3, 3 docs=2. Tiers: 0-19 Unverified, 20-54 Verified, 55-90 Trusted, 91-100 Gov Official.
 
 ### If an API breaks during demo
 Set `NEXT_PUBLIC_USE_FALLBACKS=true` in `.env.local` — activates mock data from `src/lib/fallbacks.ts`.

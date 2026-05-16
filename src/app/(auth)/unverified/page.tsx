@@ -38,17 +38,17 @@ export default function UnverifiedPage() {
                   <span style={{ fontSize: 13, color: '#8c90a1', fontFamily: 'monospace' }}>{session?.username ? `@${session.username}` : session?.node_id ?? 'Creating identity...'}</span>
                 </div>
                 <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 8 }}>Welcome, {getDisplayFirstName(session?.display_name)}. Your account isn&apos;t verified yet.</h1>
-                <p style={{ fontSize: 14, color: '#c2c6d8' }}>Add more evidence and get vouches to reach <span style={{ color: '#40e56c' }}>Tier 2 · Community Verified</span>.</p>
+                <p style={{ fontSize: 14, color: '#c2c6d8' }}>Add more evidence and get vouches to reach <span style={{ color: '#40e56c' }}>Tier 1 · Verified</span>.</p>
               </div>
             </div>
 
             <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid rgba(66,70,85,0.6)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#8c90a1', marginBottom: 6 }}>
-                <span>{session?.score ?? 0} / 50 points to verified</span>
-                <span style={{ color: '#fbbf24' }}>{Math.min(100, Math.round(((session?.score ?? 0) / 50) * 100))}%</span>
+                <span>{session?.score ?? 0} / 20 points to verified</span>
+                <span style={{ color: '#fbbf24' }}>{Math.min(100, Math.round(((session?.score ?? 0) / 20) * 100))}%</span>
               </div>
               <div style={{ height: 8, borderRadius: 9999, background: '#0a0e14', overflow: 'hidden' }}>
-                <div style={{ width: `${Math.min(100, Math.round(((session?.score ?? 0) / 50) * 100))}%`, height: '100%', background: '#fbbf24', borderRadius: 9999 }} />
+                <div style={{ width: `${Math.min(100, Math.round(((session?.score ?? 0) / 20) * 100))}%`, height: '100%', background: '#fbbf24', borderRadius: 9999 }} />
               </div>
             </div>
           </div>
@@ -71,7 +71,7 @@ export default function UnverifiedPage() {
                 <span className="material-symbols-outlined" style={{ fontSize: 22 }}>handshake</span>
               </div>
               <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 6 }}>Get vouched</h2>
-              <p style={{ fontSize: 14, color: '#c2c6d8', marginBottom: 16 }}>Share your QR with people who know you. Regular vouches give +10 points each.</p>
+              <p style={{ fontSize: 14, color: '#c2c6d8', marginBottom: 16 }}>Share your QR with people who know you. Regular vouches give +5 points each.</p>
               <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#40e56c', fontWeight: 600 }}>
                 Show my QR <span className="material-symbols-outlined" style={{ fontSize: 16 }}>arrow_forward</span>
               </div>

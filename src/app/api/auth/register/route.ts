@@ -1,7 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { hashPassword, signToken } from "@/lib/auth";
 import { generateUniqueNodeId } from "@/lib/nodeId";
-import type { ApiResponse, MandatoryDocType } from "@/types";
+import type { ApiResponse, MandatoryDocType, SkillTag } from "@/types";
 
 // POST /api/auth/register
 // Owner: Aryan

@@ -33,7 +33,7 @@ function claimBadge(status: string): string {
 
 const ACTIVITY = [
   { icon: 'done_all', title: 'Medical Degree verified', sub: 'Dr. Aris Thorne · gov. voucher', time: '2h', color: '#40e56c' },
-  { icon: 'handshake', title: 'New vouch from Hemish R.', sub: '+10 pts · community', time: '8h', color: '#b0c6ff' },
+  { icon: 'handshake', title: 'New vouch from Hemish R.', sub: '+5 pts · community', time: '8h', color: '#b0c6ff' },
   { icon: 'hub', title: 'Connected to Southwark hub', sub: 'mesh edge added', time: '1d', color: '#b0c6ff' },
   { icon: 'person_add', title: 'Account created', sub: 'welcome to the mesh', time: '2w', color: '#8c90a1' },
 ]
@@ -70,8 +70,8 @@ export default function DashboardPage() {
 
   const tierLabel = useMemo(() => {
     if (tier === 'gov_official') return 'TIER 3 · GOVERNMENT VERIFIED'
-    if (tier === 'trusted') return 'TIER 3 · TRUSTED'
-    if (tier === 'verified') return 'TIER 2 · COMMUNITY VERIFIED'
+    if (tier === 'trusted') return 'TIER 2 · TRUSTED'
+    if (tier === 'verified') return 'TIER 1 · VERIFIED'
     return 'TIER 0 · UNVERIFIED'
   }, [tier])
 
@@ -82,10 +82,10 @@ export default function DashboardPage() {
   }, [tier])
 
   const ptsToNext = useMemo(() => {
-    if (score >= 90) return null
-    if (score >= 60) return `${90 - score} PTS TO GOV. VERIFIED`
-    if (score >= 25) return `${60 - score} PTS TO TRUSTED`
-    return `${25 - score} PTS TO COMMUNITY VERIFIED`
+    if (score >= 91) return null
+    if (score >= 55) return `${91 - score} PTS TO GOV. VERIFIED`
+    if (score >= 20) return `${55 - score} PTS TO TRUSTED`
+    return `${20 - score} PTS TO VERIFIED`
   }, [score])
 
   const evidenceRows = useMemo(() => {

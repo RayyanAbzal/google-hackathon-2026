@@ -42,8 +42,9 @@ CivicTrust is a post-disaster identity and trust system. Physical documents + co
 ## Score formula
 
 ```
-score = min(100, claims_verified * 15 + vouches_received * 10)
-gov_vouch adds +20 per gov voucher
+score = passport*20 + other_doc*15 (max 3 docs) + vouch*5 (max 10) + gov_vouch*20
+Vouch gate: 1 doc needs 5 vouches, 2 docs needs 3, 3 docs needs 2. Below min: capped at 19.
+Tiers: 0-19 Unverified | 20-54 Verified | 55-90 Trusted | 91-100 Gov Official
 ```
 
 Penalty: vouching a fraud = -15pts to the voucher.
