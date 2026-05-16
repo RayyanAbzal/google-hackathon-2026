@@ -102,6 +102,7 @@ export interface Session {
 
 // ─── Gemini document analysis ──────────────────────────────────────────────
 
+// Shape returned by analyseDocument() in src/lib/gemini.ts
 export interface DocumentAnalysis {
   extracted_name: string | null
   doc_type: DocType | string
