@@ -148,10 +148,8 @@ The seed script creates:
 
 - Facial recognition / biometrics / Face ID / device fingerprinting
 - Dispute mechanic (vouch + flag only)
-- Tinder swipe gesture
 - Post for help / help requests
 - Score decay
-- Voice input
 - Offline / PWA
 - P05 currency
 - External database checks (all databases wiped in scenario)
