@@ -88,7 +88,7 @@ export interface ScoreInput {
 }
 
 export function calculateScore(input: ScoreInput): number {
-  const base = input.claims_verified * 15 + input.vouches_received * 10
+  const base = input.claims_verified * 15 + input.vouches_received * 5
   const govBonus = input.gov_vouched ? 20 : 0
   return Math.min(100, base + govBonus)
 }

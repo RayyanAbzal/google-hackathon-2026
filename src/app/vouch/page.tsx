@@ -130,8 +130,32 @@ export default function VouchPage() {
     setScanState('off')
   }
 
+  const [copied, setCopied] = useState(false)
+
   const copyNodeId = () => {
-    if (session?.node_id) navigator.clipboard.writeText(session.node_id).catch(() => {})
+    const id = session?.node_id
+    if (!id) return
+    const finish = () => { setCopied(true); setTimeout(() => setCopied(false), 2000) }
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(id).then(finish).catch(() => {
+        // fallback for non-HTTPS
+        const el = document.createElement('textarea')
+        el.value = id
+        document.body.appendChild(el)
+        el.select()
+        document.execCommand('copy')
+        document.body.removeChild(el)
+        finish()
+      })
+    } else {
+      const el = document.createElement('textarea')
+      el.value = id
+      document.body.appendChild(el)
+      el.select()
+      document.execCommand('copy')
+      document.body.removeChild(el)
+      finish()
+    }
   }
 
   if (!session) return null
@@ -197,9 +221,9 @@ export default function VouchPage() {
               <div style={{ fontSize: 13, color: '#8c90a1', marginTop: 4 }}>{session.display_name}</div>
             </div>
 
-            <button onClick={copyNodeId} className="btn-ghost" style={{ width: '100%', justifyContent: 'center' }}>
-              <Icon name="content_copy" size={16} />
-              Copy Node ID
+            <button onClick={copyNodeId} className="btn-ghost" style={{ width: '100%', justifyContent: 'center', color: copied ? '#40e56c' : undefined }}>
+              <Icon name={copied ? 'check' : 'content_copy'} size={16} />
+              {copied ? 'Copied!' : 'Copy Node ID'}
             </button>
           </div>
 

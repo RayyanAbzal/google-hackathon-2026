@@ -87,10 +87,24 @@ export default function DashboardPage() {
   const [claims, setClaims] = useState<Claim[]>([])
 
   useEffect(() => {
-    queueMicrotask(() => {
+    queueMicrotask(async () => {
       const current = requireSession(router)
-      setSession(current)
       if (!current) return
+
+      // Fetch fresh score first, update localStorage, then set session
+      try {
+        const res = await fetch(`/api/score/${current.user_id}`)
+        const json = await res.json()
+        if (json.success && json.data) {
+          const updated = { ...current, score: json.data.score, tier: json.data.tier }
+          localStorage.setItem('civictrust_session', JSON.stringify(updated))
+          setSession(updated)
+        } else {
+          setSession(current)
+        }
+      } catch {
+        setSession(current)
+      }
 
       protectedFetch<Claim[]>(`/api/claims/${current.user_id}`, current)
         .then((json) => {
