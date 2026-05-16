@@ -43,9 +43,7 @@ export async function POST(request: Request): Promise<Response> {
   if (!doc_type || !VALID_DOC_TYPES.includes(doc_type)) {
     return Response.json({ success: false, error: "doc_type must be 'passport' or 'driving_licence'" } satisfies ApiResponse<never>, { status: 400 });
   }
-  if (!borough?.trim()) {
-    return Response.json({ success: false, error: "borough is required" } satisfies ApiResponse<never>, { status: 400 });
-  }
+  const safeBorough = borough?.trim() || 'Westminster'
   if (skill && !VALID_SKILLS.includes(skill)) {
     return Response.json({ success: false, error: `skill must be one of: ${VALID_SKILLS.join(', ')}` } satisfies ApiResponse<never>, { status: 400 });
   }
@@ -59,7 +57,7 @@ export async function POST(request: Request): Promise<Response> {
       node_id,
       display_name: display_name.trim(),
       password_hash,
-      borough: borough.trim(),
+      borough: safeBorough,
       skill: skill ?? 'Other',
     })
     .select("id, node_id")
