@@ -69,7 +69,7 @@ const CREDENTIAL_LABEL: Record<string, string> = {
 }
 
 const TIER_LABEL: Record<string, string> = { gov_official: 'T1', trusted: 'T2', verified: 'T3' }
-const TIER_COLOR: Record<string, string> = { gov_official: '#fbbf24', trusted: '#b0c6ff', verified: '#b0c6ff' }
+const TIER_COLOR: Record<string, string> = { gov_official: '#40e56c', trusted: '#b0c6ff', verified: '#8c90a1' }
 
 const SKILL_COLOR: Record<string, string> = {
   Doctor: '#22c55e', Nurse: '#ec4899', Engineer: '#3b82f6',
@@ -88,7 +88,7 @@ function toDisplayListing(row: YPListingRow): DisplayListing {
     icon: SKILL_ICON[row.skill] ?? 'person', iconColor: SKILL_COLOR[row.skill] ?? '#b0c6ff',
     title: `Verified ${row.skill}`, sub: SKILL_SUB[row.skill] ?? 'General', note,
     area: row.borough, avail: isAvailNow ? 'Available now' : 'Available soon',
-    availColor: isAvailNow ? '#b0c6ff' : '#fbbf24',
+    availColor: isAvailNow ? '#40e56c' : '#ffc107',
     tierLabel: TIER_LABEL[row.tier] ?? 'T3', tierColor: TIER_COLOR[row.tier] ?? '#b0c6ff',
     subCategory: SKILL_SUBCATEGORY[row.skill] ?? 'OTHER', borough: row.borough,
     featured: row.tier === 'gov_official', score: row.score,
@@ -115,7 +115,7 @@ function YPListing({ icon, iconColor, title, sub, availColor, tierLabel, tierCol
         background: isActive ? `${iconColor}08` : (featured ? 'rgba(251,191,36,0.04)' : 'transparent'),
         cursor: 'pointer',
         transition: 'background 0.1s',
-        borderLeft: isActive ? `2px solid ${iconColor}` : (featured ? '2px solid #fbbf24' : '2px solid transparent'),
+        borderLeft: isActive ? `2px solid ${iconColor}` : (featured ? `2px solid ${tierColor}` : '2px solid transparent'),
       }}
     >
       {/* Icon */}
@@ -126,14 +126,12 @@ function YPListing({ icon, iconColor, title, sub, availColor, tierLabel, tierCol
       <div style={{ flex: 1, minWidth: 0 }}>
         <div style={{ fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {title}
-          {featured && <span className="mono" style={{ fontSize: 9, padding: '2px 5px', background: '#fbbf24', color: '#000', borderRadius: 3, letterSpacing: '0.08em', fontWeight: 700, flexShrink: 0 }}>GOV</span>}
         </div>
         <div style={{ fontSize: 11, color: '#8c90a1', marginTop: 1 }}>{sub}</div>
       </div>
       {/* Score */}
       <div style={{ textAlign: 'center', flexShrink: 0 }}>
         <div style={{ fontSize: 17, fontWeight: 800, color: tierColor, letterSpacing: '-0.02em', lineHeight: 1 }}>{score}</div>
-        <div style={{ fontSize: 8, color: '#556074', letterSpacing: '0.06em', marginTop: 2 }}>SCORE</div>
       </div>
       {/* Status dot */}
       <span style={{ width: 7, height: 7, borderRadius: '50%', background: availColor, boxShadow: `0 0 6px ${availColor}`, display: 'inline-block', flexShrink: 0 }} />
@@ -162,7 +160,10 @@ export default function FindPage() {
   const [search, setSearch] = useState('')
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null)
   const [mapSkill, setMapSkill] = useState<SkillTag | 'All'>('All')
+  const [resetMap, setResetMap] = useState(false)
   const [searchLoading, setSearchLoading] = useState(false)
+  const [boroughReports, setBoroughReports] = useState<Record<string, string>>({})
+  const [reportLoading, setReportLoading] = useState(false)
   const { width: sidebarWidth } = useSidebar()
 
   useEffect(() => {
@@ -218,6 +219,37 @@ export default function FindPage() {
     }
   }, [search])
 
+  // Borough skill counts — passed to report API
+  const boroughCounts = useMemo((): Record<string, number> => {
+    if (!activeBorough) return {}
+    return allListings
+      .filter(r => r.borough === activeBorough)
+      .reduce<Record<string, number>>((acc, r) => { acc[r.skill] = (acc[r.skill] ?? 0) + 1; return acc }, {})
+  }, [allListings, activeBorough])
+
+  // Fetch borough situation report (cached, abortable)
+  useEffect(() => {
+    if (!activeBorough || allListings.length === 0 || boroughReports[activeBorough] !== undefined) return
+    const ctrl = new AbortController()
+    const boroughTotal = allListings.filter(r => r.borough === activeBorough).length
+    setReportLoading(true)
+    fetch('/api/find/borough-report', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ borough: activeBorough, counts: boroughCounts, total: boroughTotal }),
+      signal: ctrl.signal,
+    })
+      .then(r => r.json() as Promise<{ report: string }>)
+      .then(json => {
+        if (json.report) setBoroughReports(prev => ({ ...prev, [activeBorough]: json.report }))
+      })
+      .catch(() => {})
+      .finally(() => setReportLoading(false))
+    return () => { ctrl.abort(); setReportLoading(false) }
+  // boroughCounts memoized on [allListings, activeBorough] — safe to include
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeBorough, boroughCounts])
+
   const mapUsers = useMemo((): MapUser[] =>
     allListings.map(r => ({ node_id: r.nodeId, username: r.username, borough: r.borough, skill: r.skill as SkillTag, tier: r.tier as TrustTier })),
     [allListings]
@@ -228,20 +260,18 @@ export default function FindPage() {
     [allListings]
   )
 
-  useEffect(() => {
-    if (allBoroughs.length > 0 && !allBoroughs.includes(activeBorough)) {
-      setActiveBorough(allBoroughs[0])
-    }
-  }, [allBoroughs, activeBorough])
-
   const filtered = useMemo((): DisplayListing[] => {
     const q = search.trim().toLowerCase()
     return allListings
-      .filter(r => r.borough === activeBorough)
-      .filter(r => !q || r.skill.toLowerCase().includes(q) || r.borough.toLowerCase().includes(q) || r.credentials.some(c => c.toLowerCase().includes(q)))
+      .filter(r => !activeBorough || r.borough === activeBorough)
+      .filter(r => {
+        if (!q) return true
+        if (mapSkill !== 'All') return r.skill === mapSkill
+        return r.skill.toLowerCase().includes(q) || r.borough.toLowerCase().includes(q) || r.credentials.some(c => c.toLowerCase().includes(q))
+      })
       .map(toDisplayListing)
       .sort((a, b) => b.score - a.score)
-  }, [allListings, activeBorough, search])
+  }, [allListings, activeBorough, search, mapSkill])
 
   const bySubCategory = useMemo(() =>
     filtered.reduce<Record<string, DisplayListing[]>>((acc, r) => { (acc[r.subCategory] ??= []).push(r); return acc }, {}),
@@ -311,11 +341,6 @@ export default function FindPage() {
                   <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
                 </button>
               )}
-              {mapSkill !== 'All' && !searchLoading && (
-                <span style={{ fontSize: 9, color: SKILL_COLOR[mapSkill] ?? '#b0c6ff', background: `${SKILL_COLOR[mapSkill] ?? '#b0c6ff'}18`, border: `1px solid ${SKILL_COLOR[mapSkill] ?? '#b0c6ff'}40`, padding: '2px 7px', borderRadius: 3, letterSpacing: '0.06em', fontWeight: 700, whiteSpace: 'nowrap' }}>
-                  {mapSkill.toUpperCase()} · AI matched
-                </span>
-              )}
             </div>
           </div>
         </div>
@@ -330,12 +355,20 @@ export default function FindPage() {
               selectedBorough={activeBorough}
               activeSkill={mapSkill}
               onBoroughClick={(name) => {
-                setActiveBorough(name)
-                setSelectedListingId(null)
+                if (name === activeBorough) {
+                  setActiveBorough('')
+                  setSelectedListingId(null)
+                  setResetMap(true)
+                  setTimeout(() => setResetMap(false), 100)
+                } else {
+                  setActiveBorough(name)
+                  setSelectedListingId(null)
+                }
               }}
-              focusedBorough={activeListing?.borough ?? null}
+              focusedBorough={activeBorough || null}
               popupListing={popupListing}
               onPopupClose={() => setSelectedListingId(null)}
+              resetToOverview={resetMap}
             />
 
             {/* Bottom-left: map hint */}
@@ -373,15 +406,27 @@ export default function FindPage() {
           <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#181c22' }}>
 
             {/* Borough + result count */}
+            <div style={{ padding: '8px 14px', borderBottom: '1px solid rgba(66,70,85,0.4)', background: '#0a0e14', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#b0c6ff' }}>location_on</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#dfe2eb' }}>{activeBorough || 'All boroughs'}</span>
+                <span style={{ fontSize: 12, color: '#556074' }}>·</span>
+                <span style={{ fontSize: 12, color: '#8c90a1' }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
+                {search && <span style={{ fontSize: 10, color: '#8c90a1' }}>for &ldquo;{search}&rdquo;</span>}
+              </div>
+            </div>
+
+            {/* Borough situation report */}
             {activeBorough && (
-              <div style={{ padding: '8px 14px', borderBottom: '1px solid rgba(66,70,85,0.4)', background: '#0a0e14', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                  <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#b0c6ff' }}>location_on</span>
-                  <span style={{ fontSize: 13, fontWeight: 700, color: '#dfe2eb' }}>{activeBorough}</span>
-                  <span style={{ fontSize: 12, color: '#556074' }}>·</span>
-                  <span style={{ fontSize: 12, color: '#8c90a1' }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
-                  {search && <span style={{ fontSize: 10, color: '#8c90a1' }}>for &ldquo;{search}&rdquo;</span>}
-                </div>
+              <div style={{ minHeight: 44, padding: '8px 14px', borderBottom: '1px solid rgba(66,70,85,0.4)', background: 'rgba(176,198,255,0.04)', flexShrink: 0, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#b0c6ff', marginTop: 2, flexShrink: 0 }}>smart_toy</span>
+                {reportLoading || !boroughReports[activeBorough] ? (
+                  <div style={{ fontSize: 11, color: '#556074', fontStyle: 'italic' }}>
+                    {reportLoading ? 'Analysing coverage…' : ''}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: 11, color: '#8c90a1', margin: 0, lineHeight: 1.6 }}>{boroughReports[activeBorough]}</p>
+                )}
               </div>
             )}
 
@@ -413,7 +458,7 @@ export default function FindPage() {
 
               {!loading && filtered.length === 0 && (
                 <div style={{ padding: 32, textAlign: 'center', color: '#8c90a1', fontSize: 14 }}>
-                  No verified listings in {activeBorough || 'this area'}{search ? ` matching "${search}"` : ''}.
+                  No verified listings in {activeBorough || 'any borough'}{search ? ` matching "${search}"` : ''}.
                 </div>
               )}
 
