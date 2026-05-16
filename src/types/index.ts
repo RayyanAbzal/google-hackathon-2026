@@ -136,6 +136,7 @@ export interface Session {
   skill: SkillTag | null
   score: number
   tier: TrustTier
+  borough: string | null
 }
 
 // ─── Gemini document analysis ──────────────────────────────────────────────
