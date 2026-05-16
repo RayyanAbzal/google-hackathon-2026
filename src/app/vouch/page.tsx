@@ -1,10 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
 import TierBadge from '@/components/civic/TierBadge'
 import Icon from '@/components/civic/Icon'
+import type { Session, TrustTier } from '@/types'
+import { protectedFetch, requireSession } from '@/app/_lib/session'
 
 type VouchType = 'regular' | 'government' | 'mutual'
 
@@ -14,20 +17,111 @@ const VOUCH_OPTIONS: { id: VouchType; label: string; pts: string; locked?: boole
   { id: 'mutual',     label: 'Mutual',     pts: '+12 each way' },
 ]
 
+interface VouchResult {
+  new_score: number
+  tier: TrustTier
+}
+
+interface VouchRequest {
+  name: string
+  initials: string
+  skill: string
+  area: string
+  score: number
+  tier: TrustTier
+  userId: string
+}
+
+const VOUCH_REQUESTS: VouchRequest[] = [
+  {
+    name: 'Maalav G.',
+    initials: 'MG',
+    skill: 'Engineer',
+    area: 'Lambeth',
+    score: 62,
+    tier: 'verified',
+    userId: '51ff11d8-6035-4d07-bc7a-859153d8f7ce',
+  },
+  {
+    name: 'Hemish R.',
+    initials: 'HR',
+    skill: 'Frontend volunteer',
+    area: 'Southwark',
+    score: 55,
+    tier: 'verified',
+    userId: '2eb20d3f-b3c8-4ea2-b1df-5d71d6f45a72',
+  },
+  {
+    name: 'Sarah Mitchell',
+    initials: 'SM',
+    skill: 'Doctor',
+    area: 'Hackney',
+    score: 44,
+    tier: 'partial',
+    userId: 'a9c7d25c-1d5f-46fb-98a8-08df2fcb5a3d',
+  },
+]
+
 export default function VouchPage() {
+  const router = useRouter()
+  const [session, setSession] = useState<Session | null>(null)
   const [vouchType, setVouchType] = useState<VouchType>('regular')
-  const [nodeInput, setNodeInput] = useState('')
+  const [userInput, setUserInput] = useState('')
+  const [requestIndex, setRequestIndex] = useState(0)
+  const [message, setMessage] = useState('')
+  const [error, setError] = useState('')
+  const activeRequest = VOUCH_REQUESTS[requestIndex]
+
+  useEffect(() => {
+    queueMicrotask(() => setSession(requireSession(router)))
+  }, [router])
+
+  async function copyUserId() {
+    if (!session) return
+    await navigator.clipboard.writeText(session.user_id)
+    setMessage('User ID copied.')
+    setError('')
+  }
+
+  function moveRequest(direction: -1 | 1) {
+    setRequestIndex((current) => (current + direction + VOUCH_REQUESTS.length) % VOUCH_REQUESTS.length)
+    setMessage('')
+    setError('')
+  }
+
+  async function submitVouch(targetUserId = userInput.trim()) {
+    if (!session) return
+    if (!targetUserId) {
+      setError('Enter a User ID first.')
+      setMessage('')
+      return
+    }
+
+    const json = await protectedFetch<VouchResult>('/api/vouch', session, {
+      method: 'POST',
+      body: JSON.stringify({ vouchee_id: targetUserId }),
+    })
+
+    if (!json.success) {
+      setError(json.error)
+      setMessage('')
+      return
+    }
+
+    setError('')
+    setMessage(`Vouch recorded. Their score is now ${json.data.new_score}.`)
+  }
 
   return (
     <div style={{ background: '#10141a', minHeight: '100vh', color: '#dfe2eb' }}>
       <TopBar />
-      <Sidebar active="vouch" />
+      <Sidebar active="vouch" session={session} />
       <main className="ml-60 pt-14 px-8 py-8">
 
         <div style={{ marginBottom: 24 }}>
           <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Vouch</h1>
           <p style={{ fontSize: 15, color: '#8c90a1', marginTop: 4 }}>
-            Scan someone&apos;s QR code or enter their Node ID to vouch for their identity.
+            Scan someone&apos;s QR code or enter their User ID to vouch for their identity.
           </p>
         </div>
 
@@ -138,13 +232,13 @@ export default function VouchPage() {
 
             <div style={{ textAlign: 'center', marginBottom: 16 }}>
               <div style={{ fontSize: 20, fontFamily: 'monospace', fontWeight: 700, color: '#b0c6ff' }}>
-                BLK-0471-LDN
+                {session?.user_id ?? 'Sign in required'}
               </div>
             </div>
 
-            <button className="btn-ghost" style={{ width: '100%', justifyContent: 'center' }}>
+            <button className="btn-ghost" style={{ width: '100%', justifyContent: 'center' }} onClick={copyUserId}>
               <Icon name="content_copy" size={16} />
-              Copy Node ID
+              Copy User ID
             </button>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginTop: 20 }}>
@@ -209,25 +303,76 @@ export default function VouchPage() {
                 </div>
                 <div>
                   <label style={{ fontSize: 12, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
-                    Or enter Node ID
+                    Or enter User ID
                   </label>
                   <input
                     className="field-input"
-                    placeholder="BLK-XXXX-LDN"
-                    value={nodeInput}
-                    onChange={(e) => setNodeInput(e.target.value)}
+                    placeholder="User UUID"
+                    value={userInput}
+                    onChange={(e) => setUserInput(e.target.value)}
                     style={{ fontFamily: 'monospace' }}
                   />
                 </div>
-                <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }}>
+                <button className="btn-primary" style={{ width: '100%', justifyContent: 'center' }} onClick={() => submitVouch()}>
                   <Icon name="search" size={16} />
-                  Look up
+                  Vouch
                 </button>
               </div>
+              {(message || error) && (
+                <p style={{ fontSize: 13, color: error ? '#ffb4ab' : '#40e56c', margin: '14px 0 0' }}>
+                  {error || message}
+                </p>
+              )}
             </div>
 
             {/* Person preview card */}
             <div className="bento">
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+                <div>
+                  <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Vouch requests</h2>
+                  <p style={{ fontSize: 12, color: '#8c90a1', margin: '3px 0 0' }}>
+                    {requestIndex + 1} of {VOUCH_REQUESTS.length}
+                  </p>
+                </div>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <button
+                    aria-label="Previous vouch request"
+                    onClick={() => moveRequest(-1)}
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 8,
+                      border: '1px solid #424655',
+                      background: '#10141a',
+                      color: '#b0c6ff',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Icon name="chevron_left" size={20} />
+                  </button>
+                  <button
+                    aria-label="Next vouch request"
+                    onClick={() => moveRequest(1)}
+                    style={{
+                      width: 34,
+                      height: 34,
+                      borderRadius: 8,
+                      border: '1px solid #424655',
+                      background: '#10141a',
+                      color: '#b0c6ff',
+                      cursor: 'pointer',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <Icon name="chevron_right" size={20} />
+                  </button>
+                </div>
+              </div>
               <div
                 style={{
                   display: 'flex',
@@ -254,15 +399,15 @@ export default function VouchPage() {
                     flexShrink: 0,
                   }}
                 >
-                  MG
+                  {activeRequest.initials}
                 </div>
                 <div style={{ flex: 1 }}>
-                  <div style={{ fontSize: 16, fontWeight: 700 }}>Maalav G.</div>
-                  <div style={{ fontSize: 13, color: '#8c90a1', marginTop: 2 }}>Engineer · Lambeth</div>
+                  <div style={{ fontSize: 16, fontWeight: 700 }}>{activeRequest.name}</div>
+                  <div style={{ fontSize: 13, color: '#8c90a1', marginTop: 2 }}>{activeRequest.skill} · {activeRequest.area}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <TierBadge tier="verified" />
-                  <div style={{ fontSize: 13, color: '#8c90a1', marginTop: 6 }}>Score 62 / 100</div>
+                  <TierBadge tier={activeRequest.tier} />
+                  <div style={{ fontSize: 13, color: '#8c90a1', marginTop: 6 }}>Score {activeRequest.score} / 100</div>
                 </div>
               </div>
 
@@ -315,10 +460,11 @@ export default function VouchPage() {
                 }}
               >
                 <span style={{ flex: 1, fontSize: 14, color: '#c2c6d8' }}>
-                  Vouch Maalav G. for +10 points?
+                  Vouch {activeRequest.name} for +10 points?
                 </span>
                 <button className="btn-ghost">Reject</button>
                 <button
+                  onClick={() => submitVouch(activeRequest.userId)}
                   style={{
                     padding: '10px 20px',
                     borderRadius: 8,

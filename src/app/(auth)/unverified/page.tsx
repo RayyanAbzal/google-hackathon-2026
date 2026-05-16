@@ -1,11 +1,19 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import TopBar from '@/components/civic/TopBar'
+import type { Session } from '@/types'
+import { getDisplayFirstName, requireSession } from '@/app/_lib/session'
 
 export default function UnverifiedPage() {
   const router = useRouter()
+  const [session, setSession] = useState<Session | null>(null)
+
+  useEffect(() => {
+    queueMicrotask(() => setSession(requireSession(router)))
+  }, [router])
 
   function signOut() {
     if (typeof window !== 'undefined') localStorage.removeItem('civictrust_session')
@@ -27,20 +35,20 @@ export default function UnverifiedPage() {
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
                   <span style={{ padding: '3px 10px', borderRadius: 9999, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#fbbf24', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Unverified</span>
-                  <span style={{ fontSize: 13, color: '#8c90a1', fontFamily: 'monospace' }}>BLK-0471-LDN</span>
+                  <span style={{ fontSize: 13, color: '#8c90a1', fontFamily: 'monospace' }}>{session?.username ? `@${session.username}` : session?.node_id ?? 'Creating identity...'}</span>
                 </div>
-                <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 8 }}>Welcome, Sarah. Your account isn&apos;t verified yet.</h1>
+                <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 8 }}>Welcome, {getDisplayFirstName(session?.display_name)}. Your account isn&apos;t verified yet.</h1>
                 <p style={{ fontSize: 14, color: '#c2c6d8' }}>Add more evidence and get vouches to reach <span style={{ color: '#40e56c' }}>Tier 2 · Community Verified</span>.</p>
               </div>
             </div>
 
             <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid rgba(66,70,85,0.6)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#8c90a1', marginBottom: 6 }}>
-                <span>15 / 50 points to verified</span>
-                <span style={{ color: '#fbbf24' }}>30%</span>
+                <span>{session?.score ?? 0} / 50 points to verified</span>
+                <span style={{ color: '#fbbf24' }}>{Math.min(100, Math.round(((session?.score ?? 0) / 50) * 100))}%</span>
               </div>
               <div style={{ height: 8, borderRadius: 9999, background: '#0a0e14', overflow: 'hidden' }}>
-                <div style={{ width: '30%', height: '100%', background: '#fbbf24', borderRadius: 9999 }} />
+                <div style={{ width: `${Math.min(100, Math.round(((session?.score ?? 0) / 50) * 100))}%`, height: '100%', background: '#fbbf24', borderRadius: 9999 }} />
               </div>
             </div>
           </div>

@@ -54,6 +54,17 @@ export interface Vouch {
   created_at: string
 }
 
+export interface HelpPost {
+  id: string
+  user_id: string
+  content: string
+  skill_tag: SkillTag | null
+  resource_tag: string | null
+  borough: string
+  urgency: 'low' | 'medium' | 'high'
+  created_at: string
+}
+
 export interface GovOfficial {
   id: string
   user_id: string

@@ -1,10 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import TopBar from '@/components/civic/TopBar'
+import Sidebar from '@/components/civic/Sidebar'
+import type { Session } from '@/types'
+import { readSession } from '@/app/_lib/session'
 
-const PROFESSIONS = ['Doctor', 'Nurse', 'Engineer', 'Lawyer']
+const PROFESSIONS = ['Doctor', 'Nurse', 'Engineer', 'Lawyer', 'Other']
 const AREAS = ['Southwark', 'Lambeth', 'Hackney']
 const AVAILABILITY = ['Now', 'Today']
 
@@ -16,15 +19,38 @@ const RESULTS = [
 ]
 
 export default function FindPage() {
+  const [session, setSession] = useState<Session | null>(null)
   const [activeProf, setActiveProf] = useState('Doctor')
   const [activeArea, setActiveArea] = useState('Southwark')
   const [activeAvail, setActiveAvail] = useState('Now')
   const [search, setSearch] = useState('Doctor in Southwark')
+  const [expandedIndex, setExpandedIndex] = useState<number | null>(null)
+
+  useEffect(() => {
+    queueMicrotask(() => setSession(readSession()))
+  }, [])
+
+  const filteredResults = useMemo(() => {
+    const query = search.trim().toLowerCase()
+    return RESULTS.filter((result) => {
+      const text = `${result.title} ${result.sub} ${result.area} ${result.note}`.toLowerCase()
+      const matchesSearch = !query || text.includes(query) || query.split(/\s+/).some((part) => text.includes(part))
+      const matchesProfession = activeProf === 'Other' || text.includes(activeProf.toLowerCase())
+      const matchesArea = text.includes(activeArea.toLowerCase())
+      const matchesAvailability = activeAvail === 'Today' || result.avail.toLowerCase().includes('now') || result.avail.toLowerCase().includes('open')
+      return matchesSearch && matchesProfession && matchesArea && matchesAvailability
+    })
+  }, [activeArea, activeAvail, activeProf, search])
+
+  function toggleDetails(index: number) {
+    setExpandedIndex((current) => (current === index ? null : index))
+  }
 
   return (
     <div style={{ background: '#10141a', minHeight: '100vh', color: '#dfe2eb' }}>
       <TopBar />
-      <main style={{ paddingTop: 56, padding: '56px 32px 48px' }}>
+      {session && <Sidebar active="find" session={session} />}
+      <main className={session ? 'ml-60' : ''} style={{ paddingTop: 56, padding: '56px 32px 48px' }}>
         <div style={{ maxWidth: 1200, margin: '0 auto' }}>
 
           {/* Hero */}
@@ -72,8 +98,8 @@ export default function FindPage() {
 
           {/* Results */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12,1fr)', gap: 20 }}>
-            <div style={{ gridColumn: 'span 8', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              {RESULTS.map((r, i) => (
+            <div style={{ gridColumn: 'span 12', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              {filteredResults.map((r, i) => (
                 <article key={i} className="bento" style={{ padding: 20 }}>
                   <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
@@ -98,13 +124,60 @@ export default function FindPage() {
                   </div>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', paddingTop: 12, borderTop: '1px solid rgba(66,70,85,0.6)' }}>
                     <div style={{ fontSize: 12, color: '#8c90a1' }}>{r.note}</div>
-                    <button style={{ fontSize: 13, color: '#b0c6ff', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 500 }}>Details →</button>
+                    <button onClick={() => toggleDetails(i)} style={{ fontSize: 13, color: '#b0c6ff', background: 'transparent', border: 'none', cursor: 'pointer', fontWeight: 500 }}>
+                      {expandedIndex === i ? 'Hide details' : 'Details >'}
+                    </button>
                   </div>
+                  {expandedIndex === i && (
+                    <div style={{ marginTop: 14, padding: 14, borderRadius: 10, border: '1px solid rgba(176,198,255,0.22)', background: 'rgba(176,198,255,0.06)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginBottom: 12 }}>
+                        <div>
+                          <div style={{ fontSize: 11, color: '#8c90a1', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Area</div>
+                          <div style={{ fontSize: 13, color: '#dfe2eb', marginTop: 3 }}>{r.area}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: '#8c90a1', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Availability</div>
+                          <div style={{ fontSize: 13, color: r.availColor, marginTop: 3 }}>{r.avail}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: '#8c90a1', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Trust level</div>
+                          <div style={{ fontSize: 13, color: '#dfe2eb', marginTop: 3 }}>{r.tierLabel}</div>
+                        </div>
+                        <div>
+                          <div style={{ fontSize: 11, color: '#8c90a1', textTransform: 'uppercase', letterSpacing: '0.08em' }}>Contact</div>
+                          <div style={{ fontSize: 13, color: '#dfe2eb', marginTop: 3 }}>Aid hub handoff</div>
+                        </div>
+                      </div>
+                      <p style={{ fontSize: 13, color: '#c2c6d8', margin: 0 }}>
+                        Full names stay hidden in public search. Viewing individual profile records requires a signed-in verified user with score 50+.
+                      </p>
+                      {!session && (
+                        <Link href="/login?returnTo=/find-help" className="btn-ghost" style={{ marginTop: 12, fontSize: 13, display: 'inline-flex' }}>
+                          Sign in to view profile records
+                        </Link>
+                      )}
+                      {session && session.score < 50 && (
+                        <Link href="/dashboard" className="btn-ghost" style={{ marginTop: 12, fontSize: 13, display: 'inline-flex' }}>
+                          Raise trust score to unlock records
+                        </Link>
+                      )}
+                      {session && session.score >= 50 && (
+                        <Link href="/map" className="btn-ghost" style={{ marginTop: 12, fontSize: 13, display: 'inline-flex' }}>
+                          Open verified map
+                        </Link>
+                      )}
+                    </div>
+                  )}
                 </article>
               ))}
+              {filteredResults.length === 0 && (
+                <div className="bento" style={{ gridColumn: 'span 2', padding: 28, color: '#8c90a1', textAlign: 'center' }}>
+                  No verified help found for those filters.
+                </div>
+              )}
             </div>
 
-            <aside style={{ gridColumn: 'span 4', display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <aside style={{ display: 'none' }}>
               <div className="bento" style={{ padding: 0, overflow: 'hidden' }}>
                 <div className="city-grid" style={{ position: 'relative', height: 260 }}>
                   <svg style={{ position: 'absolute', inset: 0, width: '100%', height: '100%' }} viewBox="0 0 360 260" preserveAspectRatio="xMidYMid slice">
@@ -120,7 +193,7 @@ export default function FindPage() {
                   <Link href="/map" style={{ position: 'absolute', top: 12, right: 12, fontSize: 12, padding: '4px 8px', borderRadius: 6, background: 'rgba(16,20,26,0.85)', border: '1px solid rgba(176,198,255,0.4)', color: '#b0c6ff', textDecoration: 'none' }}>Full map →</Link>
                 </div>
                 <div style={{ padding: 16, borderTop: '1px solid #424655', display: 'flex', justifyContent: 'space-around', textAlign: 'center' }}>
-                  <div><div style={{ fontSize: 20, fontWeight: 700, color: '#40e56c' }}>4</div><div style={{ fontSize: 11, color: '#8c90a1' }}>Results</div></div>
+                  <div><div style={{ fontSize: 20, fontWeight: 700, color: '#40e56c' }}>{filteredResults.length}</div><div style={{ fontSize: 11, color: '#8c90a1' }}>Results</div></div>
                   <div><div style={{ fontSize: 20, fontWeight: 700, color: '#b0c6ff' }}>3</div><div style={{ fontSize: 11, color: '#8c90a1' }}>Tier 3</div></div>
                 </div>
               </div>

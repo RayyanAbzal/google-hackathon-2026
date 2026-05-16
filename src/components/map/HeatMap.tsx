@@ -5,5 +5,5 @@
 // Colour scale: dark = no verified users, bright blue = high density
 // Maalav embeds this in /map page
 export function HeatMap() {
-  return <div>HeatMap — TODO (Ray)</div>
+  return <div>HeatMap - TODO (Ray)</div>
 }

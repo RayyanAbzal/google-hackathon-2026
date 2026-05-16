@@ -1,11 +1,13 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
 import Icon from '@/components/civic/Icon'
 import { HeatMap } from '@/components/map/HeatMap'
-import { FALLBACK_USERS } from '@/lib/fallbacks'
+import { requireSession } from '@/app/_lib/session'
 
 // Approximate SVG positions for borough labels used as pin anchors (within 800x620 SVG)
 const PINS = [
@@ -24,6 +26,12 @@ const LEGEND = [
 ]
 
 export default function MapPage() {
+  const router = useRouter()
+
+  useEffect(() => {
+    requireSession(router)
+  }, [router])
+
   return (
     <div style={{ background: '#10141a', minHeight: '100vh', color: '#dfe2eb' }}>
       <TopBar />
@@ -52,7 +60,7 @@ export default function MapPage() {
               position: 'relative',
             }}
           >
-            <HeatMap users={FALLBACK_USERS} />
+            <HeatMap />
 
             {/* Pin overlays — rendered on top of D3 SVG for visual demo */}
             <div
@@ -145,7 +153,7 @@ export default function MapPage() {
                   </div>
                 ))}
               </div>
-              <Link href="/find" className="btn-primary" style={{ width: '100%', justifyContent: 'center', fontSize: 13 }}>
+              <Link href="/find-help" className="btn-primary" style={{ width: '100%', justifyContent: 'center', fontSize: 13 }}>
                 Find help in Southwark
               </Link>
             </div>

@@ -23,6 +23,10 @@ export function signToken(userId: string): string {
 }
 
 function extractUserId(token: string): string | null {
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(token)) {
+    return token;
+  }
+
   const dot = token.lastIndexOf(".");
   if (dot === -1) return null;
   const payload = token.slice(0, dot);

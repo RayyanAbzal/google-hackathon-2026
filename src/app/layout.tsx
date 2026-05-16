@@ -1,16 +1,5 @@
 import type { Metadata } from "next";
-import { Inter, Geist_Mono } from "next/font/google";
 import "./globals.css";
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
-});
 
 export const metadata: Metadata = {
   title: "CivicTrust — London Mesh",
@@ -25,7 +14,8 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${inter.variable} ${geistMono.variable} antialiased dark`}
+      className="antialiased dark"
+      suppressHydrationWarning
     >
       <head>
         <link
@@ -33,7 +23,10 @@ export default function RootLayout({
           href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
         />
       </head>
-      <body style={{ background: "#10141a", color: "#dfe2eb", minHeight: "100vh" }}>
+      <body
+        style={{ background: "#10141a", color: "#dfe2eb", minHeight: "100vh" }}
+        suppressHydrationWarning
+      >
         {children}
       </body>
     </html>
