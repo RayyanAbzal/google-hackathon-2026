@@ -1,56 +1,72 @@
 # WORKLOG
 
-**Updated:** 2026-05-16 (session 4)
+**Updated:** 2026-05-16 (session 6)
 
 ## Active task
-Idle — PIN→password + skill removal fully applied and pushed
+Idle — full frontend design system shipped and pushed to dev
 
 ## Phase
-Implementing (teammates actively pushing to dev)
+Frontend complete (visual). Data wiring + auth guards = next priority for Maalav + Hemish.
 
 ## Files changed this session
-- `supabase/migrations/0001_init.sql` — `pin_hash` → `password_hash`, `skill TEXT NOT NULL` → `skill TEXT DEFAULT 'Other'`
-- `scripts/seed.ts` — `DEFAULT_PIN` → `DEFAULT_PASSWORD ('password1234')`, `pin_hash` → `password_hash` throughout
-- `src/lib/auth.ts` — `hashPin` renamed to `hashPassword`
-- `src/app/api/auth/register/route.ts` — password field, no skill, doc_type restricted to 'passport'/'driving_licence', `password_hash` in insert
-- `src/app/api/auth/login/route.ts` — password field, `password_hash` in DB query, removed 4-digit regex check
-- `src/types/index.ts` — `MandatoryDocType` added, `User.skill` typed as `SkillTag | null`, `pin_hash` removed from interface
-- `src/lib/CLAUDE.md` — `pin_hash` → `password_hash`, skill noted nullable
-- `CLAUDE.md` — key decisions: "4-digit PIN" → "password"
-- `src/app/CLAUDE.md` — register/login descriptions, session skill typed as `string | null`
-- `src/app/api/CLAUDE.md` — register/login route descriptions
-- `docs/PLAN.md` — Flow 1, Flow 5, Screen 1, demo step 2 updated
-- `docs/TASKS.md` — SQL schema snippet, route inputs, page steps updated
-- `docs/registration.puml` — password not PIN, skill step removed, doc options passport/driving_licence only; Aryan further updated with full validation flow + hashPassword/generateNodeId detail
-- `docs/login.puml` — password field, hashPassword, password_hash in diagram
+
+**Design system:**
+- `src/app/globals.css` — replaced shadcn colour tokens with Tactical Resilience design tokens; added utility classes (.bento, .btn-primary/ghost/solid-primary, .field-input, .tier-0..3, .chip, .city-grid, .dot-*)
+- `src/app/layout.tsx` — Inter font, Material Symbols Outlined via Google Fonts, html.dark class
+
+**New civic components (`src/components/civic/`):**
+- `TopBar.tsx` — fixed nav bar, blackout timer pill, notifications popup, avatar menu with sign out
+- `Sidebar.tsx` — fixed left nav, identity card, tier progress bar, active state highlighting
+- `TierBadge.tsx` — all 5 tiers (unverified → gov_official)
+- `Icon.tsx` — Material Symbols Outlined wrapper
+
+**Pages (all 10 routes):**
+- `src/app/page.tsx` — landing: hero, how-it-works, trust tiers, fraud resistance, CTA
+- `src/app/(auth)/login/page.tsx` — Node ID + password, calls /api/auth/login, stores session
+- `src/app/(auth)/register/page.tsx` — name + password + doc upload, calls /api/auth/register
+- `src/app/(auth)/unverified/page.tsx` — NEW: post-register splash, progress bar, next steps
+- `src/app/dashboard/page.tsx` — NEW: score ring SVG, 3 metric cards, evidence grid, activity feed
+- `src/app/add-evidence/page.tsx` — NEW: 4-step wizard (choose type, upload, review extracted, submit)
+- `src/app/vouch/page.tsx` — NEW: QR display, scanner/lookup, person preview, vouch type selector
+- `src/app/find/page.tsx` — search + chip filters + 4 result cards + mini map
+- `src/app/map/page.tsx` — wraps HeatMap, Southwark stat panel, legend
+- `src/app/settings/page.tsx` — NEW: 4 tabs (Profile active), form fields, devices, save footer
+- `src/app/profile/[username]/page.tsx` — now redirects to /dashboard
+
+**Docs updated:**
+- `src/app/CLAUDE.md` — current state of all routes, what Maalav should focus on next
+- `src/components/CLAUDE.md` — superseded components listed, civic/ components documented
+- `docs/ROADMAP.md` — components section updated, critical path updated
+- `docs/TASKS.md` — Hemish + Maalav tasks rewritten to reflect data-wiring focus
 
 ## Next step
-Pull latest dev before any further changes — teammates (Aryan, Tao) are actively pushing
+Maalav: auth guards + session data wiring (see docs/TASKS.md)
+Hemish: wire dashboard claims + vouch confirm button
+Tao: /api/find is still NOT STARTED — blocking Find page real data
 
 ## Open questions
-- Aryan: registration route accepts `doc_image_base64` but does not call Gemini — is Gemini validation at signup still planned or moved entirely to claims?
-- Tao: `/api/find` still returns 501 — ETA?
-- `skill` defaults to `'Other'` at signup — where does it get set to a real value? Profile edit page? Not yet built.
+- Aryan: registration route accepts `doc_image_base64` but does not call Gemini — Gemini at signup still planned or moved to claims only?
+- Tao: `/api/find` still 501 — ETA?
+- `skill` defaults to `'Other'` at signup — where does it get set? Profile edit page not yet built.
+- Root `PLAN.md` + `ROLES.md` — delete or move to docs/?
 
 ## Key decisions — LOCKED
 
-**Auth (updated this session):**
+**Auth:**
 - Password replaces 4-digit PIN — min 6 chars, hashed with SHA256 via `hashPassword()`
-- Skill selection removed from registration — `skill` defaults to `'Other'` in DB, `SkillTag | null` in TypeScript
+- Skill defaults to `'Other'` at signup, set via profile later
 - Mandatory doc at signup: passport OR driving_licence ONLY
 - `MandatoryDocType = 'passport' | 'driving_licence'` in `src/types/index.ts`
-- `pin_hash` column renamed to `password_hash` in DB + all code
+- `password_hash` column (was `pin_hash`)
 
 **Cut:**
-- Post for help (/help) — removed from docs and codebase entirely
-- Skill selector at registration — removed; skill set via profile later
-- National ID card as signup doc — removed (passport/driving_licence only)
+- Post for help (/help), skill selector at registration, National ID card at signup
 
 **Score formula:**
 `score = min(100, claims_verified * 15 + vouches_received * 10 + gov_vouched ? 20 : 0)`
 
 **Score thresholds:**
-- 0–29: Unverified — 30–49: Partial — 50–89: Verified — 90–94: Trusted — 95+: Gov Official
+0-29: Unverified | 30-49: Partial | 50-89: Verified | 90-94: Trusted | 95+: Gov Official
 
 **Profile view gate:**
 - Not logged in → "Login to view profiles"
@@ -59,9 +75,9 @@ Pull latest dev before any further changes — teammates (Aryan, Tao) are active
 
 **Dedup:** doc hash check is global — same document cannot be used across any account.
 
-**Vouch:** only vouchee score recalculates on vouch. Voucher penalty (-15) fires only when a flagged claim is processed.
+**Vouch:** only vouchee score recalculates on vouch. Voucher penalty (-15) fires only on flagged claim processing.
 
-**Git workflow:** dev is integration branch. Always `git pull --rebase` before pushing. Ray merges dev → main before demo.
+**Git workflow:** dev = integration. Always `git pull --rebase` before pushing. Ray merges dev → main before demo.
 
 **Team roles:**
 - Ray: full-stack lead, Gemini Vision, seed script, heatmap (D3), QR vouch glue
