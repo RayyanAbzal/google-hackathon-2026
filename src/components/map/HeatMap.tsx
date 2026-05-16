@@ -10,12 +10,57 @@ import type { SkillTag } from '@/types'
 import type { MapPOI, MapUser } from './map-data'
 import { buildMapInsights } from './map-data'
 
+const CREDENTIAL_LABEL: Record<string, string> = {
+  degree: 'Degree',
+  nhs_card: 'NHS card',
+  employer_letter: 'Employer letter',
+  professional_cert: 'Prof. cert',
+}
+
+const AID_HUB_LABELS: Record<string, string> = {
+  Southwark: "Guy's Aid Hub",
+  Lambeth: 'Brixton Aid Centre',
+  Hackney: 'Hackney Aid Hub',
+  Westminster: 'NHS Emergency HQ',
+  Camden: 'UCH Field Station',
+}
+
+function getAidHub(borough: string): string {
+  return AID_HUB_LABELS[borough] ?? `${borough} Aid Hub`
+}
+
+export interface PopupListing {
+  nodeId: string
+  title: string
+  sub: string
+  tierLabel: string
+  tierColor: string
+  iconColor: string
+  icon: string
+  score: number
+  totalVouches: number
+  credentials: string[]
+  avail: string
+  availColor: string
+  borough: string
+  username: string | null
+}
+
 function MapResizer({ sidebarWidth }: { sidebarWidth?: number }) {
   const map = useMap()
   useEffect(() => {
     const t = setTimeout(() => map.invalidateSize(), 220)
     return () => clearTimeout(t)
   }, [map, sidebarWidth])
+  return null
+}
+
+function MapFlyController({ borough, centroids }: { borough: string | null | undefined; centroids: CentroidMap }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!borough || !centroids[borough]) return
+    map.flyTo(centroids[borough], 12, { duration: 0.8 })
+  }, [borough, centroids, map])
   return null
 }
 
@@ -26,6 +71,9 @@ interface HeatMapProps {
   activeSkill?: SkillTag | 'All'
   onBoroughClick?: (name: string) => void
   sidebarWidth?: number
+  focusedBorough?: string | null
+  popupListing?: PopupListing | null
+  onPopupClose?: () => void
 }
 
 const SKILL_COLORS: Record<SkillTag, string> = {
@@ -55,6 +103,9 @@ export function HeatMap({
   activeSkill = 'All',
   onBoroughClick,
   sidebarWidth,
+  focusedBorough,
+  popupListing,
+  onPopupClose,
 }: HeatMapProps) {
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null)
   const [centroids, setCentroids] = useState<CentroidMap>({})
@@ -102,9 +153,10 @@ export function HeatMap({
     const base = heatColorScale(count)
 
     if (count === 0) {
+      const dimmed = activeSkill !== 'All'
       return {
         fillColor: '#1a2235',
-        fillOpacity: isSelected ? 0.7 : 0.55,
+        fillOpacity: isSelected ? 0.7 : (dimmed ? 0.15 : 0.55),
         color: isSelected ? '#7dd3fc' : '#2a3550',
         weight: isSelected ? 2 : 0.6,
       }
@@ -116,7 +168,7 @@ export function HeatMap({
       color: isSelected ? '#7dd3fc' : '#1e293b',
       weight: isSelected ? 2 : 0.8,
     }
-  }, [heatColorScale, lookup, selectedBorough])
+  }, [heatColorScale, lookup, selectedBorough, activeSkill])
 
   const onEachBorough = useCallback((feature: Feature, layer: Layer) => {
     const name = (feature.properties as Record<string, string>)['LAD13NM'] ?? ''
@@ -160,6 +212,7 @@ export function HeatMap({
       zoomControl
     >
       <MapResizer sidebarWidth={sidebarWidth} />
+      <MapFlyController borough={focusedBorough} centroids={centroids} />
       <TileLayer
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
@@ -168,7 +221,7 @@ export function HeatMap({
       />
 
       <GeoJSON
-        key={selectedBorough ?? '__none__'}
+        key={`${selectedBorough ?? '__none__'}__${activeSkill}`}
         data={geojson}
         style={boroughStyle}
         onEachFeature={onEachBorough}
@@ -211,6 +264,64 @@ export function HeatMap({
           </CircleMarker>
         )
       })}
+      {popupListing && centroids[popupListing.borough] && (
+        <Popup
+          position={centroids[popupListing.borough]}
+          eventHandlers={{ remove: () => onPopupClose?.() }}
+          closeButton={false}
+          autoPan={false}
+        >
+          <div style={{ minWidth: 200, fontFamily: 'inherit', background: '#181c22', color: '#dfe2eb', borderRadius: 8, padding: '12px 14px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
+              <div style={{ width: 28, height: 28, borderRadius: 6, background: `${popupListing.iconColor}18`, border: `1px solid ${popupListing.iconColor}35`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 15, color: popupListing.iconColor }}>{popupListing.icon}</span>
+              </div>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 700 }}>{popupListing.title}</div>
+                <div style={{ fontSize: 10, color: popupListing.iconColor }}>{popupListing.sub}</div>
+              </div>
+              <span style={{ marginLeft: 'auto', fontSize: 9, fontWeight: 700, letterSpacing: '0.08em', color: popupListing.tierColor, background: `${popupListing.tierColor}1a`, border: `1px solid ${popupListing.tierColor}50`, padding: '1px 5px', borderRadius: 3 }}>
+                {popupListing.tierLabel}
+              </span>
+            </div>
+            <div style={{ display: 'flex', gap: 6, fontSize: 10, color: '#8c90a1', marginBottom: 8, borderTop: '1px solid #2a3550', paddingTop: 7 }}>
+              <span>Score <span style={{ color: '#dfe2eb', fontWeight: 700 }}>{popupListing.score}</span></span>
+              <span style={{ color: '#424655' }}>·</span>
+              <span>{popupListing.totalVouches} vouch{popupListing.totalVouches !== 1 ? 'es' : ''}</span>
+              <span style={{ color: '#424655' }}>·</span>
+              <span style={{ color: popupListing.availColor }}>{popupListing.avail}</span>
+            </div>
+            {popupListing.credentials.length > 0 && (
+              <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
+                {popupListing.credentials.map(c => (
+                  <span key={c} style={{ fontSize: 9, padding: '2px 5px', borderRadius: 3, background: 'rgba(176,198,255,0.08)', border: '1px solid rgba(176,198,255,0.2)', color: '#b0c6ff' }}>
+                    ✓ {CREDENTIAL_LABEL[c] ?? c}
+                  </span>
+                ))}
+              </div>
+            )}
+            <div style={{ fontSize: 10, color: '#8c90a1', marginBottom: 8, borderTop: '1px solid #2a3550', paddingTop: 6 }}>
+              Contact via <span style={{ color: '#dfe2eb' }}>{getAidHub(popupListing.borough)}</span>
+            </div>
+            <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+              <button
+                onClick={() => onPopupClose?.()}
+                style={{ flex: 1, padding: '5px 0', background: 'rgba(66,70,85,0.3)', border: '1px solid #424655', borderRadius: 5, fontSize: 10, color: '#8c90a1', cursor: 'pointer' }}
+              >
+                Close
+              </button>
+              {popupListing.username && (
+                <a
+                  href={`/profile/${popupListing.username}`}
+                  style={{ flex: 1, textAlign: 'center', padding: '5px 0', background: `${popupListing.iconColor}18`, border: `1px solid ${popupListing.iconColor}40`, borderRadius: 5, fontSize: 10, fontWeight: 600, color: popupListing.iconColor, textDecoration: 'none', display: 'block' }}
+                >
+                  View Profile →
+                </a>
+              )}
+            </div>
+          </div>
+        </Popup>
+      )}
     </MapContainer>
   )
 }
