@@ -139,7 +139,7 @@ export default function LandingContent() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 18 }}>
             {[
               ['content_copy', 'Duplicates blocked', 'Same document twice? Both copies are paused.', 7],
-              ['hub', 'Vouch rings detected', 'Coordinated cross-vouching is flagged automatically.', 8],
+              ['hub', 'Vouch limits enforced', 'Five vouches per day, per person. No vouch spam.', 8],
               ['person_off', 'Names must match', 'Across every document. A mismatch stops verification.', 9],
             ].map(([icon, t, d, s]) => (
               <div key={t as string} style={{ position: 'relative', overflow: 'hidden', border: '1px solid rgba(66,70,85,0.5)', borderRadius: 14, padding: 24, background: '#181c22', height: 220 }}>

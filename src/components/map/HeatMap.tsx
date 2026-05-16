@@ -69,7 +69,7 @@ function MapResetController({ active }: { active: boolean }) {
   const map = useMap()
   useEffect(() => {
     if (!active) return
-    map.flyTo([51.505, -0.09], 10, { duration: 1.2 })
+    map.flyTo([51.505, -0.09], 10, { duration: 0.8 })
   }, [active, map])
   return null
 }
@@ -194,9 +194,15 @@ export function HeatMap({
     }
   }, [heatColorScale, lookup, selectedBorough, activeSkill])
 
-  // Always-current ref so stale onEachFeature closures still call latest boroughStyle
+  // Always-current refs so stale onEachFeature closures still read latest values
   const boroughStyleRef = useRef(boroughStyle)
   boroughStyleRef.current = boroughStyle
+
+  const onBoroughClickRef = useRef(onBoroughClick)
+  onBoroughClickRef.current = onBoroughClick
+
+  const selectedBoroughRef = useRef(selectedBorough)
+  selectedBoroughRef.current = selectedBorough
 
   // Imperatively update GeoJSON styles — avoids remounting the layer on selection change
   useEffect(() => {
@@ -211,7 +217,7 @@ export function HeatMap({
     layer.on({
       mouseover: (e: LeafletMouseEvent) => {
         const path = e.target as { setStyle: (s: PathOptions) => void; bringToFront: () => void }
-        const isSelected = name === selectedBorough
+        const isSelected = name === selectedBoroughRef.current
         if (!isSelected) {
           path.setStyle({ ...boroughStyleRef.current(feature), color: '#60a5fa', weight: 2, fillOpacity: 0.75 })
           path.bringToFront()
@@ -222,10 +228,10 @@ export function HeatMap({
         path.setStyle(boroughStyleRef.current(feature))
       },
       click: () => {
-        onBoroughClick?.(name)
+        onBoroughClickRef.current?.(name)
       },
     })
-  }, [selectedBorough, onBoroughClick])
+  }, [])
 
   if (!geojson) {
     return (
@@ -248,6 +254,7 @@ export function HeatMap({
       zoom={10}
       style={{ height: '100%', width: '100%' }}
       zoomControl
+      preferCanvas
     >
       <MapResizer sidebarWidth={sidebarWidth} />
       <MapFlyController borough={focusedBorough} centroids={centroids} />
