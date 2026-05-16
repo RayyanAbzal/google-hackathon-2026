@@ -48,6 +48,7 @@ export default function DashboardPage() {
   const [networkNodes, setNetworkNodes] = useState<Array<{ type: 'gov' | 'community'; display_name?: string; username?: string | null; tier?: string; vouched_at?: string }>>([])
   const [networkLoaded, setNetworkLoaded] = useState(false)
   const [ptsThisWeek, setPtsThisWeek] = useState<number | null>(null)
+  const [deletingClaimId, setDeletingClaimId] = useState<string | null>(null)
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -121,6 +122,7 @@ export default function DashboardPage() {
 
   const evidenceRows = useMemo(() => {
     return claims.slice(0, 3).map(c => ({
+      id: c.id,
       icon: claimIcon(c.doc_type),
       title: c.doc_type,
       sub: c.extracted_institution ?? '',
@@ -128,6 +130,33 @@ export default function DashboardPage() {
       badge: claimBadge(c.status),
     }))
   }, [claims])
+
+  const handleDeleteClaim = async (claimId: string) => {
+    if (!session) return
+    
+    setDeletingClaimId(claimId)
+    try {
+      const json = await protectedFetch<{ new_score: number; tier: string }>('/api/claims/delete', session, {
+        method: 'DELETE',
+        body: JSON.stringify({ claim_id: claimId }),
+      })
+
+      if (json.success) {
+        // Remove the claim from local state
+        setClaims(prev => prev.filter(c => c.id !== claimId))
+        // Update session with new score
+        const updated = updateStoredSession({
+          score: json.data.new_score,
+          tier: json.data.tier as TrustTier,
+        })
+        if (updated) setSession(updated)
+      }
+    } catch {
+      // Silently fail — user can try again
+    } finally {
+      setDeletingClaimId(null)
+    }
+  }
 
   return (
     <div style={{ background: '#10141a', minHeight: '100vh', color: '#dfe2eb' }}>
@@ -239,6 +268,29 @@ export default function DashboardPage() {
                 <span style={{ padding: '3px 10px', borderRadius: 999, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: e.color, background: `${e.color}1a`, border: `1px solid ${e.color}55` }}>
                   {e.badge}
                 </span>
+                <button
+                  onClick={() => handleDeleteClaim(e.id)}
+                  disabled={deletingClaimId === e.id}
+                  style={{
+                    padding: '6px 10px',
+                    borderRadius: 6,
+                    border: '1px solid rgba(255,180,171,0.3)',
+                    background: deletingClaimId === e.id ? 'rgba(255,180,171,0.15)' : 'rgba(255,180,171,0.08)',
+                    color: '#ffb4ab',
+                    fontSize: 12,
+                    fontWeight: 600,
+                    cursor: deletingClaimId === e.id ? 'default' : 'pointer',
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: 6,
+                    opacity: deletingClaimId === e.id ? 0.6 : 1,
+                    transition: 'all 0.2s',
+                  }}
+                  aria-label="Delete document"
+                >
+                  <Icon name={deletingClaimId === e.id ? 'hourglass_empty' : 'delete'} size={14} />
+                  {deletingClaimId === e.id ? 'Deleting...' : 'Delete'}
+                </button>
               </div>
             ))}
             <Link
