@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { SidebarProvider } from "@/components/civic/SidebarProvider";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -18,7 +19,9 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <body style={{ background: "#10141a", color: "#dfe2eb", minHeight: "100vh" }}>
-        {children}
+        <SidebarProvider>
+          {children}
+        </SidebarProvider>
       </body>
     </html>
   );

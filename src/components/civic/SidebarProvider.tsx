@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useEffect, useState } from 'react'
 
 interface SidebarContextValue {
   collapsed: boolean
@@ -19,10 +19,11 @@ const SidebarContext = createContext<SidebarContextValue>({
 })
 
 export function SidebarProvider({ children }: { children: React.ReactNode }) {
-  const [collapsed, setCollapsed] = useState(() => {
-    if (typeof window === 'undefined') return false
-    return localStorage.getItem(STORAGE_KEY) === 'true'
-  })
+  const [collapsed, setCollapsed] = useState(false)
+
+  useEffect(() => {
+    setCollapsed(localStorage.getItem(STORAGE_KEY) === 'true')
+  }, [])
 
   function toggle() {
     setCollapsed(v => {

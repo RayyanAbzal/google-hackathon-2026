@@ -45,10 +45,6 @@ interface BoroughAggregate {
   riskAlerts: MapPOI[]
 }
 
-function getDisplayName(user: MapUser): string {
-  return user.display_name ?? user.username ?? user.node_id ?? 'Unknown'
-}
-
 function getSkill(user: MapUser): SkillTag {
   return user.skill ?? 'Other'
 }
@@ -107,7 +103,7 @@ export function aggregateMapInsights(users: MapUser[], pois: MapPOI[], activeSki
       borough: bucket.borough,
       verifiedCount: bucket.verifiedCount,
       weightedCount: bucket.weightedCount,
-      people: bucket.people.sort((a, b) => getDisplayName(a).localeCompare(getDisplayName(b))),
+      people: bucket.people,
       topSkills: SKILL_ORDER
         .map(skill => ({ skill, count: bucket.skillCounts[skill] ?? 0 }))
         .filter(entry => entry.count > 0)

@@ -6,9 +6,10 @@ import { useRouter } from 'next/navigation'
 import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
 import Icon from '@/components/civic/Icon'
+import EgoGraph from '@/components/civic/svg/EgoGraph'
 import { useSidebar } from '@/components/civic/SidebarProvider'
-import type { Claim, Session } from '@/types'
-import { getDisplayFirstName, protectedFetch, requireSession } from '@/app/_lib/session'
+import type { ApiResponse, Claim, Session, TrustTier, Notification } from '@/types'
+import { getDisplayFirstName, protectedFetch, requireSession, updateStoredSession } from '@/app/_lib/session'
 
 const CIRCUMFERENCE = 276.46
 
@@ -31,12 +32,6 @@ function claimBadge(status: string): string {
   return status.toUpperCase()
 }
 
-const ACTIVITY = [
-  { icon: 'done_all', title: 'Medical Degree verified', sub: 'Vouched by Dr. Aris Thorne', time: '2 hours ago', color: '#40e56c' },
-  { icon: 'handshake', title: 'New vouch from Hemish R.', sub: 'Regular vouch · +5 pts', time: '8 hours ago', color: '#b0c6ff' },
-  { icon: 'person_add', title: 'Account created', sub: 'Welcome to the mesh.', time: '2 weeks ago', color: '#8c90a1' },
-]
-
 const FALLBACK_EVIDENCE = [
   { icon: 'id_card', title: 'Passport', sub: '6 vouches', color: '#40e56c', badge: 'VERIFIED' },
   { icon: 'school', title: 'Medical Degree', sub: '2 vouches', color: '#40e56c', badge: 'VERIFIED' },
@@ -48,6 +43,11 @@ export default function DashboardPage() {
   const { width: sidebarWidth } = useSidebar()
   const [session, setSession] = useState<Session | null>(null)
   const [claims, setClaims] = useState<Claim[]>([])
+  const [claimsLoaded, setClaimsLoaded] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [networkNodes, setNetworkNodes] = useState<Array<{ type: 'gov' | 'community'; display_name?: string; username?: string | null; tier?: string; vouched_at?: string }>>([])
+  const [networkLoaded, setNetworkLoaded] = useState(false)
+  const [ptsThisWeek, setPtsThisWeek] = useState<number | null>(null)
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -55,11 +55,42 @@ export default function DashboardPage() {
       setSession(current)
       if (!current) return
 
+      // Refresh score from DB — catches vouches received since last login
+      fetch(`/api/score/${current.user_id}`)
+        .then(r => r.json() as Promise<ApiResponse<{ score: number; tier: TrustTier }>>)
+        .then(json => {
+          if (json.success && (json.data.score !== current.score || json.data.tier !== current.tier)) {
+            const updated = updateStoredSession({ score: json.data.score, tier: json.data.tier })
+            if (updated) setSession(updated)
+          }
+        })
+        .catch(() => {})
+
       protectedFetch<Claim[]>(`/api/claims/${current.user_id}`, current)
         .then((json) => {
           if (json.success) setClaims(json.data)
         })
+        .catch(() => {})
+        .finally(() => setClaimsLoaded(true))
         .catch(() => setClaims([]))
+
+      protectedFetch<Notification[]>('/api/notifications?limit=3', current)
+        .then((json) => {
+          if (json.success) setNotifications(json.data)
+        })
+        .catch(() => setNotifications([]))
+
+      protectedFetch<{ nodes: Array<{ type: 'gov' | 'community'; display_name: string; username: string | null; tier: string; vouched_at: string }>; pts_this_week: number; total_vouchers: number }>(
+        `/api/network/${current.user_id}`, current
+      )
+        .then((json) => {
+          if (json.success) {
+            setNetworkNodes(json.data.nodes)
+            setPtsThisWeek(json.data.pts_this_week)
+          }
+        })
+        .catch(() => {})
+        .finally(() => setNetworkLoaded(true))
     })
   }, [router])
 
@@ -69,30 +100,30 @@ export default function DashboardPage() {
   const tier = session?.tier ?? 'unverified'
 
   const tierLabel = useMemo(() => {
-    if (tier === 'gov_official') return 'Tier 3 · Government Verified'
-    if (tier === 'trusted') return 'Tier 2 · Trusted'
-    if (tier === 'verified') return 'Tier 1 · Verified'
-    return 'Tier 0 · Unverified'
+    if (tier === 'gov_official') return 'TIER 3 · GOVERNMENT VERIFIED'
+    if (tier === 'trusted') return 'TIER 2 · TRUSTED'
+    if (tier === 'verified') return 'TIER 1 · VERIFIED'
+    return 'TIER 0 · UNVERIFIED'
   }, [tier])
 
   const tierColor = useMemo(() => {
-    if (tier === 'gov_official') return '#40e56c'
-    if (tier === 'trusted') return '#40e56c'
+    if (tier === 'gov_official' || tier === 'trusted') return '#40e56c'
     if (tier === 'verified') return '#b0c6ff'
     return '#8c90a1'
   }, [tier])
 
-  const verifiedClaims = useMemo(() => claims.filter(c => c.status === 'verified').length, [claims])
-  const vouchesReceived = useMemo(() => claims.reduce((acc, c) => acc + (c.vouches ?? 0), 0), [claims])
+  const ptsToNext = useMemo(() => {
+    if (score >= 91) return null
+    if (score >= 55) return `${91 - score} PTS TO GOV. VERIFIED`
+    if (score >= 20) return `${55 - score} PTS TO TRUSTED`
+    return `${20 - score} PTS TO VERIFIED`
+  }, [score])
 
   const evidenceRows = useMemo(() => {
-    if (claims.length === 0) return FALLBACK_EVIDENCE
     return claims.slice(0, 3).map(c => ({
       icon: claimIcon(c.doc_type),
       title: c.doc_type,
-      sub: c.extracted_institution
-        ? `${c.vouches} vouches · ${c.extracted_institution}`
-        : `${c.vouches} vouches`,
+      sub: c.extracted_institution ?? '',
       color: claimColor(c.status),
       badge: claimBadge(c.status),
     }))
@@ -105,132 +136,152 @@ export default function DashboardPage() {
 
       <main style={{ marginLeft: sidebarWidth, padding: '80px 36px 36px 36px', transition: 'margin-left 0.2s ease' }}>
 
-        {/* Header */}
-        <div style={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: 32 }}>
+        {/* Header row */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 28 }}>
           <div>
-            <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.02em', margin: '0 0 4px' }}>
+            <span className="meta">{tierLabel}</span>
+            <h1 style={{ fontSize: 38, fontWeight: 700, letterSpacing: '-0.02em', margin: '8px 0 4px' }}>
               Welcome back, {firstName}.
             </h1>
-            <p style={{ color: '#c2c6d8', fontSize: 15, margin: 0 }}>
-              {session?.username ? `@${session.username}` : 'Your account'} · Southwark, London
-            </p>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, color: '#c2c6d8', fontSize: 14 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#40e56c' }}>stethoscope</span>
+              {session?.username ? `@${session.username}` : 'Your account'}{session?.borough ? ` · ${session.borough}` : ''}
+            </div>
           </div>
-          <Link href="/vouch" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '10px 16px', border: '1px solid #424655', borderRadius: 8, background: '#181c22', color: '#dfe2eb', fontSize: 13, textDecoration: 'none' }}>
-            <Icon name="qr_code_2" size={16} /> Share Node ID
-          </Link>
+          <div style={{ display: 'flex', gap: 8 }}>
+            <Link href="/vouch" style={{ padding: '10px 16px', border: '1px solid #424655', borderRadius: 8, background: '#181c22', color: '#dfe2eb', fontSize: 13, display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
+              <Icon name="qr_code_2" size={16} /> Share Node ID
+            </Link>
+            <Link href="/add-evidence" style={{ padding: '10px 16px', background: '#b0c6ff', color: '#002d6f', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, textDecoration: 'none' }}>
+              <Icon name="add" size={16} /> Add evidence
+            </Link>
+          </div>
         </div>
 
-        {/* Top row: score ring + 3 metric cards */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: 20, marginBottom: 20 }}>
+        {/* Top row: ego graph + score ring */}
+        <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 18, marginBottom: 18 }}>
 
-          {/* Trust score */}
-          <div style={{ border: '1px solid #424655', borderRadius: 12, padding: 20, background: '#181c22', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <div style={{ fontSize: 14, color: '#c2c6d8', marginBottom: 16 }}>Trust score</div>
-            <div style={{ position: 'relative', width: 160, height: 160 }}>
+          <div style={{ border: '1px solid rgba(66,70,85,0.5)', borderRadius: 14, padding: 20, background: '#181c22' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
+              <span className="meta">YOUR TRUST NETWORK</span>
+              {ptsThisWeek !== null && ptsThisWeek > 0 && (
+                <span className="meta" style={{ color: '#40e56c' }}>+{ptsThisWeek} PTS THIS WEEK</span>
+              )}
+            </div>
+            <div style={{ height: 300, marginTop: 6 }}>
+              <EgoGraph width={680} height={300} vouchers={networkLoaded ? networkNodes : []} />
+            </div>
+            <div style={{ display: 'flex', gap: 16, marginTop: 4 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#c2c6d8' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#40e56c', display: 'inline-block' }} />
+                Gov. voucher
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#c2c6d8' }}>
+                <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#b0c6ff', display: 'inline-block' }} />
+                Community voucher
+              </div>
+            </div>
+          </div>
+
+          <div style={{ border: '1px solid rgba(66,70,85,0.5)', borderRadius: 14, padding: 24, background: '#181c22', display: 'flex', flexDirection: 'column', alignItems: 'center', textAlign: 'center' }}>
+            <span className="meta">TRUST SCORE</span>
+            <div style={{ position: 'relative', width: 200, height: 200, marginTop: 12 }}>
               <svg viewBox="0 0 100 100" style={{ width: '100%', height: '100%', transform: 'rotate(-90deg)' }}>
-                <circle cx="50" cy="50" r="44" fill="none" stroke="#31353c" strokeWidth="3" />
+                <circle cx="50" cy="50" r="44" fill="none" stroke="#424655" strokeWidth="3" />
                 <circle
                   cx="50" cy="50" r="44"
                   fill="none"
                   stroke="#40e56c"
                   strokeWidth="4"
-                  strokeDasharray={CIRCUMFERENCE}
-                  strokeDashoffset={dashOffset}
+                  strokeDasharray={`${CIRCUMFERENCE}`}
+                  strokeDashoffset={`${dashOffset}`}
                   strokeLinecap="round"
                 />
               </svg>
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: 46, fontWeight: 700, lineHeight: 1, letterSpacing: '-0.03em' }}>{score}</span>
+                <span style={{ fontSize: 56, fontWeight: 700, lineHeight: 1, letterSpacing: '-0.04em' }}>{score}</span>
                 <span style={{ fontSize: 12, color: '#8c90a1', marginTop: 4 }}>out of 100</span>
               </div>
             </div>
-            <div style={{ marginTop: 16, padding: '4px 12px', borderRadius: 9999, background: `${tierColor}18`, border: `1px solid ${tierColor}55`, color: tierColor, fontSize: 11, fontWeight: 700, letterSpacing: '0.06em', textAlign: 'center' }}>
+            <div style={{ marginTop: 14, padding: '6px 12px', borderRadius: 999, background: `${tierColor}12`, border: `1px solid ${tierColor}55`, color: tierColor, fontSize: 11, fontWeight: 700, letterSpacing: '0.08em' }}>
               {tierLabel}
             </div>
-          </div>
-
-          {/* Verified claims */}
-          <div style={{ border: '1px solid #424655', borderRadius: 12, padding: 20, background: '#181c22' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 22, color: '#40e56c', display: 'block' }}>fact_check</span>
-            <div style={{ fontSize: 32, fontWeight: 700, marginTop: 12, lineHeight: 1 }}>
-              {claims.length > 0 ? `+${verifiedClaims}` : '+15'}
-            </div>
-            <div style={{ fontSize: 14, color: '#c2c6d8', marginTop: 8 }}>Verified claims</div>
-          </div>
-
-          {/* Vouches received */}
-          <div style={{ border: '1px solid #424655', borderRadius: 12, padding: 20, background: '#181c22' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 22, color: '#b0c6ff', display: 'block' }}>group</span>
-            <div style={{ fontSize: 32, fontWeight: 700, marginTop: 12, lineHeight: 1 }}>
-              {claims.length > 0 ? `+${vouchesReceived}` : '+30'}
-            </div>
-            <div style={{ fontSize: 14, color: '#c2c6d8', marginTop: 8 }}>Vouches received</div>
-          </div>
-
-          {/* Government vouches */}
-          <div style={{ border: '1px solid #424655', borderRadius: 12, padding: 20, background: '#181c22' }}>
-            <span className="material-symbols-outlined" style={{ fontSize: 22, color: '#ffb599', display: 'block' }}>account_balance</span>
-            <div style={{ fontSize: 32, fontWeight: 700, marginTop: 12, lineHeight: 1 }}>+20</div>
-            <div style={{ fontSize: 14, color: '#c2c6d8', marginTop: 8 }}>Government vouches</div>
+            {ptsToNext && (
+              <div className="mono" style={{ fontSize: 11, color: '#8c90a1', marginTop: 14 }}>{ptsToNext}</div>
+            )}
           </div>
         </div>
 
-        {/* Bottom row: evidence + activity */}
-        <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: 20 }}>
-
-          {/* Evidence */}
-          <div style={{ border: '1px solid #424655', borderRadius: 12, padding: 22, background: '#181c22' }}>
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 20 }}>
-              <h2 style={{ fontSize: 20, fontWeight: 600, margin: 0 }}>Your evidence</h2>
-              <Link href="/add-evidence" style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '8px 14px', background: 'rgba(176,198,255,0.1)', border: '1px solid rgba(176,198,255,0.35)', borderRadius: 8, color: '#b0c6ff', fontSize: 13, fontWeight: 600, textDecoration: 'none' }}>
-                <Icon name="add" size={16} /> Add claim
-              </Link>
-            </div>
-
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
-              {evidenceRows.map((e, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 16, border: '1px solid #424655', borderRadius: 10, background: '#10141a' }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 10, background: `${e.color}18`, border: `1px solid ${e.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 22, color: e.color }}>{e.icon}</span>
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.title}</div>
-                    <div style={{ fontSize: 12, color: '#8c90a1', marginTop: 2 }}>{e.sub}</div>
-                  </div>
-                  <span style={{ padding: '3px 8px', borderRadius: 9999, fontSize: 10, fontWeight: 700, letterSpacing: '0.06em', color: e.color, background: `${e.color}18`, border: `1px solid ${e.color}55`, flexShrink: 0 }}>
-                    {e.badge}
-                  </span>
-                </div>
-              ))}
-
-              <Link href="/add-evidence" style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 16, border: '1.5px dashed #424655', borderRadius: 10, color: '#8c90a1', textDecoration: 'none', cursor: 'pointer' }} onMouseEnter={e => (e.currentTarget.style.borderColor = 'rgba(176,198,255,0.4)')} onMouseLeave={e => (e.currentTarget.style.borderColor = '#424655')}>
-                <div style={{ width: 44, height: 44, borderRadius: 10, background: '#0a0e14', border: '1px solid #424655', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                  <Icon name="add" size={22} />
-                </div>
-                <div>
-                  <div style={{ fontWeight: 600, fontSize: 14 }}>Add another claim</div>
-                  <div style={{ fontSize: 12, color: '#8c90a1', marginTop: 2 }}>Work ID, residency, degree</div>
-                </div>
-              </Link>
-            </div>
+        {/* Bottom row: evidence (full width) */}
+        <div style={{ border: '1px solid rgba(66,70,85,0.5)', borderRadius: 14, padding: 22, background: '#181c22' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 18 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Your evidence</h2>
+            <span className="meta">
+              {evidenceRows.length} ITEMS · {evidenceRows.filter(e => e.badge === 'PENDING').length} PENDING
+            </span>
           </div>
 
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {claimsLoaded && evidenceRows.length === 0 && (
+              <div style={{ padding: '28px 14px', textAlign: 'center', border: '1px solid rgba(66,70,85,0.4)', borderRadius: 10, background: '#10141a', color: '#8c90a1', fontSize: 13 }}>
+                No verified evidence yet — add your first document to start building trust.
+              </div>
+            )}
+            {evidenceRows.map((e, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 14, border: '1px solid rgba(66,70,85,0.5)', borderRadius: 10, background: '#10141a' }}>
+                <div style={{ width: 42, height: 42, borderRadius: 10, background: `${e.color}18`, border: `1px solid ${e.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 20, color: e.color }}>{e.icon}</span>
+                </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{e.title}</div>
+                  {e.sub && <div style={{ fontSize: 12, color: '#8c90a1', marginTop: 2 }}>{e.sub}</div>}
+                </div>
+                <span style={{ padding: '3px 10px', borderRadius: 999, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: e.color, background: `${e.color}1a`, border: `1px solid ${e.color}55` }}>
+                  {e.badge}
+                </span>
+              </div>
+            ))}
+            <Link
+              href="/add-evidence"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px', border: '1.5px dashed #424655', borderRadius: 10, color: '#8c90a1', fontSize: 13, textDecoration: 'none' }}
+            >
+              <Icon name="add" size={16} /> Add another claim
+            </Link>
+          </div>
           {/* Activity */}
           <div style={{ border: '1px solid #424655', borderRadius: 12, padding: 22, background: '#181c22' }}>
             <h2 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 16px' }}>Recent activity</h2>
             <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
-              {ACTIVITY.map((a, i) => (
-                <div key={i} style={{ display: 'flex', gap: 12 }}>
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: `${a.color}18`, border: `1px solid ${a.color}40`, color: a.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <Icon name={a.icon} size={14} />
-                  </div>
-                  <div>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{a.title}</div>
-                    <div style={{ fontSize: 12, color: '#c2c6d8', marginTop: 2 }}>{a.sub}</div>
-                    <div style={{ fontSize: 11, color: '#8c90a1', marginTop: 4 }}>{a.time}</div>
-                  </div>
-                </div>
-              ))}
+              {notifications.length === 0 ? (
+                <div style={{ fontSize: 13, color: '#8c90a1', padding: '20px 0' }}>No activity yet</div>
+              ) : (
+                notifications.map((n) => {
+                  const time = new Date(n.created_at)
+                  const now = new Date()
+                  const diffMs = now.getTime() - time.getTime()
+                  const diffMins = Math.floor(diffMs / 60000)
+                  const diffHours = Math.floor(diffMs / 3600000)
+                  const diffDays = Math.floor(diffMs / 86400000)
+                  let timeStr = 'just now'
+                  if (diffMins < 60) timeStr = `${diffMins}m ago`
+                  else if (diffHours < 24) timeStr = `${diffHours}h ago`
+                  else if (diffDays < 7) timeStr = `${diffDays}d ago`
+                  else timeStr = time.toLocaleDateString()
+
+                  return (
+                    <div key={n.id} style={{ display: 'flex', gap: 12 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: `${n.color}18`, border: `1px solid ${n.color}40`, color: n.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon name={n.icon} size={14} />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{n.title}</div>
+                        <div style={{ fontSize: 12, color: '#c2c6d8', marginTop: 2 }}>{n.detail}</div>
+                        <div style={{ fontSize: 11, color: '#8c90a1', marginTop: 4 }}>{timeStr}</div>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
             </div>
           </div>
         </div>

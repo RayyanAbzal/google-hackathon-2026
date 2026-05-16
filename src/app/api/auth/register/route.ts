@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { hashPassword, signToken } from "@/lib/auth";
 import { generateUniqueNodeId } from "@/lib/nodeId";
+import { createNotification } from "@/lib/notifications";
 import type { ApiResponse, MandatoryDocType, SkillTag } from "@/types";
 
 // POST /api/auth/register
@@ -35,20 +36,6 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const { display_name, password, doc_type, borough, skill } = body;
-
-  if (!skill?.trim()) {
-    return Response.json(
-      { success: false, error: "skill is required" } satisfies ApiResponse<never>,
-      { status: 400 }
-    );
-  }
-
-  if (!borough?.trim()) {
-    return Response.json(
-      { success: false, error: "borough is required" } satisfies ApiResponse<never>,
-      { status: 400 }
-    );
-  }
 
   if (!display_name?.trim()) {
     return Response.json({ success: false, error: "display_name is required" } satisfies ApiResponse<never>, { status: 400 });
@@ -87,7 +74,7 @@ export async function POST(request: Request): Promise<Response> {
     .insert({
       node_id,
       display_name: display_name.trim(),
-      skill: skill.trim(),
+      skill: skill?.trim() ?? 'Other',
       password_hash,
       borough: safeBorough,
     })
@@ -97,6 +84,16 @@ export async function POST(request: Request): Promise<Response> {
   if (error) {
     return Response.json({ success: false, error: "Registration failed" } satisfies ApiResponse<never>, { status: 500 });
   }
+
+  // Create welcome notification
+  await createNotification({
+    user_id: data.id,
+    type: 'account_created',
+    title: 'Welcome to CivicTrust',
+    detail: 'Start building your trust profile',
+    icon: 'person_add',
+    color: '#8c90a1',
+  });
 
   return Response.json({
     success: true,

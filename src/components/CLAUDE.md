@@ -10,12 +10,13 @@ The civic design system is shipped. Most planned components are now superseded b
 
 ## Already built — src/components/civic/
 
-| Component | File                  | Notes                                |
-| --------- | --------------------- | ------------------------------------ |
-| TopBar    | `civic/TopBar.tsx`    | Done. Notifications + avatar popups. |
-| Sidebar   | `civic/Sidebar.tsx`   | Done. Identity card + nav.           |
-| TierBadge | `civic/TierBadge.tsx` | Done. Replaces ScoreBadge.           |
-| Icon      | `civic/Icon.tsx`      | Done. Material Symbols wrapper.      |
+| Component       | File                        | Notes                                                                                                                                               |
+| --------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| TopBar          | `civic/TopBar.tsx`          | Done. Notifications + avatar popups.                                                                                                                |
+| Sidebar         | `civic/Sidebar.tsx`         | Done. Collapsible (expand 240px / collapse 56px). Uses SidebarProvider. AUTH_NAV vs PUBLIC_NAV.                                                     |
+| SidebarProvider | `civic/SidebarProvider.tsx` | Done. Context for collapse state + width. `useSidebar()` hook. Persists to localStorage key `sidebar_collapsed`. Wrapped at root in `layout.tsx`.  |
+| TierBadge       | `civic/TierBadge.tsx`       | Done. Replaces ScoreBadge.                                                                                                                          |
+| Icon            | `civic/Icon.tsx`            | Done. Material Symbols wrapper.                                                                                                                     |
 
 ## Still useful — these exist but may need connecting to real data
 

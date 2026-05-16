@@ -1,7 +1,7 @@
 'use client'
 
-import { Fragment, useCallback, useEffect, useMemo, useState } from 'react'
-import { CircleMarker, GeoJSON, MapContainer, Popup, TileLayer } from 'react-leaflet'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { CircleMarker, GeoJSON, MapContainer, Popup, TileLayer, Tooltip } from 'react-leaflet'
 import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet'
 import type { Feature, FeatureCollection } from 'geojson'
 import * as d3 from 'd3'
@@ -15,7 +15,7 @@ interface HeatMapProps {
   pois?: MapPOI[]
   selectedBorough?: string
   activeSkill?: SkillTag | 'All'
-  onBoroughClick?: (name: string, users: MapUser[]) => void
+  onBoroughClick?: (name: string) => void
 }
 
 const SKILL_COLORS: Record<SkillTag, string> = {
@@ -78,7 +78,7 @@ export function HeatMap({
   const heatColorScale = useMemo(
     () => d3.scaleLinear<string>()
       .domain([0, maxWeightedCount])
-      .range(['#0b1220', '#17346a'])
+      .range(['#0b1220', '#7cc4ff'])
       .clamp(true),
     [maxWeightedCount]
   )
@@ -90,9 +90,18 @@ export function HeatMap({
     const isSelected = name === selectedBorough
     const base = heatColorScale(count)
 
+    if (count === 0) {
+      return {
+        fillColor: '#1a2235',
+        fillOpacity: isSelected ? 0.7 : 0.55,
+        color: isSelected ? '#7dd3fc' : '#2a3550',
+        weight: isSelected ? 2 : 0.6,
+      }
+    }
+
     return {
-      fillColor: isSelected ? (d3.color(base)?.brighter(0.8)?.formatHex() ?? base) : base,
-      fillOpacity: count > 0 ? (isSelected ? 0.94 : 0.88) : 0.22,
+      fillColor: isSelected ? (d3.color(base)?.brighter(0.45)?.formatHex() ?? base) : base,
+      fillOpacity: isSelected ? 0.94 : 0.88,
       color: isSelected ? '#7dd3fc' : '#1e293b',
       weight: isSelected ? 2 : 0.8,
     }
@@ -100,15 +109,11 @@ export function HeatMap({
 
   const onEachBorough = useCallback((feature: Feature, layer: Layer) => {
     const name = (feature.properties as Record<string, string>)['LAD13NM'] ?? ''
-    const insight = lookup[name]
-    const count = insight?.verifiedCount ?? 0
-
-    layer.bindTooltip(`${name} — ${count} verified`, { sticky: true })
 
     layer.on({
       mouseover: (e: LeafletMouseEvent) => {
         const path = e.target as { setStyle: (s: PathOptions) => void; bringToFront: () => void }
-        path.setStyle({ color: '#60a5fa', weight: 1.8, fillOpacity: 0.95 })
+        path.setStyle({ color: '#60a5fa', weight: 2 })
         path.bringToFront()
       },
       mouseout: (e: LeafletMouseEvent) => {
@@ -116,8 +121,7 @@ export function HeatMap({
         path.setStyle(boroughStyle(feature))
       },
       click: () => {
-        const people = insight?.people ?? []
-        onBoroughClick?.(name, people)
+        onBoroughClick?.(name)
       },
     })
   }, [boroughStyle, lookup, onBoroughClick])
@@ -137,13 +141,11 @@ export function HeatMap({
     )
   }
 
-  const heatColor = activeSkill === 'All' ? '#3b82f6' : SKILL_COLORS[activeSkill]
-
   return (
     <MapContainer
       center={[51.505, -0.09]}
       zoom={10}
-      className="h-full w-full overflow-hidden rounded-xl"
+      style={{ height: '100%', width: '100%', overflow: 'hidden' }}
       zoomControl
     >
       <TileLayer
@@ -160,61 +162,6 @@ export function HeatMap({
         onEachFeature={onEachBorough}
       />
 
-      {insights.map((insight, index) => {
-        const center = centroids[insight.borough]
-        if (!center || insight.weightedCount <= 0) return null
-
-        const [lat, lng] = center
-        const radius = 14 + Math.sqrt(insight.weightedCount) * 6.5
-        const auraRadius = radius + 11
-        const coreRadius = Math.max(8, radius * 0.58)
-        const isSelected = insight.borough === selectedBorough
-        const auraOpacity = isSelected ? 0.16 : 0.1
-        const coreOpacity = isSelected ? 0.98 : 0.9
-
-        const position = [lat + jitterDeg(index, 0.005), lng + jitterDeg(index + 9, 0.008)] as [number, number]
-
-        return (
-          <Fragment key={`heat-${insight.borough}`}>
-            <CircleMarker
-              key={`heat-aura-${insight.borough}`}
-              center={position}
-              radius={auraRadius}
-              interactive={false}
-              pathOptions={{
-                fillColor: heatColor,
-                fillOpacity: auraOpacity,
-                color: heatColor,
-                weight: 0.4,
-              }}
-            />
-            <CircleMarker
-              key={`heat-body-${insight.borough}`}
-              center={position}
-              radius={radius}
-              interactive={false}
-              pathOptions={{
-                fillColor: heatColor,
-                fillOpacity: isSelected ? 0.28 : 0.2,
-                color: heatColor,
-                weight: 1,
-              }}
-            />
-            <CircleMarker
-              key={`heat-core-${insight.borough}`}
-              center={position}
-              radius={coreRadius}
-              interactive={false}
-              pathOptions={{
-                fillColor: heatColor,
-                fillOpacity: coreOpacity,
-                color: isSelected ? '#dbeafe' : 'rgba(255,255,255,0.55)',
-                weight: isSelected ? 2 : 1,
-              }}
-            />
-          </Fragment>
-        )
-      })}
 
       {pois.map((poi, index) => {
         const center = centroids[poi.borough]
@@ -227,15 +174,20 @@ export function HeatMap({
           <CircleMarker
             key={`poi-${poi.borough}-${poi.type}-${index}`}
             center={[lat + jitterDeg(index + 50, 0.006), lng + jitterDeg(index + 60, 0.01)]}
-            radius={poi.type === 'risk_alert' ? 10 : 8}
+            radius={poi.type === 'risk_alert' ? 11 : 10}
             pathOptions={{
-              fillColor: `${color}22`,
-              fillOpacity: 1,
-              color,
-              weight: 1.8,
+              fillColor: color,
+              fillOpacity: 0.85,
+              color: '#ffffff',
+              weight: 1.5,
               dashArray: poi.type === 'risk_alert' ? '4 3' : undefined,
             }}
           >
+            <Tooltip permanent direction="right" opacity={0.92} offset={[8, 0]}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: poi.type === 'aid_hub' ? '#b0c6ff' : '#ffb4ab' }}>
+                {poi.label}
+              </span>
+            </Tooltip>
             <Popup>
               <div style={{ minWidth: 140 }}>
                 <div style={{ fontWeight: 700, fontSize: 13, color: '#f8fafc', marginBottom: 2 }}>{poi.label}</div>

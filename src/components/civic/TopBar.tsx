@@ -3,35 +3,12 @@
 import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { getInitials, useStoredSession } from '@/app/_lib/session'
+import { getInitials, useStoredSession, protectedFetch } from '@/app/_lib/session'
 import Icon from './Icon'
 import TierBadge from './TierBadge'
+import type { Notification, ApiResponse } from '@/types'
 
 const BLACKOUT_HOURS = 14281
-
-const NOTIFICATIONS = [
-  {
-    icon: 'done_all',
-    color: '#40e56c',
-    text: 'Medical Degree verified',
-    detail: 'Vouched by Dr. Aris Thorne',
-    time: '2 hours ago',
-  },
-  {
-    icon: 'handshake',
-    color: '#b0c6ff',
-    text: 'New vouch from Hemish R.',
-    detail: 'Regular vouch · +10 pts',
-    time: '8 hours ago',
-  },
-  {
-    icon: 'person_add',
-    color: '#8c90a1',
-    text: 'Account created',
-    detail: 'Welcome to the mesh.',
-    time: '2 weeks ago',
-  },
-]
 
 interface TopBarProps {
   authMode?: 'auto' | 'public'
@@ -40,12 +17,47 @@ interface TopBarProps {
 export default function TopBar({ authMode = 'auto' }: TopBarProps) {
   const [bellOpen, setBellOpen] = useState(false)
   const [avatarOpen, setAvatarOpen] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
   const bellRef = useRef<HTMLDivElement>(null)
   const avatarRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
   const session = useStoredSession()
   const showSessionControls = authMode !== 'public' && Boolean(session)
   const username = session?.username ? `@${session.username}` : 'Username not set'
+
+  useEffect(() => {
+    if (!session) return
+
+    const fetchNotifications = async () => {
+      const response = await protectedFetch<Notification[]>(
+        '/api/notifications?limit=5',
+        session
+      ) as ApiResponse<Notification[]> & { unread_count?: number }
+      if (response.success) {
+        setNotifications(response.data)
+        setUnreadCount(response.unread_count ?? 0)
+      }
+    }
+
+    fetchNotifications()
+  }, [session])
+
+  function openBell() {
+    const opening = !bellOpen
+    setBellOpen(opening)
+    setAvatarOpen(false)
+    if (opening && session) {
+      const unread = notifications.filter(n => !n.read)
+      unread.forEach(n => {
+        protectedFetch(`/api/notifications/${n.id}`, session, { method: 'PATCH' })
+      })
+      if (unread.length > 0) {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+        setUnreadCount(0)
+      }
+    }
+  }
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -66,7 +78,7 @@ export default function TopBar({ authMode = 'auto' }: TopBarProps) {
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, height: 56,
         background: 'rgba(16,20,26,0.88)', backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid #424655', zIndex: 50,
+        borderBottom: '1px solid #424655', zIndex: 9999,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px',
       }}
     >
@@ -93,26 +105,47 @@ export default function TopBar({ authMode = 'auto' }: TopBarProps) {
         {showSessionControls && session ? (
           <>
             <div ref={bellRef} style={{ position: 'relative' }}>
-              <button onClick={() => { setBellOpen(v => !v); setAvatarOpen(false) }} style={{ width: 36, height: 36, borderRadius: 8, background: bellOpen ? 'rgba(176,198,255,0.1)' : 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c2c6d8' }}>
+              <button onClick={openBell} style={{ position: 'relative', width: 36, height: 36, borderRadius: 8, background: bellOpen ? 'rgba(176,198,255,0.1)' : 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c2c6d8' }}>
                 <Icon name="notifications" size={20} />
+                {unreadCount > 0 && (
+                  <span style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: '50%', background: '#ff4444', border: '2px solid #10141a' }} />
+                )}
               </button>
               {bellOpen && (
                 <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, width: 320, background: '#181c22', border: '1px solid #424655', borderRadius: 12, padding: 16, zIndex: 100 }}>
                   <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 12 }}>Notifications</div>
-                  {NOTIFICATIONS.map((n, i) => (
-                    <div key={i} style={{ display: 'flex', gap: 12, marginBottom: i < NOTIFICATIONS.length - 1 ? 12 : 0 }}>
-                      <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${n.color}20`, border: `1px solid ${n.color}50`, color: n.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                        <Icon name={n.icon} size={14} />
-                      </div>
-                      <div>
-                        <div style={{ fontSize: 13 }}>{n.text}</div>
-                        {n.detail && (
-                          <div style={{ fontSize: 12, color: '#c2c6d8', marginTop: 1 }}>{n.detail}</div>
-                        )}
-                        <div style={{ fontSize: 11, color: '#8c90a1', marginTop: 2 }}>{n.time}</div>
-                      </div>
-                    </div>
-                  ))}
+                  {notifications.length === 0 ? (
+                    <div style={{ fontSize: 12, color: '#8c90a1', padding: '12px 0' }}>No notifications yet</div>
+                  ) : (
+                    notifications.map((n, i) => {
+                      const time = new Date(n.created_at)
+                      const now = new Date()
+                      const diffMs = now.getTime() - time.getTime()
+                      const diffMins = Math.floor(diffMs / 60000)
+                      const diffHours = Math.floor(diffMs / 3600000)
+                      const diffDays = Math.floor(diffMs / 86400000)
+                      let timeStr = 'just now'
+                      if (diffMins < 60) timeStr = `${diffMins}m ago`
+                      else if (diffHours < 24) timeStr = `${diffHours}h ago`
+                      else if (diffDays < 7) timeStr = `${diffDays}d ago`
+                      else timeStr = time.toLocaleDateString()
+
+                      return (
+                        <div key={n.id} style={{ display: 'flex', gap: 12, marginBottom: i < notifications.length - 1 ? 12 : 0 }}>
+                          <div style={{ width: 28, height: 28, borderRadius: '50%', background: `${n.color}20`, border: `1px solid ${n.color}50`, color: n.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                            <Icon name={n.icon} size={14} />
+                          </div>
+                          <div>
+                            <div style={{ fontSize: 13 }}>{n.title}</div>
+                            {n.detail && (
+                              <div style={{ fontSize: 12, color: '#c2c6d8', marginTop: 1 }}>{n.detail}</div>
+                            )}
+                            <div style={{ fontSize: 11, color: '#8c90a1', marginTop: 2 }}>{timeStr}</div>
+                          </div>
+                        </div>
+                      )
+                    })
+                  )}
                 </div>
               )}
             </div>

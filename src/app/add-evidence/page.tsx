@@ -35,6 +35,13 @@ const CLAIM_TYPE_TO_DOC: Record<ClaimType, string> = {
   Residency: 'utility_bill',
 }
 
+const CLAIM_TYPE_POINTS: Record<ClaimType, number> = {
+  Identity: 20,   // passport
+  Credential: 15,
+  Employment: 15,
+  Residency: 15,
+}
+
 interface ClaimResult {
   claim: Claim
   analysis: DocumentAnalysis

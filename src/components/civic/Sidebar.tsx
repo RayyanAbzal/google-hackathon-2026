@@ -17,13 +17,11 @@ const AUTH_NAV = [
   { key: 'add-evidence', icon: 'upload_file', label: 'Add Evidence', href: '/add-evidence' },
   { key: 'vouch',        icon: 'handshake',   label: 'Vouch',        href: '/vouch' },
   { key: 'find',         icon: 'search',      label: 'Find Help',    href: '/find-help' },
-  { key: 'map',          icon: 'map',         label: 'Trust Map',    href: '/map' },
   { key: 'settings',     icon: 'settings',    label: 'Settings',     href: '/settings' },
 ]
 
 const PUBLIC_NAV = [
   { key: 'find',     icon: 'search',   label: 'Find Help',  href: '/find-help' },
-  { key: 'map',      icon: 'map',      label: 'Trust Map',  href: '/map' },
 ]
 
 function tierLabel(score: number): string {
