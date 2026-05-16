@@ -53,8 +53,8 @@ CREATE TABLE help_posts (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- gov_anchors
-CREATE TABLE gov_anchors (
+-- gov_officials
+CREATE TABLE gov_officials (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   level INTEGER NOT NULL,
@@ -67,7 +67,7 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE claims ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vouches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE help_posts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE gov_anchors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gov_officials ENABLE ROW LEVEL SECURITY;
 
 -- Anyone can read all users (public directory)
 CREATE POLICY "users_read_all" ON users FOR SELECT USING (true);

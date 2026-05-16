@@ -54,8 +54,8 @@ CREATE TABLE vouches (
   UNIQUE(voucher_id, vouchee_id)
 );
 
--- gov_anchors
-CREATE TABLE gov_anchors (
+-- gov_officials
+CREATE TABLE gov_officials (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   level INTEGER NOT NULL,
@@ -68,7 +68,7 @@ CREATE TABLE gov_anchors (
 - [ ] Update `src/lib/supabase.ts` with working Supabase client using env vars
 - [ ] Update `src/lib/gemini.ts` — implement `analyseDocument(imageBase64: string, docType: string)` that returns `{ extracted_name, doc_type, confidence, institution }`
 - [ ] Write seed script at `scripts/seed.ts`:
-  - 3 gov anchor accounts (NHS admin, Met Police, London Council) — score 100, tier 'gov_official'
+  - 3 Gov Official accounts (NHS admin, Met Police, London Council) — score 100, tier 'gov_official'
   - Dr. James Osei — score 74, Doctor, Southwark, pre-vouched
   - 200 fake Londoners across all boroughs — mix of scores 30–90, skill tags, vouch chains
   - Pre-built vouch relationships so map looks populated
@@ -111,7 +111,7 @@ CREATE TABLE gov_anchors (
 
 #### Auth
 - [ ] `POST /api/auth/register`
-  - Input: `{ display_name, pin, skill, doc_image_base64, doc_type }` — doc_type must be 'passport' or 'driving_licence'
+  - Input: `{ display_name, pin, skill, doc_image_base64, doc_type }` — doc_type must be 'passport', 'id_card', or 'driving_licence' (at least one required at signup)
   - Calls Ray's `analyseDocument()` to read the mandatory doc
   - Checks extracted name matches display_name (name consistency)
   - Hashes PIN with bcrypt
@@ -167,7 +167,7 @@ CREATE TABLE gov_anchors (
 #### Users
 - [ ] `GET /api/users/[username]`
   - Returns public profile: username, display_name, skill, score, tier, borough, claims
-  - Requires auth (cannot view individual profiles without logging in)
+  - Requires auth AND score >= 50 (Verified). If logged in but score < 50: return 403 with `{ success: false, error: 'Must be Verified to view profiles. Submit a claim to raise your score.' }`
 
 #### Score
 - [ ] `GET /api/score/[userId]`
@@ -226,7 +226,7 @@ function calculateScore(claimsVerified: number, vouchesReceived: number): number
   - Hemish's score ring will use this to animate score changes live
 
 #### Gov hierarchy seeding helper
-- [ ] Helper function `scripts/seedGov.ts` — creates L0 + L1 anchor accounts
+- [ ] Helper function `scripts/seedGov.ts` — creates L0 + L1 Gov Official accounts
   - Coordinate with Ray's main seed script
   - L0: 3 accounts, score 100, tier 'gov_official', organisation: 'Emergency Coalition'
   - L1: NHS admin (score 100), Met Police (score 100), London Council (score 100), GOV badge
@@ -306,7 +306,7 @@ function calculateScore(claimsVerified: number, vouchesReceived: number): number
 - [ ] `src/app/(auth)/register/page.tsx`
   - Step 1: Enter display_name + skill selector dropdown
   - Step 2: Set 4-digit PIN
-  - Step 3: Upload mandatory doc (passport OR driving licence) — file input, required
+  - Step 3: Upload mandatory doc (passport, national ID card, or driving licence) — file input, required — at least one must be submitted to complete registration
   - Calls `POST /api/auth/register`
   - On success: stores session to localStorage, redirects to `/profile/[node_id]`
   - Show loading while Gemini reads document
@@ -344,6 +344,7 @@ function calculateScore(claimsVerified: number, vouchesReceived: number): number
   - Results: grouped by borough — "Southwark: 3 verified doctors"
   - Map view (simplified heatmap with pins)
   - Clicking a result → "Login to view profiles" if not logged in
+  - Clicking a result → "You must be Verified (score 50+) to view profiles. Submit a claim to get verified." with link to `/profile/[username]` if logged in but score < 50
   - "Are you a verified [skill]? Register here →" CTA at bottom
 
 #### 6. Landing page (do last)
@@ -446,7 +447,7 @@ Set `USE_FALLBACKS=true` in `.env.local` — activates mock data from `src/lib/f
 
 ## DEMO CHECKLIST — Ray runs through this before presenting
 
-- [ ] Seed script run — 200 users + gov anchors + Dr. Osei visible on map
+- [ ] Seed script run — 200 users + Gov Officials + Dr. Osei visible on map
 - [ ] Register as Sarah Mitchell + Doctor tag + passport upload → node ID issued, tier: Unverified
 - [ ] First login → set username to @sarah_mitchell
 - [ ] Submit medical degree → Gemini reads "UCL Medicine" → score 15, tier: Unverified

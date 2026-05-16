@@ -3,6 +3,15 @@
 
 export type SkillTag = 'Doctor' | 'Engineer' | 'Legal' | 'Builder' | 'Nurse' | 'Other'
 
+export type DocType = 'passport' | 'driving_licence' | 'degree' | 'employer_letter' | 'nhs_card'
+
+export interface DocumentAnalysis {
+  extracted_name: string | null
+  doc_type: DocType | string
+  confidence: number
+  institution: string | null
+}
+
 export type ClaimType = 'identity' | 'credential' | 'work'
 
 export type ClaimStatus = 'pending' | 'verified' | 'rejected'
@@ -42,7 +51,7 @@ export interface Vouch {
   created_at: string
 }
 
-export interface GovAnchor {
+export interface GovOfficial {
   id: string
   user_id: string
   level: 0 | 1             // 0 = coalition seed, 1 = institutional

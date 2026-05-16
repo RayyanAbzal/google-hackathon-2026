@@ -115,7 +115,7 @@ Flip this if any API fails during the demo.
 | `src/lib/fallbacks.ts` | Mock data — toggle with `USE_FALLBACKS=true` |
 | `src/middleware.ts` | Rate limiting (Tao) — must stay at this path |
 | `supabase/migrations/0001_init.sql` | Full DB schema — run in Supabase SQL editor |
-| `scripts/seed.ts` | Seed 200 fake Londoners + gov anchors (Ray) |
+| `scripts/seed.ts` | Seed 200 fake Londoners + Gov Officials (Ray) |
 | `.env.local.example` | Copy to `.env.local` and fill in keys |
 | `docs/PLAN.md` | Full implementation plan — read this first |
 | `docs/TASKS.md` | Per-person task list with all routes and components |
