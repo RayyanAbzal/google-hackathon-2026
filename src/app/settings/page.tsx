@@ -5,16 +5,33 @@ import { useRouter } from 'next/navigation'
 import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
 import Icon from '@/components/civic/Icon'
-import type { Session, NotificationPreferences } from '@/types'
-import { getInitials, requireSession } from '@/app/_lib/session'
+import type { ApiResponse, Session, NotificationPreferences } from '@/types'
+import { getInitials, protectedFetch, requireSession, updateStoredSession } from '@/app/_lib/session'
 
 type Tab = 'Profile' | 'Security' | 'Notifications' | 'Privacy'
 const TABS: Tab[] = ['Profile', 'Security', 'Notifications', 'Privacy']
+
+interface ProfileRecord {
+  id: string
+  node_id: string
+  username: string | null
+  display_name: string
+  skill: string | null
+  score: number
+  tier: string
+  borough: string | null
+}
 
 export default function SettingsPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<Tab>('Profile')
   const [session, setSession] = useState<Session | null>(null)
+  const [name, setName] = useState('')
+  const [usernameValue, setUsernameValue] = useState('')
+  const [loadingProfile, setLoadingProfile] = useState(false)
+  const [saveError, setSaveError] = useState('')
+  const [saveMessage, setSaveMessage] = useState('')
+  const [savingProfile, setSavingProfile] = useState(false)
   const [prefs, setPrefs] = useState<NotificationPreferences>({
     vouch_received: true,
     claim_verified: true,
@@ -25,6 +42,73 @@ export default function SettingsPage() {
   useEffect(() => {
     queueMicrotask(() => setSession(requireSession(router)))
   }, [router])
+
+  useEffect(() => {
+    if (!session) return
+    setName(session.display_name)
+    setUsernameValue(session.username ?? '')
+    setLoadingProfile(true)
+    protectedFetch<ProfileRecord>(`/api/users/node/${session.node_id}`, session)
+      .then((json) => {
+        if (json.success) {
+          setName(json.data.display_name)
+          setUsernameValue(json.data.username ?? '')
+        } else {
+          setSaveError(json.error ?? 'Unable to load profile from the database')
+        }
+      })
+      .catch(() => setSaveError('Unable to load profile from the database'))
+      .finally(() => setLoadingProfile(false))
+  }, [session])
+
+  async function handleSaveProfile() {
+    if (!session) return
+    setSaveError('')
+    setSaveMessage('')
+    setSavingProfile(true)
+
+    try {
+      const trimmedName = name.trim()
+      if (!trimmedName) {
+        throw new Error('Full name cannot be empty')
+      }
+
+      let updatedSession = session
+      if (trimmedName !== session.display_name) {
+        const result = await protectedFetch<{ display_name: string }>('/api/auth/profile', session, {
+          method: 'PATCH',
+          body: JSON.stringify({ display_name: trimmedName }),
+        })
+        if (!result.success) {
+          throw new Error(result.error ?? 'Unable to save full name')
+        }
+        updatedSession = updateStoredSession({ display_name: result.data.display_name }) ?? updatedSession
+        setSession(updatedSession)
+      }
+
+      const trimmedUsername = usernameValue.trim()
+      if (trimmedUsername !== (session.username ?? '')) {
+        if (!trimmedUsername) {
+          throw new Error('Display name cannot be empty')
+        }
+        const result = await protectedFetch<{ username: string }>('/api/auth/username', session, {
+          method: 'PATCH',
+          body: JSON.stringify({ username: trimmedUsername }),
+        })
+        if (!result.success) {
+          throw new Error(result.error ?? 'Unable to save display name')
+        }
+        updatedSession = updateStoredSession({ username: result.data.username }) ?? updatedSession
+        setSession(updatedSession)
+      }
+
+      setSaveMessage('Profile saved successfully.')
+    } catch (error) {
+      setSaveError(error instanceof Error ? error.message : 'Unable to save profile')
+    } finally {
+      setSavingProfile(false)
+    }
+  }
 
   return (
     <div style={{ background: '#10141a', minHeight: '100vh', color: '#dfe2eb' }}>
@@ -171,13 +255,23 @@ export default function SettingsPage() {
                   <label style={{ fontSize: 13, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
                     Full name
                   </label>
-                  <input className="field-input" value={session?.display_name ?? ''} readOnly />
+                  <input
+                    className="field-input"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="As shown on your ID"
+                  />
                 </div>
                 <div>
                   <label style={{ fontSize: 13, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
                     Display name
                   </label>
-                  <input className="field-input" value={session?.display_name ?? ''} readOnly />
+                  <input
+                    className="field-input"
+                    value={usernameValue}
+                    onChange={(e) => setUsernameValue(e.target.value)}
+                    placeholder="@username"
+                  />
                 </div>
                 <div>
                   <label style={{ fontSize: 13, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
@@ -229,6 +323,12 @@ export default function SettingsPage() {
                   </p>
                 </div>
               </div>
+
+              {(saveError || saveMessage || loadingProfile) && (
+                <div style={{ marginTop: 20, color: saveError ? '#ffb4ab' : '#8c90a1', fontSize: 13 }}>
+                  {loadingProfile ? 'Loading profile from database...' : saveError || saveMessage}
+                </div>
+              )}
             </div>
 
             {/* Password section */}
@@ -318,8 +418,17 @@ export default function SettingsPage() {
                 Delete account
               </button>
               <div style={{ display: 'flex', gap: 10 }}>
-                <button className="btn-ghost">Cancel</button>
-                <button className="btn-primary">Save changes</button>
+                <button className="btn-ghost" type="button" onClick={() => {
+                  setName(session?.display_name ?? '')
+                  setUsernameValue(session?.username ?? '')
+                  setSaveError('')
+                  setSaveMessage('')
+                }}>
+                  Cancel
+                </button>
+                <button className="btn-primary" type="button" onClick={handleSaveProfile} disabled={savingProfile}>
+                  {savingProfile ? 'Saving...' : 'Save changes'}
+                </button>
               </div>
             </div>
           </>
