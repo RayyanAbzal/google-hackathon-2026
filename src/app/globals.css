@@ -218,16 +218,20 @@
 }
 
 /* Leaflet popup dark theme overrides */
-.leaflet-popup-content-wrapper {
+.leaflet-container .leaflet-popup .leaflet-popup-content-wrapper {
   background: transparent !important;
   border: none !important;
-  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.7) !important;
-  border-radius: 8px !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
   padding: 0 !important;
 }
-.leaflet-popup-content {
+.leaflet-container .leaflet-popup .leaflet-popup-content {
   margin: 0 !important;
+  padding: 0 !important;
 }
-.leaflet-popup-tip-container {
+.leaflet-container .leaflet-popup .leaflet-popup-tip-container {
   display: none !important;
+}
+.leaflet-container .leaflet-popup {
+  filter: drop-shadow(0 6px 24px rgba(0, 0, 0, 0.75));
 }

@@ -64,6 +64,15 @@ function MapFlyController({ borough, centroids }: { borough: string | null | und
   return null
 }
 
+function MapResetController({ active }: { active: boolean }) {
+  const map = useMap()
+  useEffect(() => {
+    if (!active) return
+    map.flyTo([51.505, -0.09], 10, { duration: 0.8 })
+  }, [active, map])
+  return null
+}
+
 interface HeatMapProps {
   users?: MapUser[]
   pois?: MapPOI[]
@@ -110,6 +119,7 @@ export function HeatMap({
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null)
   const [centroids, setCentroids] = useState<CentroidMap>({})
   const [mapError, setMapError] = useState<string | null>(null)
+  const [resetView, setResetView] = useState(false)
 
   useEffect(() => {
     fetch('/london-boroughs.json')
@@ -213,6 +223,7 @@ export function HeatMap({
     >
       <MapResizer sidebarWidth={sidebarWidth} />
       <MapFlyController borough={focusedBorough} centroids={centroids} />
+      <MapResetController active={resetView} />
       <TileLayer
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
@@ -305,19 +316,15 @@ export function HeatMap({
             </div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <button
-                onClick={() => onPopupClose?.()}
+                onClick={() => {
+                  setResetView(true)
+                  setTimeout(() => setResetView(false), 100)
+                  onPopupClose?.()
+                }}
                 style={{ flex: 1, padding: '5px 0', background: 'rgba(66,70,85,0.3)', border: '1px solid #424655', borderRadius: 5, fontSize: 10, color: '#8c90a1', cursor: 'pointer' }}
               >
                 Close
               </button>
-              {popupListing.username && (
-                <a
-                  href={`/profile/${popupListing.username}`}
-                  style={{ flex: 1, textAlign: 'center', padding: '5px 0', background: `${popupListing.iconColor}18`, border: `1px solid ${popupListing.iconColor}40`, borderRadius: 5, fontSize: 10, fontWeight: 600, color: popupListing.iconColor, textDecoration: 'none', display: 'block' }}
-                >
-                  View Profile →
-                </a>
-              )}
             </div>
           </div>
         </Popup>
