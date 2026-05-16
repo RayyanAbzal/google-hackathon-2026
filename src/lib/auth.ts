@@ -38,7 +38,7 @@ function extractUserId(token: string): string | null {
 }
 
 // Expects: Authorization: Bearer <signed_token>
-// Verifies signature, then returns the User row.
+// Verifies the token signature, then returns the User row.
 export async function verifyAuth(request: Request): Promise<User | null> {
   const auth = request.headers.get("Authorization");
   if (!auth?.startsWith("Bearer ")) return null;
