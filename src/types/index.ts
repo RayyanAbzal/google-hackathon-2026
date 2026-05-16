@@ -16,8 +16,8 @@ export type MandatoryDocType = 'passport' | 'driving_licence'
 export type ClaimType = 'identity' | 'credential' | 'work'
 export type ClaimStatus = 'pending' | 'verified' | 'rejected'
 
-// Score thresholds: 0-29 Unverified, 30-49 Partial, 50-89 Verified, 90-94 Trusted, 95+ Gov Official
-export type TrustTier = 'unverified' | 'partial' | 'verified' | 'trusted' | 'gov_official'
+// Score thresholds: 0-24 Unverified, 25-59 Verified, 60-89 Trusted, 90-100 Gov Official
+export type TrustTier = 'unverified' | 'verified' | 'trusted' | 'gov_official'
 export type Tier = TrustTier  // alias — prefer TrustTier in new code
 
 export interface User {
@@ -71,7 +71,7 @@ export interface GovOfficial {
   level: 0 | 1
   organisation: string
 }
-export type GovAnchor = GovOfficial  // DB table is gov_anchors
+export type GovAnchor = GovOfficial
 
 // ─── API response wrapper ──────────────────────────────────────────────────
 
@@ -94,10 +94,9 @@ export function calculateScore(input: ScoreInput): number {
 }
 
 export function getTier(score: number): TrustTier {
-  if (score >= 95) return 'gov_official'
-  if (score >= 90) return 'trusted'
-  if (score >= 50) return 'verified'
-  if (score >= 30) return 'partial'
+  if (score >= 90) return 'gov_official'
+  if (score >= 60) return 'trusted'
+  if (score >= 25) return 'verified'
   return 'unverified'
 }
 
@@ -109,6 +108,7 @@ export interface Session {
   node_id: string
   username: string | null
   display_name: string
+  skill: SkillTag | null
   score: number
   tier: TrustTier
 }

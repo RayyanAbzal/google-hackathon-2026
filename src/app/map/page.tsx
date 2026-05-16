@@ -60,7 +60,7 @@ export default function MapPage() {
               position: 'relative',
             }}
           >
-            <HeatMap />
+            <HeatMap users={[]} />
 
             {/* Pin overlays — rendered on top of D3 SVG for visual demo */}
             <div

@@ -57,7 +57,7 @@ const VOUCH_REQUESTS: VouchRequest[] = [
     skill: 'Doctor',
     area: 'Hackney',
     score: 44,
-    tier: 'partial',
+    tier: 'verified',
     userId: 'a9c7d25c-1d5f-46fb-98a8-08df2fcb5a3d',
   },
 ]

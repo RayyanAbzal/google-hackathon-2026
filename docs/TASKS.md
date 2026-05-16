@@ -7,84 +7,26 @@
 
 ## RAY — Full-stack Lead
 
-**Branch:** `ray/setup`
-**Scaffold done.** All files exist as owner-commented stubs. Pull `dev` and implement the bodies.
-**Do these first — everyone else is blocked without the database.**
+**Status as of 2026-05-16:** DB schema + RLS done via MCP. `gemini.ts`, `score.ts`, map components, and seed scripts all implemented. Remaining: enable Realtime, run seed, live counter, QR glue, demo prep.
 
-### Phase 1 — Database + Seed (do immediately)
-- [ ] Create Supabase project, get URL + anon key, add to `.env.local` *(Aryan owns this — coordinate)*
-- [ ] Run this SQL in Supabase SQL editor to create all tables:
-
-```sql
--- users
-CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  node_id TEXT UNIQUE NOT NULL,
-  username TEXT UNIQUE,
-  display_name TEXT NOT NULL,
-  skill TEXT DEFAULT 'Other',
-  password_hash TEXT NOT NULL,
-  score INTEGER DEFAULT 0,
-  tier TEXT DEFAULT 'unverified',
-  borough TEXT,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- claims
-CREATE TABLE claims (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  type TEXT NOT NULL,
-  status TEXT DEFAULT 'pending',
-  doc_type TEXT NOT NULL,
-  extracted_name TEXT,
-  extracted_institution TEXT,
-  confidence FLOAT,
-  content_hash TEXT,
-  vouches INTEGER DEFAULT 0,
-  flags INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
--- vouches
-CREATE TABLE vouches (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  voucher_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  vouchee_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  UNIQUE(voucher_id, vouchee_id)
-);
-
--- gov_officials
-CREATE TABLE gov_officials (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id UUID REFERENCES users(id) ON DELETE CASCADE,
-  level INTEGER NOT NULL,
-  organisation TEXT NOT NULL
-);
-```
-
-- [ ] Enable Supabase Realtime on the `users` table (for live score updates)
-- [ ] Set RLS policies — users can read all users, only write their own row
-- [x] `src/lib/supabase.ts` — minimal client scaffold done. Add env vars to `.env.local` and it works.
-- [ ] `src/lib/gemini.ts` — scaffold with function signatures exists. Implement `analyseDocument()` body (Gemini Vision call + response parsing).
-- [ ] `scripts/seed.ts` — scaffold written with correct structure. Run it once Supabase is provisioned.
-  - 3 Gov Official accounts (NHS admin, Met Police, London Council) — score 100, tier 'gov_official'
-  - Dr. James Osei — score 74, Doctor, Southwark, pre-vouched
-  - 200 fake Londoners across all boroughs — mix of scores 30–90, skill tags, vouch chains
-  - Pre-built vouch relationships so map looks populated
-- [ ] Run seed script, verify data appears in Supabase dashboard
-- [ ] Confirm `USE_FALLBACKS=true` in `.env.local` still works as a fallback
+### Phase 1 — Database + Seed
+- [x] Supabase project created, URL + anon key in `.env.local`
+- [x] Schema created via MCP (tables: `users`, `claims`, `vouches`, `gov_anchors`)
+- [x] RLS policies set via MCP
+- [ ] Enable Supabase Realtime on `users` table — dashboard > Database > Replication > Tables > users > toggle on
+- [x] `src/lib/supabase.ts` — done
+- [x] `src/lib/gemini.ts` — `analyseDocument()` implemented (Gemini Vision, returns `{ extracted_name, institution, confidence }`)
+- [x] `src/lib/score.ts` — `recalculateUserScore()` implemented (queries claims + vouches + gov_anchors, updates user row)
+- [x] `scripts/seed.ts` — written (200 Londoners + Dr. Osei, calls seedGov.ts internally)
+- [x] `scripts/seedGov.ts` — written (L0 + L1 gov anchors); imported and called by seed.ts
+- [ ] Run seed: `npx tsx scripts/seed.ts` — verify data in Supabase dashboard
+- [ ] Confirm `USE_FALLBACKS=true` in `.env.local` still works
 
 ### Phase 2 — AI + Map
-- [ ] London heatmap D3 component (`src/components/map/HeatMap.tsx`)
-  - D3 choropleth using London GeoJSON by borough
-  - Colour scale: dark = no verified users, bright blue = high density
-  - Export as React component, Maalav embeds in map page
-- [ ] Skill pins layer on map (`src/components/map/SkillPin.tsx`)
-  - Coloured circle per skill: green = Doctor, blue = Engineer, purple = Legal, amber = Builder
-  - Click pin → opens profile card (requires login)
-- [ ] Live counter component: "X / 9,000,000 verified" — subscribes to Supabase realtime
+- [x] `src/components/map/HeatMap.tsx` — D3 choropleth by borough, done
+- [x] `src/components/map/SkillPin.tsx` — coloured SVG circles by skill, done
+- [ ] Wire map heatmap + pins from real Supabase data — currently uses `FALLBACK_USERS` and hardcoded `PINS` array in `src/app/map/page.tsx`. Do AFTER seed confirmed. Query: `from('users').select('borough, skill, tier, score').eq('tier', 'verified')`
+- [ ] Live counter component: confirm "X / 9,000,000 verified" subscribes to Supabase realtime
 - [ ] QR vouch flow glue — coordinate with Hemish (QR display) + Aryan (vouch API)
 
 ### Phase 3 — Demo prep
@@ -98,99 +40,32 @@ CREATE TABLE gov_officials (
 
 ## ARYAN — Backend API (core) + Supabase
 
-**Branch:** `aryan/api-core`
-**Scaffold done.** All route files exist as 501 stubs with owner comments. Pull `dev` and implement.
-**Owns:** Supabase project setup, all core API routes.
+**Status as of 2026-05-16:** All API routes implemented. One gap: register route skips Gemini doc analysis at signup — see note below.
 
-### Supabase setup (do first — blocks everyone)
-- [ ] Create Supabase project, get URL + anon key
-- [ ] Share URL + anon key with Ray for `.env.local`
-- [ ] Run the SQL schema (from Ray's task list above) in Supabase SQL editor
-- [ ] Enable Realtime on `users` table
-- [ ] Set RLS policies — read all users, write own row only
+### Supabase setup
+- [x] Supabase project created, URL + anon key shared with Ray
+- [x] Schema created via MCP (Ray, 2026-05-16)
+- [x] RLS policies set via MCP (Ray, 2026-05-16)
+- [ ] Enable Realtime on `users` table — dashboard > Database > Replication > Tables > users > toggle on
 
-### All routes to build
+### API routes
 
 #### Auth
-- [ ] `POST /api/auth/register`
-  - Input: `{ display_name, password, doc_image_base64, doc_type }` — doc_type must be 'passport' or 'driving_licence' (required at signup, no skill selection)
-  - Calls Ray's `analyseDocument()` to read the mandatory doc
-  - Checks extracted name matches display_name (name consistency)
-  - Hashes password with bcrypt
-  - Generates node_id: `BLK-${randomInt(10000,99999)}-LDN`
-  - Creates user row: score 0, tier 'unverified'
-  - Returns: `{ node_id, display_name, score: 0, tier: 'unverified' }`
-
-- [ ] `POST /api/auth/login`
-  - Input: `{ identifier, password }` — identifier is node_id OR @username
-  - Validates password hash match
-  - Returns: `{ node_id, username, display_name, score, tier, skill }`
-  - Store this in localStorage as `civictrust_session` on client
-
-- [ ] `PATCH /api/auth/username`
-  - Input: `{ node_id, username }` — requires auth
-  - Validates username is unique and valid format (@handle)
-  - Returns: `{ username }`
-  - Note: only settable after first login — this is how users personalise their temp node ID
+- [x] `POST /api/auth/register` — implemented. **Gap:** does not call `analyseDocument()` at signup — doc is accepted but not Gemini-verified. Add the call and name check if time allows.
+- [x] `POST /api/auth/login` — node_id or @username + password, returns session token
+- [x] `PATCH /api/auth/username` — set @handle, requires auth
 
 #### Claims
-- [ ] `POST /api/claims`
-  - Input: `{ user_id, type, doc_image_base64, doc_type }`
-  - Calls `analyseDocument()` → gets extracted_name, confidence
-  - Checks extracted_name matches user.display_name — if not, reject with error
-  - Hashes doc content for dedup — if hash exists for this user, reject silently
-  - Inserts claim row with status 'verified' if confidence > 0.7, else 'pending'
-  - Recalculates score: `min(100, claims_verified * 15 + vouches * 10)`
-  - Updates user.score and user.tier using `getTier()` from `src/types/index.ts`
-  - Returns: `{ claim_id, score, tier }`
-
-- [ ] `GET /api/claims/[userId]`
-  - Returns all claims for a user with vouch counts
-  - Requires auth
+- [x] `POST /api/claims` — calls `analyseDocument()`, name check, dedup hash, score recalc via `recalculateUserScore()`
+- [x] `GET /api/claims/[userId]` — returns all claims, requires auth
 
 #### Vouching
-- [ ] `POST /api/vouch`
-  - Input: `{ voucher_id, vouchee_id }`
-  - Checks voucher has score >= 50 (must be Verified to vouch)
-  - Checks voucher hasn't already vouched this person
-  - Checks voucher hasn't given 5+ vouches in last 24h (rate limit)
-  - Inserts vouch row
-  - Recalculates both users' scores
-  - Returns: `{ voucher_score, vouchee_score }`
+- [x] `POST /api/vouch` — score >= 50 check, 24h rate limit (inline), inserts vouch, recalcs both scores
+- [x] `POST /api/vouch/flag` — flags claim, penalises all vouchers -15pts, updates tiers
 
-- [ ] `POST /api/vouch/flag`
-  - Input: `{ claim_id, flagger_id }`
-  - Marks claim as flagged
-  - Finds all users who vouched the claim owner
-  - Subtracts 15pts from each voucher's score
-  - Updates tiers for affected users
-  - Returns: `{ affected_vouchers: number }`
-
-#### Users
-- [ ] `GET /api/users/[username]`
-  - Returns public profile: username, display_name, skill, score, tier, borough, claims
-  - Requires auth AND score >= 50 (Verified). If logged in but score < 50: return 403 with `{ success: false, error: 'Must be Verified to view profiles. Submit a claim to raise your score.' }`
-
-#### Score
-- [ ] `GET /api/score/[userId]`
-  - Returns current score + tier
-  - Used by realtime subscription to confirm score after updates
-
-### Score + tier logic — use in all routes
-```typescript
-// In src/types/index.ts — shared by all routes
-function getTier(score: number): TrustTier {
-  if (score >= 95) return 'gov_official'
-  if (score >= 90) return 'trusted'
-  if (score >= 50) return 'verified'
-  if (score >= 30) return 'partial'
-  return 'unverified'
-}
-
-function calculateScore(input: { claims_verified: number, vouches_received: number, gov_vouched: boolean }): number {
-  return Math.min(100, input.claims_verified * 15 + input.vouches_received * 10 + (input.gov_vouched ? 20 : 0))
-}
-```
+#### Users + Score
+- [x] `GET /api/users/[username]` — public profile, requires auth + score >= 50
+- [x] `GET /api/score/[userId]` — current score + tier
 
 ### Rules for all routes
 - Return `{ success: boolean, data: T | null, error: string | null }` always
@@ -202,17 +77,14 @@ function calculateScore(input: { claims_verified: number, vouches_received: numb
 
 ## TAO — Backend API (features)
 
-**Branch:** `tao/api-features`
-**Scaffold done.** `src/middleware.ts`, `src/app/api/find/route.ts`, `src/lib/realtime.ts`, `scripts/seedGov.ts` all exist as stubs. Pull `dev` and implement.
-**Depends on:** Ray's DB schema, Aryan's auth routes working.
+**Status as of 2026-05-16:** `seedGov.ts` done (imported by Ray's seed.ts). `realtime.ts` and `find` route still TODO.
 
-### All tasks
+> **Rate limiting note:** Aryan's `claims` and `vouch` routes already enforce limits inline (3 claims/10min, 5 vouches/24h). Tao's middleware does not need to duplicate these — focus on IP-level limiting or other routes not yet covered.
+
+### Tasks
 
 #### Rate limiting
-- [ ] Middleware at `src/middleware.ts` — checks rate limits before any API route:
-  - Max 5 vouches per user per 24h (check vouches table)
-  - Max 3 claim submissions per user per 10 min (check claims table)
-  - Return 429 with `{ success: false, error: 'Rate limit exceeded' }` if breached
+- [ ] `src/middleware.ts` — implement rate limiting. Claims (3/10min) and vouch (5/24h) are already handled in-route. Middleware can add IP-level blanket limiting across all API routes if desired.
 
 #### Yellow Pages API
 - [ ] `GET /api/find`
@@ -223,222 +95,151 @@ function calculateScore(input: { claims_verified: number, vouches_received: numb
   - Example: `GET /api/find?skill=Doctor&borough=Southwark` → `[{ borough: 'Southwark', count: 3, avg_score: 67 }]`
 
 #### Realtime
-- [ ] Set up Supabase realtime subscription helper at `src/lib/realtime.ts`
+- [ ] `src/lib/realtime.ts` — Supabase realtime subscription helper
   - Subscribe to `users` table changes for a given user_id
   - Emits score + tier updates to the client
-  - Hemish's score ring will use this to animate score changes live
+  - Hemish's score ring uses this to animate score changes live
 
-#### Gov hierarchy seeding helper
-- [ ] Helper function `scripts/seedGov.ts` — creates L0 + L1 Gov Official accounts
-  - Coordinate with Ray's main seed script
-  - L0: 3 accounts, score 100, tier 'gov_official', organisation: 'Emergency Coalition'
-  - L1: NHS admin (score 100), Met Police (score 100), London Council (score 100), GOV badge
+#### Gov seeding
+- [x] `scripts/seedGov.ts` — L0 + L1 gov anchor accounts written, exported as `seedGovAnchors()`, called by Ray's `seed.ts`
 
 ---
 
 ## HEMISH — Frontend Components
 
-**Branch:** `hemish/components`
-**Scaffold done.** All component files exist as owner-commented stubs under `src/components/`. Pull `dev` and implement.
-**Depends on:** Ray's types file, Aryan's auth routes to test with real data.
+**Branch:** `hemish/data-wiring`
+**Design system shipped by Ray (2026-05-16).** All pages are visually complete with hardcoded data. Hemish's job is now wiring real API data into the existing pages — not building from scratch.
 
-### All components to build (in priority order)
+**DO NOT rebuild:** TrustRing, ScoreBadge, ProfileCard, VouchQR. These are superseded by inline implementations in the pages and by `src/components/civic/TierBadge`.
 
-#### 1. TrustRing — THE hero visual
-- [ ] `src/components/trust/TrustRing.tsx`
-  - SVG circle, stroke-dasharray to show score as arc
-  - Framer Motion animation from old score to new score on change
-  - Colours by tier: red = Unverified/Partial (<50), green = Verified (50–89), amber = Trusted (90–94), gold = Gov Official (95+)
-  - Shows score number in centre
-  - Props: `{ score: number, size?: number }`
+### Priority tasks
 
-#### 2. ScoreBadge
-- [ ] `src/components/trust/ScoreBadge.tsx`
-  - Shows tier as a pill badge
-  - Unverified = red, Partial = orange, Verified = green, Trusted = amber, Gov Official = gold with GOV label
-  - Props: `{ tier: TrustTier }`
+#### 1. Wire Sidebar real session data — DO FIRST (visible every page)
+- [ ] `src/components/civic/Sidebar.tsx` — lines 27-28 hardcode "Sarah Mitchell" / "BLK-0471-LDN"
+  - Add `useState` + `useEffect` to read `civictrust_session` from localStorage
+  - Display `session.display_name` and `session.node_id` in the identity card
+  - Use `session.tier` for the tier badge and progress bar colour
 
-#### 3. ProfileCard
-- [ ] `src/components/trust/ProfileCard.tsx`
-  - Username, display_name, TrustRing, ScoreBadge, skill tag
-  - Claim count + vouch count
-  - "Add claim" button + "Vouch / QR" button
-  - Props: `{ user: User, claims: Claim[] }`
+#### 2. Wire TopBar avatar
+- [ ] `src/components/civic/TopBar.tsx` — show first initial of `session.display_name` in avatar circle
 
-#### 4. ClaimCard
-- [ ] `src/components/claims/ClaimCard.tsx`
-  - Claim type icon (Identity/Credential/Work)
-  - Status badge (pending/verified/rejected)
-  - Vouch count + flag button
-  - Props: `{ claim: Claim, onFlag?: () => void }`
+#### 3. Wire dashboard evidence cards to real data
+- [ ] `src/app/dashboard/page.tsx` — replace hardcoded evidence array with `GET /api/claims/[userId]`
+  - Read `civictrust_session` from localStorage to get `user_id`
+  - Fetch on mount, display real claims with correct status badges
+  - Empty state: show the "Add another claim" slot only
 
-#### 5. ClaimForm
-- [ ] `src/components/claims/ClaimForm.tsx`
-  - Claim type selector (Identity / Credential / Work)
-  - File input for document photo
-  - Converts image to base64, calls `POST /api/claims`
-  - Shows loading state while Gemini processes
-  - Shows success (score rose) or error (name mismatch)
-  - Props: `{ userId: string, onSuccess: (newScore: number) => void }`
+#### 4. Wire vouch confirm button
+- [ ] `src/app/vouch/page.tsx` — "Confirm vouch" button should `POST /api/vouch`
+  - Input: `{ voucher_id, vouchee_id }` from session + looked-up node
+  - On success: show score update, refresh activity
 
-#### 6. VouchQR
-- [ ] `src/components/trust/VouchQR.tsx`
-  - Two modes: display (shows QR of your node_id) + scan (uses camera to scan)
-  - Uses `qrcode.js` to generate QR
-  - Uses `html5-qrcode` to scan
-  - On successful scan: calls `POST /api/vouch`
-  - Props: `{ nodeId: string, onVouchComplete: (newScore: number) => void }`
+#### 5. Wire dashboard activity feed
+- [ ] Replace hardcoded activity items with real recent events
+  - Source: recent claims + vouches for the logged-in user
 
-### Visual rules (Hemish owns this)
-- Dark theme throughout — background #0a0a0f, cards #111118
-- shadcn/ui components only — no primitives
-- Tailwind v4 only — no inline styles
-- Score ring is the most important visual — make it beautiful
+#### 6. Realtime score update (nice-to-have)
+- [ ] Connect Tao's realtime helper to update the score ring live when a vouch comes in
+  - The SVG ring in dashboard/page.tsx takes `SCORE` as a constant — make it stateful
+
+### Civic components already built (use these, do not rebuild)
+
+Located at `src/components/civic/`:
+- `TopBar` — fixed nav, notifications, avatar menu
+- `Sidebar` — left nav, identity card
+- `TierBadge` — tier-0 through gov_official pill badges
+- `Icon` — Material Symbols wrapper
+
+### Visual rules
+- Match the existing page style — inline styles for design token colours (`#b0c6ff`, `#40e56c` etc.)
+- Do not switch to Tailwind classes for colours — it creates two visual languages
 - All components under 200 lines
-- This is 20pts of the rubric — polish matters
 
 ---
 
 ## MAALAV — Pages + Routing
 
-**Branch:** `maalav/pages`
-**Scaffold done.** All page files exist as owner-commented stubs under `src/app/`. Pull `dev` and implement.
-**Depends on:** Hemish's components, Aryan's auth routes, Tao's find route.
+**Branch:** `maalav/data-wiring`
+**All pages shipped by Ray (2026-05-16).** Every route exists and builds clean. Maalav's job is now auth guards + session data wiring, not building pages.
 
-### All pages to build (in priority order)
+### Priority tasks
 
-#### 1. Register page (do first — nothing works without auth)
-- [ ] `src/app/(auth)/register/page.tsx`
-  - Step 1: Enter display_name + set password
-  - Step 2: Upload mandatory doc (passport or driving licence) — file input, required — at least one must be submitted to complete registration. No skill selection at signup.
-  - Calls `POST /api/auth/register`
-  - On success: stores session to localStorage, redirects to `/profile/[node_id]`
-  - Show loading while Gemini reads document
-  - Note: @username is set after first login, not at registration
-
-#### 2. Login page
-- [ ] `src/app/(auth)/login/page.tsx`
-  - Input: node ID (BLK-XXXXX-LDN) OR @username
-  - Input: password
-  - Calls `POST /api/auth/login`
-  - On success: stores session, redirects to `/profile/[username]`
-  - If no username set yet: prompts to set @username via `PATCH /api/auth/username`
-
-#### 3. Profile page
-- [ ] `src/app/profile/[username]/page.tsx`
-  - Requires auth — redirect to `/login` if no session
-  - Fetches `GET /api/users/[username]` and `GET /api/claims/[userId]`
-  - Renders ProfileCard + list of ClaimCards + ClaimForm + VouchQR
-  - Subscribes to realtime score updates (Tao's realtime helper)
-  - Score ring animates when score changes
-
-#### 4. Map page
-- [ ] `src/app/map/page.tsx`
-  - Requires auth
-  - Embeds Ray's HeatMap component
-  - Skill pins layer
-  - Live counter "X / 9,000,000 verified"
-  - Click pin → sidebar showing area skill breakdown (profile link requires auth, already handled)
-
-#### 5. Find page — Yellow Pages
-- [ ] `src/app/find/page.tsx`
-  - Search is public (no login required)
-  - Search input: "Search skill or resource..."
-  - Filter pills: Doctor, Engineer, Legal, Builder, Insulin, Water, Tools...
-  - Results: grouped by borough — "Southwark: 3 verified doctors"
-  - Map view (simplified heatmap with pins)
-  - Clicking a result → "Login to view profiles" if not logged in
-  - Clicking a result → "You must be Verified (score 50+) to view profiles. Submit a claim to get verified." with link to `/profile/[username]` if logged in but score < 50
-  - "Are you a verified [skill]? Register here →" CTA at bottom
-
-#### 6. Landing page (do last)
-- [ ] `src/app/page.tsx`
-  - Hero: "After the flare wiped every record — rebuild your identity"
-  - CTA: "Get verified" → /register
-  - Secondary: "Find help near you" → /find
-  - Brief explanation of what the app does
-  - Clean, dark, minimal
-
-### Session handling (use on every protected page)
+#### 1. Auth guards on protected pages — DO FIRST
+Every page below needs this at the top of the component:
 ```typescript
-// At top of any protected page component:
-const sessionStr = localStorage.getItem('civictrust_session')
-if (!sessionStr) redirect('/login')
-const session = JSON.parse(sessionStr)
-// session = { node_id, username, display_name, score, tier, skill }
+'use client'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+
+// Inside component:
+const router = useRouter()
+useEffect(() => {
+  const raw = localStorage.getItem('civictrust_session')
+  if (!raw) router.push('/login')
+}, [router])
 ```
 
-### Navigation
-- [ ] Shared navbar component with: Logo | Map | Find | Profile
-- [ ] Active state on current page
-- [ ] "Login / Register" shown if no session, "Profile" shown if logged in
+Protected pages: `/dashboard`, `/add-evidence`, `/vouch`, `/settings`, `/map`
+Public (no guard needed): `/`, `/find`, `/login`, `/register`, `/unverified`
+
+#### 2. Read real session data into pages
+All pages currently show hardcoded "Sarah Mitchell / BLK-0471-LDN / score 55".
+Replace with data from `civictrust_session` in localStorage.
+
+Session type (from `src/types/index.ts`):
+```typescript
+interface Session {
+  token: string
+  user_id: string
+  node_id: string
+  username: string | null
+  display_name: string
+  score: number
+  tier: TrustTier
+}
+```
+
+Pages to update:
+- [ ] `dashboard/page.tsx` — "Welcome back, Sarah." → session.display_name; score ring → session.score; tier badge → session.tier
+- [ ] `vouch/page.tsx` — Node ID display → session.node_id
+- [ ] `settings/page.tsx` — prefill name fields from session
+- [ ] `unverified/page.tsx` — node ID + name from session
+- [ ] `sidebar` (TopBar + Sidebar in civic/) — already reads from hardcoded values; update to read session
+
+#### 3. Wire add-evidence submit
+- [ ] `src/app/add-evidence/page.tsx` step 4 "Submit claim" button:
+  - Reads file + claim type from wizard state
+  - POSTs to `POST /api/claims` with `{ user_id, type, doc_image_base64, doc_type }`
+  - On success: redirect to `/dashboard`
+  - On error: show error message
+
+#### 4. Wire find page to real API
+- [ ] `src/app/find/page.tsx` — replace hardcoded 4 results with `GET /api/find?skill=...&borough=...`
+  - Depends on Tao implementing `/api/find`
+  - Loading state while fetching
+  - Empty state if no results
+
+### Pages status
+
+| Route | Visual | Auth guard | Real data |
+|-------|--------|-----------|-----------|
+| `/` | DONE | N/A (public) | N/A |
+| `/login` | DONE | N/A | DONE (calls API) |
+| `/register` | DONE | N/A | DONE (calls API) |
+| `/unverified` | DONE | TODO | TODO |
+| `/dashboard` | DONE | TODO | TODO |
+| `/add-evidence` | DONE | TODO | TODO (submit only) |
+| `/vouch` | DONE | TODO | TODO |
+| `/find` | DONE | N/A (public) | TODO (needs Tao) |
+| `/map` | DONE | TODO | TODO (needs Ray seed) |
+| `/settings` | DONE | TODO | TODO |
 
 ---
 
 ## SHARED — all team
 
-### Types — define in `src/types/index.ts` before anything else
-
-```typescript
-export type TrustTier = 'unverified' | 'partial' | 'verified' | 'trusted' | 'gov_official'
-
-export interface User {
-  id: string
-  node_id: string
-  username: string | null
-  display_name: string
-  skill: string
-  score: number
-  tier: TrustTier
-  borough: string | null
-  created_at: string
-}
-
-export interface Claim {
-  id: string
-  user_id: string
-  type: 'identity' | 'credential' | 'work'
-  status: 'pending' | 'verified' | 'rejected'
-  doc_type: string
-  extracted_name: string | null
-  extracted_institution: string | null
-  confidence: number | null
-  vouches: number
-  flags: number
-  created_at: string
-}
-
-export interface Vouch {
-  id: string
-  voucher_id: string
-  vouchee_id: string
-  created_at: string
-}
-
-export function getTier(score: number): TrustTier {
-  if (score >= 95) return 'gov_official'
-  if (score >= 90) return 'trusted'
-  if (score >= 50) return 'verified'
-  if (score >= 30) return 'partial'
-  return 'unverified'
-}
-
-export interface ScoreInput {
-  claims_verified: number
-  vouches_received: number
-  gov_vouched: boolean
-}
-
-export function calculateScore(input: ScoreInput): number {
-  return Math.min(100, input.claims_verified * 15 + input.vouches_received * 10 + (input.gov_vouched ? 20 : 0))
-}
-```
-
-### Before starting
-- [ ] Pull dev after Ray merges the scaffold PR
-- [ ] Read `docs/PLAN.md` for full context
-- [ ] Import ALL types from `src/types/index.ts` — never define types elsewhere
-- [ ] Use `src/lib/supabase.ts` for DB — never create new clients
+### Types
+All types live in `src/types/index.ts` — import from there, never define elsewhere. File is fully populated with `User`, `Claim`, `Vouch`, `Session`, `TrustTier`, `getTier()`, `calculateScore()`.
 
 ### Git workflow
 ```
@@ -461,10 +262,10 @@ Set `USE_FALLBACKS=true` in `.env.local` — activates mock data from `src/lib/f
 - [ ] Register as Sarah Mitchell + Doctor tag + passport upload → node ID issued, tier: Unverified
 - [ ] First login → set username to @sarah_mitchell
 - [ ] Submit medical degree → Gemini reads "UCL Medicine" → score 15, tier: Unverified
-- [ ] Submit NHS employer letter → score 30, tier: Partial
+- [ ] Submit NHS employer letter → score 30, tier: Verified
 - [ ] Bad actor test: upload doc with wrong name → rejected ("name doesn't match")
-- [ ] Dr. Osei (pre-seeded, score 74) QR-vouches Sarah → score 40, still Partial
-- [ ] A second vouch → score 50 → tier: **Verified** → Doctor pin appears on London map in Southwark
+- [ ] Dr. Osei (pre-seeded, score 74) QR-vouches Sarah → score 40, still Verified
+- [ ] Doctor pin appears on London map in Southwark
 - [ ] Map: 200+ pins visible, counter shows "1,847 / 9,000,000"
 - [ ] Yellow Pages (/find): search "Doctor" → shows "Southwark: 3 verified doctors"
 - [ ] Yellow Pages: search "insulin" (resource) → returns relevant results

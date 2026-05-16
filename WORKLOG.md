@@ -1,77 +1,66 @@
 # WORKLOG
 
-**Updated:** 2026-05-16 (session 4)
+**Updated:** 2026-05-16 (session 12)
 
 ## Active task
-Idle — PIN→password + skill removal fully applied and pushed
+DB + seed fully operational — gov_anchors renamed to gov_officials, seed run, 207 users live
 
 ## Phase
-Implementing (teammates actively pushing to dev)
+implementing
 
 ## Files changed this session
-- `supabase/migrations/0001_init.sql` — `pin_hash` → `password_hash`, `skill TEXT NOT NULL` → `skill TEXT DEFAULT 'Other'`
-- `scripts/seed.ts` — `DEFAULT_PIN` → `DEFAULT_PASSWORD ('password1234')`, `pin_hash` → `password_hash` throughout
-- `src/lib/auth.ts` — `hashPin` renamed to `hashPassword`
-- `src/app/api/auth/register/route.ts` — password field, no skill, doc_type restricted to 'passport'/'driving_licence', `password_hash` in insert
-- `src/app/api/auth/login/route.ts` — password field, `password_hash` in DB query, removed 4-digit regex check
-- `src/types/index.ts` — `MandatoryDocType` added, `User.skill` typed as `SkillTag | null`, `pin_hash` removed from interface
-- `src/lib/CLAUDE.md` — `pin_hash` → `password_hash`, skill noted nullable
-- `CLAUDE.md` — key decisions: "4-digit PIN" → "password"
-- `src/app/CLAUDE.md` — register/login descriptions, session skill typed as `string | null`
-- `src/app/api/CLAUDE.md` — register/login route descriptions
-- `docs/PLAN.md` — Flow 1, Flow 5, Screen 1, demo step 2 updated
-- `docs/TASKS.md` — SQL schema snippet, route inputs, page steps updated
-- `docs/registration.puml` — password not PIN, skill step removed, doc options passport/driving_licence only; Aryan further updated with full validation flow + hashPassword/generateNodeId detail
-- `docs/login.puml` — password field, hashPassword, password_hash in diagram
+- `scripts/seed.ts` — `gov_anchors` -> `gov_officials`, added realtime websocket bypass for Node 21
+- `scripts/seedGov.ts` — same two fixes
+- `src/lib/score.ts` — `gov_anchors` -> `gov_officials` in DB query
+- `src/types/index.ts` — removed stale comment "DB table is gov_anchors"
+- `supabase/migrations/0001_init.sql` — all `gov_anchors` refs -> `gov_officials`
+- `src/lib/CLAUDE.md` — table name updated
+
+**Supabase (via MCP):**
+- Confirmed project `GDGC Hackathon 2026` (syffciafllpqgxcvdaih) ACTIVE_HEALTHY
+- Confirmed all 4 tables: users, claims, vouches, gov_officials (RLS enabled)
+- Confirmed RLS: SELECT-only policies on all tables, writes via service role (correct)
+- Applied migration: `ALTER TABLE gov_anchors RENAME TO gov_officials`
+- Seed run: 207 users, 663 verified claims, 0 vouches, 6 gov_officials rows
 
 ## Next step
-Pull latest dev before any further changes — teammates (Aryan, Tao) are actively pushing
+Continue with uncommitted map work — `HeatMap.tsx` + `SkillPin.tsx` need live borough data wired in. Verify map renders with seeded boroughs.
 
 ## Open questions
-- Aryan: registration route accepts `doc_image_base64` but does not call Gemini — is Gemini validation at signup still planned or moved entirely to claims?
-- Tao: `/api/find` still returns 501 — ETA?
-- `skill` defaults to `'Other'` at signup — where does it get set to a real value? Profile edit page? Not yet built.
+- Aryan: Enable Realtime on `users` table (Supabase dashboard > Database > Replication > Tables > users > toggle on)
+- Aryan: does /api/auth/register call Gemini at signup, or deferred to claims only?
+- Tao: /api/find ETA? Blocks Yellow Pages demo step
+- `skill` defaults to 'Other' at signup — profile edit page needed?
 
 ## Key decisions — LOCKED
 
-**Auth (updated this session):**
-- Password replaces 4-digit PIN — min 6 chars, hashed with SHA256 via `hashPassword()`
-- Skill selection removed from registration — `skill` defaults to `'Other'` in DB, `SkillTag | null` in TypeScript
-- Mandatory doc at signup: passport OR driving_licence ONLY
-- `MandatoryDocType = 'passport' | 'driving_licence'` in `src/types/index.ts`
-- `pin_hash` column renamed to `password_hash` in DB + all code
+**DB table name:** `gov_officials` (renamed from gov_anchors). All code, seeds, migration now aligned.
 
-**Cut:**
-- Post for help (/help) — removed from docs and codebase entirely
-- Skill selector at registration — removed; skill set via profile later
-- National ID card as signup doc — removed (passport/driving_licence only)
+**Gemini API:** staying with Gemini (not Claude) — GDGC = Google hackathon, strategic advantage.
 
-**Score formula:**
-`score = min(100, claims_verified * 15 + vouches_received * 10 + gov_vouched ? 20 : 0)`
+**Frontend design:** Tactical Resilience dark theme (bg #10141a, primary #b0c6ff, secondary #40e56c). Inline styles for design token colours — not Tailwind classes for colour values. Do not switch patterns.
 
-**Score thresholds:**
-- 0–29: Unverified — 30–49: Partial — 50–89: Verified — 90–94: Trusted — 95+: Gov Official
+**Components superseded:** TrustRing, ScoreBadge, ProfileCard, VouchQR — implemented inline in pages. Do not rebuild. TopBar, Sidebar, TierBadge, Icon live in `src/components/civic/`.
 
-**Profile view gate:**
-- Not logged in → "Login to view profiles"
-- Logged in + score < 50 → 403, redirect to own profile with claim-submit prompt
-- Logged in + score >= 50 → view allowed
+**Profile removed:** /profile/[username] redirects to /dashboard. Dashboard IS the profile.
 
-**Dedup:** doc hash check is global — same document cannot be used across any account.
+**Auth:** node_id OR @username + password. Session in localStorage key `civictrust_session`. Min 6 char password, SHA256 hashed.
 
-**Vouch:** only vouchee score recalculates on vouch. Voucher penalty (-15) fires only when a flagged claim is processed.
+**Score formula:** `min(100, claims_verified * 15 + vouches_received * 10 + gov_vouched ? 20 : 0)`
 
-**Git workflow:** dev is integration branch. Always `git pull --rebase` before pushing. Ray merges dev → main before demo.
+**Score thresholds:** 0-24 Unverified | 25-59 Verified | 60-89 Trusted | 90-100 Gov Official
+
+**Seed:** 207 users live (6 gov + Dr. Osei + 200 Londoners). Password: password123 | Gov: govpassword99. Re-run with --wipe before demo.
+
+**Dedup:** doc content hash is global — same document cannot be used across any account.
+
+**Vouch:** vouchee score recalculates on vouch. Voucher penalty (-15) fires only on flagged claim.
+
+**Git workflow:** dev = integration. Never commit to main. Ray merges dev -> main before demo.
 
 **Team roles:**
-- Ray: full-stack lead, Gemini Vision, seed script, heatmap (D3), QR vouch glue
+- Ray: full-stack lead, Gemini Vision, seed scripts, heatmap (D3), realtime
 - Aryan: Supabase setup + API (auth, claims, vouch, flag, score)
-- Tao: API (rate limiting, realtime, Yellow Pages /find)
-- Hemish: UI components (score ring, profile card, forms, QR, polish)
-- Maalav: pages + routing (/register, /login, /profile, /map, /find, /)
-
-**Build phases:**
-1. (~3h) Seed script + DB schema + register + login
-2. (~4h) Claims + Gemini Vision + score + profile UI
-3. (~3h) QR vouch flow + vouch/flag + penalty logic
-4. (~4h) Heatmap + map pins + Yellow Pages + polish + demo
+- Tao: /api/find, rate limiting middleware, seedGov
+- Hemish: civic components done; now wiring dashboard claims + vouch confirm
+- Maalav: all pages built; now wiring auth guards + real session data + add-evidence submit

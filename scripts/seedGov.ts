@@ -1,10 +1,6 @@
-// Owner: Tao (coordinate with Ray's seed.ts)
-// Run: npx tsx scripts/seedGov.ts
-// Creates gov hierarchy anchor accounts:
-//   L0 — 3 accounts, score 100, organisation: 'Emergency Coalition'
-//   L1 — NHS admin (score 95), Met Police (score 95), London Council (score 95)
-//
-// IMPORTANT: Run this before seed.ts — vouch chains depend on L0/L1 existing.
+// Owner: Ray/Tao shared
+// Exported helper used by scripts/seed.ts
+// Do not run separately unless debugging gov anchors only.
 
 import { createClient } from '@supabase/supabase-js'
 import { createHash } from 'crypto'
@@ -28,7 +24,8 @@ function loadEnv(): Record<string, string> {
 const env = loadEnv()
 const supabase = createClient(
   env.NEXT_PUBLIC_SUPABASE_URL!,
-  env.SUPABASE_SERVICE_ROLE_KEY!
+  env.SUPABASE_SERVICE_ROLE_KEY!,
+  { realtime: { transport: class {} as unknown as typeof WebSocket } }
 )
 
 function hashPassword(password: string): string {

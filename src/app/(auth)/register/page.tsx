@@ -44,7 +44,7 @@ export default function RegisterPage() {
       const json = await resp.json() as { success: boolean; data?: RegisterResult; error?: string }
       if (!json.success || !json.data) { setError(json.error ?? 'Registration failed'); return }
 
-      const session: Session = { ...json.data, display_name: name.trim(), score: 0, tier: 'unverified', username: null }
+      const session: Session = { ...json.data, display_name: name.trim(), score: 0, tier: 'unverified', username: null, skill: null }
       saveSession(session)
       router.push('/unverified')
     } catch {
