@@ -73,7 +73,7 @@ export function HeatMap({ users = [] }: { users: MapUser[] }) {
         setMaxCount(top)
         setPaths(computed)
       })
-      .catch(() => { /* GeoJSON load failed — silent */ })
+      .catch((e: unknown) => { console.error('Failed to load london-boroughs.json', e) })
   }, [users])
 
   const colorScale = d3.scaleLinear<string>()
