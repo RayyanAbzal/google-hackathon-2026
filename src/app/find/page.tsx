@@ -6,7 +6,7 @@ import dynamic from 'next/dynamic'
 import { useSidebar } from '@/components/civic/SidebarProvider'
 import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
-import type { MapPOI, MapUser } from '@/components/map/map-data'
+import type { MapUser } from '@/components/map/map-data'
 import type { SkillTag, TrustTier } from '@/types'
 import type { YPListingRow } from '@/app/api/find/listings/route'
 
@@ -35,15 +35,19 @@ interface DisplayListing {
   totalVouches: number
 }
 
-const CATEGORIES = ['Medical', 'Legal', 'Engineering', 'Trades'] as const
-const STATUSES = ['Available now', 'Today'] as const
-
-const CATEGORY_TO_SKILLS: Record<string, string[]> = {
-  Medical: ['Doctor', 'Nurse'],
-  Legal: ['Legal'],
-  Engineering: ['Engineer'],
-  Trades: ['Builder'],
-}
+// Maps search terms to a SkillTag so the heatmap highlights relevant density
+const SEARCH_TO_SKILL: Array<[string, SkillTag]> = [
+  ['doctor', 'Doctor'],
+  ['nurse', 'Nurse'],
+  ['engineer', 'Engineer'],
+  ['legal', 'Legal'],
+  ['lawyer', 'Legal'],
+  ['solicitor', 'Legal'],
+  ['builder', 'Builder'],
+  ['construction', 'Builder'],
+  ['medical', 'Doctor'],
+  ['nhs', 'Nurse'],
+]
 
 const SKILL_ICON: Record<string, string> = {
   Doctor: 'stethoscope', Nurse: 'health_and_safety', Engineer: 'engineering',
@@ -68,18 +72,17 @@ const CREDENTIAL_LABEL: Record<string, string> = {
 const TIER_LABEL: Record<string, string> = { gov_official: 'T1', trusted: 'T2', verified: 'T3' }
 const TIER_COLOR: Record<string, string> = { gov_official: '#fbbf24', trusted: '#b0c6ff', verified: '#b0c6ff' }
 
+const SKILL_COLOR: Record<string, string> = {
+  Doctor: '#22c55e', Nurse: '#ec4899', Engineer: '#3b82f6',
+  Legal: '#a855f7', Builder: '#f59e0b', Other: '#6b7280',
+}
+
 const AID_HUB_LABELS: Record<string, string> = {
   Southwark: "Guy's Aid Hub", Lambeth: 'Brixton Aid Centre',
   Hackney: 'Hackney Aid Hub', Westminster: 'NHS Emergency HQ', Camden: 'UCH Field Station',
 }
 
-const POIS: MapPOI[] = [
-  { borough: 'Southwark', type: 'aid_hub', label: "Guy's Aid Hub" },
-  { borough: 'Lambeth', type: 'aid_hub', label: 'Brixton Aid Centre' },
-  { borough: 'Hackney', type: 'aid_hub', label: 'Hackney Aid Hub' },
-  { borough: 'Westminster', type: 'aid_hub', label: 'NHS Emergency HQ' },
-  { borough: 'Camden', type: 'aid_hub', label: 'UCH Field Station' },
-]
+const LONDON_POPULATION = 9_000_000
 
 function getAidHub(borough: string): string {
   return AID_HUB_LABELS[borough] ?? `${borough} Aid Hub`
@@ -92,7 +95,7 @@ function toDisplayListing(row: YPListingRow): DisplayListing {
   const isAvailNow = row.tier === 'trusted' || row.tier === 'gov_official'
   return {
     nodeId: row.nodeId, username: row.username, refCode: row.nodeId,
-    icon: SKILL_ICON[row.skill] ?? 'person', iconColor: '#b0c6ff',
+    icon: SKILL_ICON[row.skill] ?? 'person', iconColor: SKILL_COLOR[row.skill] ?? '#b0c6ff',
     title: `Verified ${row.skill}`, sub: SKILL_SUB[row.skill] ?? 'General', note,
     area: row.borough, avail: isAvailNow ? 'Available now' : 'Available soon',
     availColor: isAvailNow ? '#b0c6ff' : '#fbbf24',
@@ -111,7 +114,10 @@ interface YPListingProps {
 
 function YPListing({ refCode, icon, iconColor, title, sub, area, avail, availColor, tierLabel, tierColor, note, featured, onDetails }: YPListingProps) {
   return (
-    <div onClick={onDetails} style={{ display: 'grid', gridTemplateColumns: '80px 32px 1fr 110px 120px 44px', alignItems: 'center', gap: 10, padding: '11px 14px', borderTop: '1px solid rgba(66,70,85,0.4)', background: featured ? 'rgba(251,191,36,0.04)' : 'transparent', position: 'relative', cursor: 'pointer', transition: 'background 0.1s' }}>
+    <div
+      onClick={onDetails}
+      style={{ display: 'grid', gridTemplateColumns: '80px 32px 1fr 110px 120px 44px', alignItems: 'center', gap: 10, padding: '11px 14px', borderTop: '1px solid rgba(66,70,85,0.4)', background: featured ? 'rgba(251,191,36,0.04)' : 'transparent', position: 'relative', cursor: 'pointer', transition: 'background 0.1s' }}
+    >
       {featured && <div style={{ position: 'absolute', left: 0, top: 0, bottom: 0, width: 2, background: '#fbbf24' }} />}
       <div className="mono" style={{ fontSize: 9, color: '#8c90a1', letterSpacing: '0.04em', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{refCode}</div>
       <div style={{ width: 30, height: 30, borderRadius: 6, background: `${iconColor}18`, border: `1px solid ${iconColor}35`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -150,9 +156,7 @@ function YPSection({ title, count, children }: { title: string; count: number; c
 export default function FindPage() {
   const [allListings, setAllListings] = useState<YPListingRow[]>([])
   const [loading, setLoading] = useState(true)
-  const [activeCategory, setActiveCategory] = useState<string>('Medical')
   const [activeBorough, setActiveBorough] = useState<string>('')
-  const [activeStatus, setActiveStatus] = useState<string>('Available now')
   const [search, setSearch] = useState('')
   const [selected, setSelected] = useState<DisplayListing | null>(null)
   const { width: sidebarWidth } = useSidebar()
@@ -170,42 +174,54 @@ export default function FindPage() {
     [allListings]
   )
 
-  const categoryBoroughs = useMemo(() =>
-    [...new Set(allListings.filter(r => (CATEGORY_TO_SKILLS[activeCategory] ?? []).includes(r.skill)).map(r => r.borough))].sort(),
-    [allListings, activeCategory]
+  // Derive which skill the heatmap should highlight from the search string
+  const mapSkill = useMemo((): SkillTag | 'All' => {
+    const q = search.trim().toLowerCase()
+    if (!q) return 'All'
+    return SEARCH_TO_SKILL.find(([term]) => q.includes(term) || term.includes(q))?.[1] ?? 'All'
+  }, [search])
+
+  // All boroughs that have any listing (for borough chips)
+  const allBoroughs = useMemo(() =>
+    [...new Set(allListings.map(r => r.borough))].sort(),
+    [allListings]
   )
 
+  // Auto-select first borough when listings load
   useEffect(() => {
-    if (categoryBoroughs.length > 0 && !categoryBoroughs.includes(activeBorough)) {
-      setActiveBorough(categoryBoroughs[0])
+    if (allBoroughs.length > 0 && !allBoroughs.includes(activeBorough)) {
+      setActiveBorough(allBoroughs[0])
     }
-  }, [categoryBoroughs, activeBorough])
+  }, [allBoroughs, activeBorough])
 
   const filtered = useMemo((): DisplayListing[] => {
-    const skills = CATEGORY_TO_SKILLS[activeCategory] ?? []
     const q = search.trim().toLowerCase()
     return allListings
-      .filter(r => skills.includes(r.skill))
       .filter(r => r.borough === activeBorough)
-      .filter(r => activeStatus === 'Available now' ? (r.tier === 'trusted' || r.tier === 'gov_official') : true)
       .filter(r => !q || r.skill.toLowerCase().includes(q) || r.borough.toLowerCase().includes(q) || r.credentials.some(c => c.toLowerCase().includes(q)))
       .map(toDisplayListing)
-  }, [allListings, activeCategory, activeBorough, activeStatus, search])
+  }, [allListings, activeBorough, search])
 
   const bySubCategory = useMemo(() =>
     filtered.reduce<Record<string, DisplayListing[]>>((acc, r) => { (acc[r.subCategory] ??= []).push(r); return acc }, {}),
     [filtered]
   )
 
-  const boroughAll = useMemo(() => allListings.filter(r => r.borough === activeBorough), [allListings, activeBorough])
-  const counts = useMemo(() => ({
-    Medical: boroughAll.filter(r => ['Doctor', 'Nurse'].includes(r.skill)).length,
-    Legal: boroughAll.filter(r => r.skill === 'Legal').length,
-    Engineering: boroughAll.filter(r => r.skill === 'Engineer').length,
-    Trades: boroughAll.filter(r => r.skill === 'Builder').length,
-  }), [boroughAll])
+  // Totals across all boroughs for the map overlay
+  const totalVerified = allListings.length
 
-  const hubLabel = getAidHub(activeBorough)
+  // When a skill is active, show that skill's count; otherwise show top-3 category breakdown
+  const skillFilteredCount = useMemo(() =>
+    mapSkill === 'All' ? 0 : allListings.filter(r => r.skill === mapSkill).length,
+    [allListings, mapSkill]
+  )
+  const totalDoctors = useMemo(() => allListings.filter(r => r.skill === 'Doctor' || r.skill === 'Nurse').length, [allListings])
+  const totalEngineers = useMemo(() => allListings.filter(r => r.skill === 'Engineer').length, [allListings])
+  const totalLegal = useMemo(() => allListings.filter(r => r.skill === 'Legal').length, [allListings])
+
+  const mapHint = mapSkill !== 'All'
+    ? `Showing ${mapSkill.toLowerCase()} density`
+    : 'Showing all verified people'
 
   return (
     <div style={{ background: '#10141a', minHeight: '100vh', color: '#dfe2eb' }}>
@@ -215,128 +231,155 @@ export default function FindPage() {
       <main style={{ marginLeft: sidebarWidth, paddingTop: 56, transition: 'margin-left 0.2s ease' }}>
         <div style={{ padding: '24px 28px 32px' }}>
 
-          <div style={{ marginBottom: 18 }}>
+          {/* Header + search */}
+          <div style={{ marginBottom: 16 }}>
             <h1 style={{ fontSize: 36, fontWeight: 800, letterSpacing: '-0.02em', margin: '0 0 4px', lineHeight: 1 }}>The Yellow Pages.</h1>
-            <p style={{ color: '#8c90a1', fontSize: 13, margin: 0 }}>Every verified doctor, nurse, engineer and builder — pinned to the map.</p>
-          </div>
+            <p style={{ color: '#8c90a1', fontSize: 13, margin: '0 0 14px' }}>Every verified doctor, nurse, engineer and builder — pinned to the map.</p>
 
-          <div style={{ display: 'flex', gap: 8, marginBottom: 12 }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', padding: '0 12px', background: '#181c22', border: '1px solid #424655', borderRadius: 8, gap: 8 }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#8c90a1' }}>search</span>
-              <input placeholder="Search by role, credential or borough…" style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#dfe2eb', fontSize: 14, padding: '10px 0', fontFamily: 'inherit' }} value={search} onChange={e => setSearch(e.target.value)} />
-              {search && <button onClick={() => setSearch('')} style={{ background: 'transparent', border: 'none', color: '#8c90a1', cursor: 'pointer', lineHeight: 1 }}><span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span></button>}
-            </div>
-            <button style={{ padding: '0 18px', background: '#b0c6ff', color: '#002d6f', border: 'none', borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: 'pointer' }}>Search</button>
-          </div>
-
-          <div style={{ marginBottom: 20, border: '1px solid rgba(66,70,85,0.5)', borderRadius: 8, background: '#181c22', overflow: 'hidden' }}>
-            {/* Row 1: Category + Status + count */}
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16, padding: '10px 14px', alignItems: 'center', borderBottom: '1px solid rgba(66,70,85,0.4)' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span className="meta" style={{ minWidth: 60 }}>CATEGORY</span>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {CATEGORIES.map(c => (
-                    <button key={c} onClick={() => setActiveCategory(c)} style={{ padding: '4px 10px', borderRadius: 999, fontSize: 12, cursor: 'pointer', border: 'none', background: c === activeCategory ? 'rgba(176,198,255,0.15)' : 'rgba(66,70,85,0.3)', color: c === activeCategory ? '#b0c6ff' : '#8c90a1', outline: c === activeCategory ? '1px solid rgba(176,198,255,0.5)' : '1px solid transparent' }}>{c}</button>
-                  ))}
-                </div>
-              </div>
-              <div style={{ width: 1, height: 20, background: 'rgba(66,70,85,0.6)' }} />
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span className="meta" style={{ minWidth: 50 }}>STATUS</span>
-                <div style={{ display: 'flex', gap: 4 }}>
-                  {STATUSES.map(s => (
-                    <button key={s} onClick={() => setActiveStatus(s)} style={{ padding: '4px 10px', borderRadius: 999, fontSize: 12, cursor: 'pointer', border: 'none', background: s === activeStatus ? 'rgba(176,198,255,0.12)' : 'rgba(66,70,85,0.3)', color: s === activeStatus ? '#b0c6ff' : '#8c90a1', outline: s === activeStatus ? '1px solid rgba(176,198,255,0.4)' : '1px solid transparent' }}>{s}</button>
-                  ))}
-                </div>
-              </div>
-              <div style={{ marginLeft: 'auto' }}>
-                <span className="meta">{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
-              </div>
-            </div>
-            {/* Row 2: Borough pills — full width, scrollable */}
-            <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 14px', minWidth: 0 }}>
-              <span className="meta" style={{ minWidth: 50, flexShrink: 0 }}>BOROUGH</span>
-              <div style={{ display: 'flex', gap: 4, overflowX: 'auto', scrollbarWidth: 'none', flex: 1, minWidth: 0 }}>
-                {categoryBoroughs.map(b => (
-                  <button key={b} onClick={() => setActiveBorough(b)} style={{ padding: '4px 10px', borderRadius: 999, fontSize: 12, cursor: 'pointer', border: 'none', whiteSpace: 'nowrap', flexShrink: 0, background: b === activeBorough ? 'rgba(176,198,255,0.15)' : 'rgba(66,70,85,0.3)', color: b === activeBorough ? '#b0c6ff' : '#8c90a1', outline: b === activeBorough ? '1px solid rgba(176,198,255,0.5)' : '1px solid transparent' }}>{b}</button>
-                ))}
+            <div style={{ display: 'flex', gap: 8 }}>
+              <div style={{ flex: 1, display: 'flex', alignItems: 'center', padding: '0 12px', background: '#181c22', border: '1px solid #424655', borderRadius: 8, gap: 8 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#8c90a1' }}>search</span>
+                <input
+                  placeholder="Search by role, credential or borough…"
+                  style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#dfe2eb', fontSize: 14, padding: '10px 0', fontFamily: 'inherit' }}
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+                {search && (
+                  <button onClick={() => setSearch('')} style={{ background: 'transparent', border: 'none', color: '#8c90a1', cursor: 'pointer', lineHeight: 1 }}>
+                    <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
 
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.1fr', gap: 20, alignItems: 'flex-start' }}>
+          {/* Full-width map hero */}
+          <div style={{ position: 'relative', height: 480, border: '1px solid rgba(66,70,85,0.5)', borderRadius: 10, overflow: 'hidden', background: '#0a0e14', marginBottom: 16 }}>
+            <HeatMap
+              users={mapUsers}
+              selectedBorough={activeBorough}
+              activeSkill={mapSkill}
+              onBoroughClick={(name) => setActiveBorough(name)}
+            />
 
-            <div style={{ position: 'sticky', top: 80, display: 'flex', flexDirection: 'column', gap: 10 }}>
-              <div style={{ position: 'relative', height: 480, border: '1px solid rgba(66,70,85,0.5)', borderRadius: 10, overflow: 'hidden', background: '#0a0e14' }}>
-                <HeatMap users={mapUsers} pois={POIS} selectedBorough={activeBorough} activeSkill="All" onBoroughClick={(name) => setActiveBorough(name)} />
-                <div style={{ position: 'absolute', bottom: 12, left: 12, padding: '7px 12px', background: 'rgba(16,20,26,0.92)', border: '1px solid rgba(66,70,85,0.5)', borderRadius: 6, zIndex: 500, pointerEvents: 'none' }}>
-                  <span className="meta">DENSITY HEATMAP</span>
-                  <div style={{ fontSize: 13, fontWeight: 700, marginTop: 3 }}>Verified people nearby</div>
-                </div>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', border: '1px solid rgba(66,70,85,0.5)', borderRadius: 8, overflow: 'hidden' }}>
-                {(['MEDICAL', 'LEGAL', 'ENGIN.', 'TRADES'] as const).map((l, i, arr) => {
-                  const n = [counts.Medical, counts.Legal, counts.Engineering, counts.Trades][i]
-                  return (
-                    <div key={l} style={{ padding: '10px 12px', background: '#181c22', borderRight: i < arr.length - 1 ? '1px solid rgba(66,70,85,0.5)' : 'none' }}>
-                      <span className="meta">{l}</span>
-                      <div className="mono" style={{ fontSize: 20, fontWeight: 700, color: n > 0 ? '#b0c6ff' : '#424655', marginTop: 2, letterSpacing: '-0.02em' }}>{String(n).padStart(2, '0')}</div>
-                    </div>
-                  )
-                })}
-              </div>
+            {/* Bottom-left: map hint — changes with search */}
+            <div style={{ position: 'absolute', bottom: 12, left: 12, padding: '7px 12px', background: 'rgba(16,20,26,0.92)', border: `1px solid ${mapSkill !== 'All' ? `${SKILL_COLOR[mapSkill] ?? '#b0c6ff'}50` : 'rgba(66,70,85,0.5)'}`, borderRadius: 6, zIndex: 500, pointerEvents: 'none', transition: 'border-color 0.2s' }}>
+              <span className="meta" style={{ color: mapSkill !== 'All' ? (SKILL_COLOR[mapSkill] ?? '#b0c6ff') : '#8c90a1' }}>
+                {mapSkill !== 'All' ? mapSkill.toUpperCase() + ' DENSITY' : 'DENSITY HEATMAP'}
+              </span>
+              <div style={{ fontSize: 13, fontWeight: 700, marginTop: 3 }}>{mapHint}</div>
             </div>
 
-            <div style={{ display: 'flex', flexDirection: 'column', maxHeight: 'calc(100vh - 240px)', overflowY: 'auto', paddingRight: 2 }}>
-
-              <div style={{ border: '2px solid #b0c6ff', borderRadius: 8, padding: 16, background: 'rgba(176,198,255,0.04)', marginBottom: 16, position: 'relative', flexShrink: 0 }}>
-                <div style={{ position: 'absolute', top: -10, left: 14, padding: '2px 8px', background: '#b0c6ff', color: '#002d6f', fontFamily: 'JetBrains Mono, monospace', fontSize: 9, fontWeight: 700, letterSpacing: '0.1em', borderRadius: 3 }}>AID HUB · NEAREST</div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginTop: 4 }}>
-                  <div style={{ width: 48, height: 48, borderRadius: 8, background: 'rgba(176,198,255,0.1)', border: '1px solid #b0c6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 24, color: '#b0c6ff' }}>local_hospital</span>
+            {/* Bottom-right: verified counter */}
+            {totalVerified > 0 && (
+              <div style={{ position: 'absolute', bottom: 12, right: 12, padding: '10px 14px', background: 'rgba(16,20,26,0.92)', border: '1px solid rgba(66,70,85,0.5)', borderRadius: 6, zIndex: 500, pointerEvents: 'none', textAlign: 'right' }}>
+                <div className="mono" style={{ fontSize: 9, color: '#8c90a1', letterSpacing: '0.1em', marginBottom: 3 }}>VERIFIED LONDONERS</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#b0c6ff', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                  {totalVerified.toLocaleString()} <span style={{ fontSize: 13, color: '#556074', fontWeight: 400 }}>/ {LONDON_POPULATION.toLocaleString()}</span>
+                </div>
+                {mapSkill !== 'All' ? (
+                  <div style={{ fontSize: 11, color: '#8c90a1', marginTop: 4, textAlign: 'right' }}>
+                    <span style={{ color: SKILL_COLOR[mapSkill] ?? '#b0c6ff' }}>●</span>{' '}
+                    {skillFilteredCount} {mapSkill.toLowerCase()}{skillFilteredCount !== 1 ? 's' : ''} verified
                   </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 17, fontWeight: 800, letterSpacing: '-0.01em' }}>{hubLabel}</div>
-                    <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 10, marginTop: 4, fontSize: 12, color: '#c2c6d8' }}>
-                      <span style={{ display: 'flex', alignItems: 'center', gap: 3 }}><span className="material-symbols-outlined" style={{ fontSize: 12 }}>location_on</span>{activeBorough}</span>
-                      <span style={{ color: '#b0c6ff', display: 'inline-flex', alignItems: 'center', gap: 4 }}><span style={{ width: 5, height: 5, borderRadius: '50%', background: '#b0c6ff', display: 'inline-block' }} />{counts.Medical} medical · {counts.Legal} legal · {counts.Engineering} engineers</span>
-                    </div>
+                ) : (totalDoctors > 0 || totalEngineers > 0 || totalLegal > 0) ? (
+                  <div style={{ fontSize: 11, color: '#8c90a1', marginTop: 4, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    {totalDoctors > 0 && <span><span style={{ color: '#22c55e' }}>●</span> {totalDoctors} medical</span>}
+                    {totalEngineers > 0 && <span><span style={{ color: '#3b82f6' }}>●</span> {totalEngineers} engineers</span>}
+                    {totalLegal > 0 && <span><span style={{ color: '#a855f7' }}>●</span> {totalLegal} legal</span>}
                   </div>
-                  <button style={{ padding: '8px 14px', background: '#b0c6ff', color: '#002d6f', border: 'none', borderRadius: 6, fontSize: 12, fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap', flexShrink: 0 }}>Walk to hub →</button>
-                </div>
+                ) : null}
               </div>
+            )}
+          </div>
 
-              {loading && <div style={{ padding: 32, textAlign: 'center', color: '#8c90a1', fontSize: 14, border: '1px solid rgba(66,70,85,0.5)', borderRadius: 8 }}>Loading listings...</div>}
-
-              {!loading && Object.entries(bySubCategory).map(([subCat, rows]) => (
-                <YPSection key={subCat} title={subCat} count={rows.length}>
-                  {rows.map(r => (
-                    <YPListing key={r.nodeId} refCode={r.refCode} icon={r.icon} iconColor={r.iconColor} title={r.title} sub={r.sub} area={r.area} avail={r.avail} availColor={r.availColor} tierLabel={r.tierLabel} tierColor={r.tierColor} note={r.note} featured={r.featured}
-                      onDetails={() => { setSelected(r); setActiveBorough(r.borough) }} />
-                  ))}
-                </YPSection>
-              ))}
-
-              {!loading && filtered.length === 0 && (
-                <div style={{ padding: 32, textAlign: 'center', color: '#8c90a1', fontSize: 14, border: '1px solid rgba(66,70,85,0.5)', borderRadius: 8 }}>
-                  No verified {activeCategory.toLowerCase()} listings in {activeBorough || 'this area'}{search ? ` matching "${search}"` : ''}.
+          {/* Showing label + stats bar */}
+          {activeBorough && (
+            <div style={{ marginBottom: 16, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 14, color: '#b0c6ff' }}>location_on</span>
+                <span style={{ fontSize: 14, fontWeight: 700, color: '#dfe2eb' }}>{activeBorough}</span>
+                <span style={{ fontSize: 13, color: '#556074' }}>·</span>
+                <span style={{ fontSize: 13, color: '#8c90a1' }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
+                {search && <span style={{ fontSize: 11, color: '#8c90a1' }}>for &ldquo;{search}&rdquo;</span>}
+              </div>
+              {filtered.length > 0 && (
+                <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                  {(['Doctor', 'Nurse'] as const).some(s => filtered.some(r => r.icon === SKILL_ICON[s])) && (
+                    <span style={{ fontSize: 11, color: '#22c55e', display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 11 }}>stethoscope</span>
+                      {filtered.filter(r => r.iconColor === SKILL_COLOR['Doctor'] || r.iconColor === SKILL_COLOR['Nurse']).length} medical
+                    </span>
+                  )}
+                  {filtered.some(r => r.iconColor === SKILL_COLOR['Engineer']) && (
+                    <span style={{ fontSize: 11, color: '#3b82f6', display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 11 }}>engineering</span>
+                      {filtered.filter(r => r.iconColor === SKILL_COLOR['Engineer']).length} engineers
+                    </span>
+                  )}
+                  {filtered.some(r => r.iconColor === SKILL_COLOR['Legal']) && (
+                    <span style={{ fontSize: 11, color: '#a855f7', display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 11 }}>balance</span>
+                      {filtered.filter(r => r.iconColor === SKILL_COLOR['Legal']).length} legal
+                    </span>
+                  )}
+                  {filtered.some(r => r.iconColor === SKILL_COLOR['Builder']) && (
+                    <span style={{ fontSize: 11, color: '#f59e0b', display: 'flex', alignItems: 'center', gap: 3 }}>
+                      <span className="material-symbols-outlined" style={{ fontSize: 11 }}>construction</span>
+                      {filtered.filter(r => r.iconColor === SKILL_COLOR['Builder']).length} trades
+                    </span>
+                  )}
                 </div>
               )}
+            </div>
+          )}
 
-              <div style={{ marginTop: 12, padding: 12, border: '1px dashed rgba(66,70,85,0.5)', borderRadius: 6, display: 'flex', alignItems: 'flex-start', gap: 10, flexShrink: 0 }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#b0c6ff', marginTop: 1, flexShrink: 0 }}>visibility_off</span>
-                <div>
-                  <div style={{ fontSize: 12, fontWeight: 600 }}>Names are hidden by default.</div>
-                  <div style={{ fontSize: 11, color: '#8c90a1', marginTop: 2, lineHeight: 1.5 }}>You see role, area, credentials, and the hub they report to — never the person directly. Contact happens at the hub.</div>
-                </div>
+          {/* Listings */}
+          <div>
+            {loading && (
+              <div style={{ padding: 32, textAlign: 'center', color: '#8c90a1', fontSize: 14, border: '1px solid rgba(66,70,85,0.5)', borderRadius: 8 }}>Loading listings...</div>
+            )}
+
+            {!loading && Object.entries(bySubCategory).map(([subCat, rows]) => (
+              <YPSection key={subCat} title={subCat} count={rows.length}>
+                {rows.map(r => (
+                  <YPListing
+                    key={r.nodeId}
+                    refCode={r.refCode} icon={r.icon} iconColor={r.iconColor}
+                    title={r.title} sub={r.sub} area={r.area}
+                    avail={r.avail} availColor={r.availColor}
+                    tierLabel={r.tierLabel} tierColor={r.tierColor}
+                    note={r.note} featured={r.featured}
+                    onDetails={() => { setSelected(r); setActiveBorough(r.borough) }}
+                  />
+                ))}
+              </YPSection>
+            ))}
+
+            {!loading && filtered.length === 0 && (
+              <div style={{ padding: 32, textAlign: 'center', color: '#8c90a1', fontSize: 14, border: '1px solid rgba(66,70,85,0.5)', borderRadius: 8 }}>
+                No verified listings in {activeBorough || 'this area'}{search ? ` matching "${search}"` : ''}.
+              </div>
+            )}
+
+            <div style={{ marginTop: 12, padding: 12, border: '1px dashed rgba(66,70,85,0.5)', borderRadius: 6, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#b0c6ff', marginTop: 1, flexShrink: 0 }}>visibility_off</span>
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600 }}>Names are hidden by default.</div>
+                <div style={{ fontSize: 11, color: '#8c90a1', marginTop: 2, lineHeight: 1.5 }}>You see role, area, credentials, and the hub they report to — never the person directly. Contact happens at the hub.</div>
               </div>
             </div>
           </div>
         </div>
       </main>
 
+      {/* Modal detail */}
       {selected && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }} onClick={() => setSelected(null)}>
+        <div
+          style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.75)', zIndex: 100, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 24 }}
+          onClick={() => setSelected(null)}
+        >
           <div className="bento" style={{ maxWidth: 480, width: '100%', padding: 28, position: 'relative' }} onClick={e => e.stopPropagation()}>
             <button onClick={() => setSelected(null)} style={{ position: 'absolute', top: 14, right: 14, background: 'transparent', border: 'none', color: '#8c90a1', cursor: 'pointer', lineHeight: 1 }}>
               <span className="material-symbols-outlined">close</span>

@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CircleMarker, GeoJSON, MapContainer, Popup, TileLayer } from 'react-leaflet'
+import { CircleMarker, GeoJSON, MapContainer, Popup, TileLayer, Tooltip } from 'react-leaflet'
 import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet'
 import type { Feature, FeatureCollection } from 'geojson'
 import * as d3 from 'd3'
@@ -15,7 +15,7 @@ interface HeatMapProps {
   pois?: MapPOI[]
   selectedBorough?: string
   activeSkill?: SkillTag | 'All'
-  onBoroughClick?: (name: string, users: MapUser[]) => void
+  onBoroughClick?: (name: string) => void
 }
 
 const SKILL_COLORS: Record<SkillTag, string> = {
@@ -90,9 +90,18 @@ export function HeatMap({
     const isSelected = name === selectedBorough
     const base = heatColorScale(count)
 
+    if (count === 0) {
+      return {
+        fillColor: '#1a2235',
+        fillOpacity: isSelected ? 0.7 : 0.55,
+        color: isSelected ? '#7dd3fc' : '#2a3550',
+        weight: isSelected ? 2 : 0.6,
+      }
+    }
+
     return {
       fillColor: isSelected ? (d3.color(base)?.brighter(0.45)?.formatHex() ?? base) : base,
-      fillOpacity: count > 0 ? (isSelected ? 0.94 : 0.88) : 0.18,
+      fillOpacity: isSelected ? 0.94 : 0.88,
       color: isSelected ? '#7dd3fc' : '#1e293b',
       weight: isSelected ? 2 : 0.8,
     }
@@ -100,10 +109,6 @@ export function HeatMap({
 
   const onEachBorough = useCallback((feature: Feature, layer: Layer) => {
     const name = (feature.properties as Record<string, string>)['LAD13NM'] ?? ''
-    const insight = lookup[name]
-    const count = insight?.verifiedCount ?? 0
-
-    layer.bindTooltip(`${name} — ${count} verified`, { sticky: true })
 
     layer.on({
       mouseover: (e: LeafletMouseEvent) => {
@@ -116,8 +121,7 @@ export function HeatMap({
         path.setStyle(boroughStyle(feature))
       },
       click: () => {
-        const people = insight?.people ?? []
-        onBoroughClick?.(name, people)
+        onBoroughClick?.(name)
       },
     })
   }, [boroughStyle, lookup, onBoroughClick])
@@ -179,6 +183,11 @@ export function HeatMap({
               dashArray: poi.type === 'risk_alert' ? '4 3' : undefined,
             }}
           >
+            <Tooltip permanent direction="right" opacity={0.92} offset={[8, 0]}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: poi.type === 'aid_hub' ? '#b0c6ff' : '#ffb4ab' }}>
+                {poi.label}
+              </span>
+            </Tooltip>
             <Popup>
               <div style={{ minWidth: 140 }}>
                 <div style={{ fontWeight: 700, fontSize: 13, color: '#f8fafc', marginBottom: 2 }}>{poi.label}</div>
