@@ -1,93 +1,74 @@
 # WORKLOG
 
-**Updated:** 2026-05-16 (session 6)
+**Updated:** 2026-05-16 (session 11)
 
 ## Active task
-Idle — full frontend design system shipped and pushed to dev
+Idle — DB provisioned, schema aligned, seed scripts fixed, pushed to dev
 
 ## Phase
-Frontend complete (visual). Data wiring + auth guards = next priority for Maalav + Hemish.
+implementing
 
 ## Files changed this session
+- `supabase/migrations/0001_init.sql` — full rewrite: password_hash, skill nullable, drop help_posts, rename gov_officials -> gov_anchors, add CHECK constraints, sync RLS policies to live DB
+- `src/lib/CLAUDE.md` — gov_officials -> gov_anchors table name
+- `src/lib/fallbacks.ts` — expand FALLBACK_USERS to 20 boroughs, remove FALLBACK_HELP_POSTS (feature cut)
+- `src/components/map/HeatMap.tsx` — implement D3 choropleth + skill pins (was TODO stub)
+- `src/components/map/SkillPin.tsx` — implement SVG circle with gov ring variant
+- `docs/TASKS.md` — mark Aryan's Supabase setup items done (schema + RLS applied via MCP), flag Realtime as still outstanding
+- `scripts/seed.ts` — fix gov_officials -> gov_anchors (was reverted by hook/process)
+- `scripts/seedGov.ts` — fix gov_officials -> gov_anchors (same)
+- `package.json` / `package-lock.json` — install d3 + @types/d3
+- `PLAN.md` (root) — DELETED (duplicate of docs/PLAN.md)
+- `ROLES.md` (root) — DELETED (stale, covered by AGENTS.md)
 
-**Design system:**
-- `src/app/globals.css` — replaced shadcn colour tokens with Tactical Resilience design tokens; added utility classes (.bento, .btn-primary/ghost/solid-primary, .field-input, .tier-0..3, .chip, .city-grid, .dot-*)
-- `src/app/layout.tsx` — Inter font, Material Symbols Outlined via Google Fonts, html.dark class
-
-**New civic components (`src/components/civic/`):**
-- `TopBar.tsx` — fixed nav bar, blackout timer pill, notifications popup, avatar menu with sign out
-- `Sidebar.tsx` — fixed left nav, identity card, tier progress bar, active state highlighting
-- `TierBadge.tsx` — all 5 tiers (unverified → gov_official)
-- `Icon.tsx` — Material Symbols Outlined wrapper
-
-**Pages (all 10 routes):**
-- `src/app/page.tsx` — landing: hero, how-it-works, trust tiers, fraud resistance, CTA
-- `src/app/(auth)/login/page.tsx` — Node ID + password, calls /api/auth/login, stores session
-- `src/app/(auth)/register/page.tsx` — name + password + doc upload, calls /api/auth/register
-- `src/app/(auth)/unverified/page.tsx` — NEW: post-register splash, progress bar, next steps
-- `src/app/dashboard/page.tsx` — NEW: score ring SVG, 3 metric cards, evidence grid, activity feed
-- `src/app/add-evidence/page.tsx` — NEW: 4-step wizard (choose type, upload, review extracted, submit)
-- `src/app/vouch/page.tsx` — NEW: QR display, scanner/lookup, person preview, vouch type selector
-- `src/app/find/page.tsx` — search + chip filters + 4 result cards + mini map
-- `src/app/map/page.tsx` — wraps HeatMap, Southwark stat panel, legend
-- `src/app/settings/page.tsx` — NEW: 4 tabs (Profile active), form fields, devices, save footer
-- `src/app/profile/[username]/page.tsx` — now redirects to /dashboard
-
-**Docs updated:**
-- `src/app/CLAUDE.md` — current state of all routes, what Maalav should focus on next
-- `src/components/CLAUDE.md` — superseded components listed, civic/ components documented
-- `docs/ROADMAP.md` — components section updated, critical path updated
-- `docs/TASKS.md` — Hemish + Maalav tasks rewritten to reflect data-wiring focus
+**Supabase (via MCP):**
+- Renamed `gov_officials` -> `gov_anchors` in live DB
+- Fixed claims RLS: was SELECT WHERE status='verified' only — changed to SELECT all
+- Added missing INSERT policies for all tables
+- Added `gov_anchors_insert` policy
+- Confirmed all 4 tables live: users, claims, vouches, gov_anchors (all RLS enabled, 0 rows)
+- GEMINI_API_KEY added to .env.local
 
 ## Next step
-Maalav: auth guards + session data wiring (see docs/TASKS.md)
-Hemish: wire dashboard claims + vouch confirm button
-Tao: /api/find is still NOT STARTED — blocking Find page real data
+Run seed script once Aryan confirms Realtime is enabled:
+```
+npx tsx scripts/seed.ts --wipe
+```
+Then verify 200+ rows in Supabase dashboard.
 
 ## Open questions
-- Aryan: registration route accepts `doc_image_base64` but does not call Gemini — Gemini at signup still planned or moved to claims only?
-- Tao: `/api/find` still 501 — ETA?
-- `skill` defaults to `'Other'` at signup — where does it get set? Profile edit page not yet built.
-- Root `PLAN.md` + `ROLES.md` — delete or move to docs/?
+- Aryan: Enable Realtime on `users` table — Supabase dashboard > Database > Replication > Tables > users > toggle on
+- Aryan: does /api/auth/register call Gemini at signup, or deferred to claims only?
+- Tao: /api/find ETA? Blocks Yellow Pages demo step
+- `skill` defaults to 'Other' at signup — Settings page enough, or needs dedicated edit flow?
 
 ## Key decisions — LOCKED
 
-**Auth:**
-- Password replaces 4-digit PIN — min 6 chars, hashed with SHA256 via `hashPassword()`
-- Skill defaults to `'Other'` at signup, set via profile later
-- Mandatory doc at signup: passport OR driving_licence ONLY
-- `MandatoryDocType = 'passport' | 'driving_licence'` in `src/types/index.ts`
-- `password_hash` column (was `pin_hash`)
+**DB table name:** `gov_anchors` (NOT gov_officials). Both seed scripts and migration now aligned. DB renamed via MCP migration.
 
-**Cut:**
-- Post for help (/help), skill selector at registration, National ID card at signup
+**Gemini API:** staying with Gemini (not Claude) — GDGC = Google hackathon, judges are Google-affiliated, strategic advantage.
 
-**Score formula:**
-`score = min(100, claims_verified * 15 + vouches_received * 10 + gov_vouched ? 20 : 0)`
+**Frontend design:** Tactical Resilience dark theme (bg #10141a, primary #b0c6ff, secondary #40e56c). Inline styles for design token colours — not Tailwind classes for colour values. Do not switch patterns.
 
-**Score thresholds:**
-0-29: Unverified | 30-49: Partial | 50-89: Verified | 90-94: Trusted | 95+: Gov Official
+**Components superseded:** TrustRing, ScoreBadge, ProfileCard, VouchQR — implemented inline in pages. Do not rebuild. TopBar, Sidebar, TierBadge, Icon live in `src/components/civic/`.
 
-**Profile view gate:**
-- Not logged in → "Login to view profiles"
-- Logged in + score < 50 → 403, redirect to own profile with claim-submit prompt
-- Logged in + score >= 50 → view allowed
+**Profile removed:** /profile/[username] redirects to /dashboard. Dashboard IS the profile.
 
-**Dedup:** doc hash check is global — same document cannot be used across any account.
+**Auth:** node_id OR @username + password. Session in localStorage key `civictrust_session`. Min 6 char password, SHA256 hashed.
 
-**Vouch:** only vouchee score recalculates on vouch. Voucher penalty (-15) fires only on flagged claim processing.
+**Score formula:** `min(100, claims_verified * 15 + vouches_received * 10 + gov_vouched ? 20 : 0)`
 
-**Git workflow:** dev = integration. Always `git pull --rebase` before pushing. Ray merges dev → main before demo.
+**Score thresholds:** 0-29 Unverified | 30-49 Partial | 50-89 Verified | 90-94 Trusted | 95+ Gov Official
+
+**Dedup:** doc content hash is global — same document cannot be used across any account.
+
+**Vouch:** vouchee score recalculates on vouch. Voucher penalty (-15) fires only on flagged claim.
+
+**Git workflow:** dev = integration. Never commit to main. Ray merges dev -> main before demo.
 
 **Team roles:**
-- Ray: full-stack lead, Gemini Vision, seed script, heatmap (D3), QR vouch glue
+- Ray: full-stack lead, Gemini Vision, seed scripts, heatmap (D3), realtime
 - Aryan: Supabase setup + API (auth, claims, vouch, flag, score)
-- Tao: API (rate limiting, realtime, Yellow Pages /find)
-- Hemish: UI components (score ring, profile card, forms, QR, polish)
-- Maalav: pages + routing (/register, /login, /profile, /map, /find, /)
-
-**Build phases:**
-1. (~3h) Seed script + DB schema + register + login
-2. (~4h) Claims + Gemini Vision + score + profile UI
-3. (~3h) QR vouch flow + vouch/flag + penalty logic
-4. (~4h) Heatmap + map pins + Yellow Pages + polish + demo
+- Tao: /api/find, rate limiting middleware, seedGov
+- Hemish: civic components done; now wiring dashboard claims + vouch confirm
+- Maalav: all pages built; now wiring auth guards + real session data + add-evidence submit

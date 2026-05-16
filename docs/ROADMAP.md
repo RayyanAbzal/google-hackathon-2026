@@ -35,7 +35,7 @@ Sarah registers → uploads passport → gets BLK-XXXXX-LDN node ID
 | Person | Role | Progress | Status |
 |--------|------|----------|--------|
 | Ray | Full-stack lead, DB, AI, map | 6 done / 2 remaining | 🟡 Nearly done |
-| Aryan | Backend API + Supabase setup | 9 done / 2 confirmations needed | 🟡 Nearly done |
+| Aryan | Backend API + Supabase setup | 10 done / 1 confirmation needed | 🟡 Nearly done |
 | Tao | Find API + rate limiting | 1 done / 3 remaining | 🔴 Needs work |
 | Hemish | UI shell + wiring | 4 done / 2 remaining | 🟡 Nearly done |
 | Maalav | Pages + routing | 9 done / 3 wiring tasks | 🟡 Nearly done |
@@ -92,7 +92,7 @@ Sarah registers → uploads passport → gets BLK-XXXXX-LDN node ID
 
 ### Phase 5 — Demo prep
 - [ ] Supabase realtime enabled on `users` table — **ARYAN** 🟡
-- [ ] RLS policies confirmed — **ARYAN** 🟡
+- [x] RLS policies confirmed — **RAY via MCP (2026-05-16)**
 - [ ] Run seed: `npx tsx scripts/seedGov.ts && npx tsx scripts/seed.ts` — **RAY** 🟡
 - [ ] Full demo path rehearsed end-to-end
 - [ ] Bad actor path tested (wrong-name doc → rejected)
@@ -110,7 +110,7 @@ BLOCKING RIGHT NOW:
 NEEDED FOR FULL DEMO:
   Hemish: wire claims + vouch calls         ← dashboard shows placeholder data
   Maalav: wire add-evidence submit          ← form does nothing on submit
-  Aryan: confirm RLS + realtime             ← live score updates won't fire
+  Aryan: confirm realtime on users table    ← live score updates won't fire
   Ray: run seed scripts                     ← map is empty
 
 LAST:
@@ -173,19 +173,13 @@ Map page should show "X / 9,000,000 verified" — confirm it's hooked up to real
 | 8 | `GET /api/users/[username]` | ✅ Done |
 | 9 | `GET /api/score/[userId]` | ✅ Done |
 | 10 | Supabase realtime enabled on `users` table | ⏳ Confirm |
-| 11 | RLS policies active | ⏳ Confirm |
+| 11 | RLS policies active | ✅ Done (Ray via MCP, 2026-05-16) |
 
 ### Remaining tasks
 
 **Task 10 — Enable realtime**
 Supabase dashboard → Settings → Database → Replication → enable `users` table.
 Required for live score ring animation on dashboard.
-
-**Task 11 — Confirm RLS**
-Policies needed:
-- `users`: `SELECT` for all authenticated users
-- `users`: `UPDATE` where `auth.uid() = id` (own row only)
-- Insert/delete only via service role key (API routes already use this)
 
 ---
 
@@ -355,3 +349,11 @@ In `src/app/add-evidence/page.tsx`: the wizard form collects doc type + file. On
 | Seed command | `npx tsx scripts/seed.ts` |
 | Gov seed command | `npx tsx scripts/seedGov.ts` |
 | Fallback toggle | `.env.local` → `USE_FALLBACKS=true` |
+| **Live app (Vercel)** | https://google-hackathon-gamma.vercel.app |
+
+## Deployment
+
+App is live on Vercel. Every push to `dev` auto-deploys a preview URL.
+Ray owns the Vercel project — do not add/change env vars without checking with Ray.
+
+To deploy manually: `vercel --prod` (requires Vercel CLI + login).
