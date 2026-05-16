@@ -8,8 +8,8 @@ All page files live here. Import components from `src/components/`. Do not build
 | Route | File | Notes |
 |---|---|---|
 | `/` | `page.tsx` | Landing — hero text + register CTA + login link |
-| `/register` | `(auth)/register/page.tsx` | Registration form. Name + PIN + skill + mandatory doc upload. |
-| `/login` | `(auth)/login/page.tsx` | Node ID (or @username) + PIN form. |
+| `/register` | `(auth)/register/page.tsx` | Registration form. Name + password + mandatory doc upload (passport or driving licence, min 1). No skill selection. |
+| `/login` | `(auth)/login/page.tsx` | Node ID (or @username) + password form. |
 | `/profile/[username]` | `profile/[username]/page.tsx` | User profile. Score ring, claims, vouch QR. Requires login. |
 | `/map` | `map/page.tsx` | D3 heatmap + skill pins + live counter. Ray provides the D3 component. |
 | `/find` | `find/page.tsx` | Yellow Pages — public. Skill OR resource search, area filter, map + list. |
@@ -32,7 +32,7 @@ All page files live here. Import components from `src/components/`. Do not build
 ## Session handling
 Check for session in `localStorage` (key: `civictrust_session`).
 If no session on a protected page, redirect to `/login`.
-Session object: `{ node_id: string, username: string | null, score: number, tier: string, skill: string }`
+Session object: `{ node_id: string, username: string | null, score: number, tier: string, skill: string | null }`
 
 ## Demo path pages used
 Register → Profile → Map → Find (in that order in the demo)

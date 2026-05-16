@@ -8,6 +8,9 @@ export type Skill = SkillTag  // alias used by map components
 
 export type DocType = 'passport' | 'driving_licence' | 'degree' | 'employer_letter' | 'nhs_card'
 
+// Docs accepted at registration (mandatory, min 1)
+export type MandatoryDocType = 'passport' | 'driving_licence'
+
 // ─── Database row types ────────────────────────────────────────────────────
 
 export type ClaimType = 'identity' | 'credential' | 'work'
@@ -22,8 +25,7 @@ export interface User {
   node_id: string
   username: string | null
   display_name: string
-  skill: string
-  pin_hash: string  // needed for login — never expose to client
+  skill: SkillTag | null
   score: number
   tier: TrustTier
   borough: string | null

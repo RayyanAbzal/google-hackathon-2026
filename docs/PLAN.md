@@ -67,7 +67,7 @@ score = min(100, claims_verified * 15 + vouches_received * 10)
 ## User flows
 
 **Flow 1 — New user registration (~2 minutes)**
-Open app → Enter name → Set PIN (4-digit, no email needed) → Pick skill (Doctor/Engineer/Lawyer/Builder) → Upload mandatory doc (passport OR national ID card OR driving licence — at least one required) → Node ID issued (BLK-XXXXX-LDN, score 0, tier: Unverified)
+Open app → Enter name → Set password → Upload mandatory doc (passport OR driving licence — at least one required) → Node ID issued (BLK-XXXXX-LDN, score 0, tier: Unverified)
 After first login: user sets a unique @username.
 
 **Flow 2 — Submit a claim + evidence (raises trust score)**
@@ -83,14 +83,14 @@ Warning: if the person you vouch is later found to be fraudulent, your score dro
 Open /find (public page, no login) → Search skill ("Doctor"/"Engineer") OR resource ("insulin"/"water") → Filter by area (Southwark/Hackney/etc.) → See results (map + list, no names shown) → Found: "3 verified doctors nearby"
 Viewing individual profiles requires being logged in AND Verified (score 50+). If logged in but Unverified or Partial: redirect to profile page with prompt to submit a claim. Privacy: no names shown in public search. Only skill + area + count. Anonymous pins on map.
 
-**Flow 5 — Login (no email, no password)**
-Enter node ID (BLK-XXXXX-LDN) → Enter PIN (4 digits set on registration) → Authenticated. Session stored on device.
+**Flow 5 — Login**
+Enter node ID (BLK-XXXXX-LDN) → Enter password → Authenticated. Session stored on device.
 
 ---
 
 ## 3 screens + 1 public page
 
-1. **Register / Login** — name, PIN, skill, mandatory doc upload (passport, national ID card, or driving licence — one required). Node ID issued at signup. Set @username after first login. Already registered? Log in with node ID (or @username) + PIN.
+1. **Register / Login** — name, password, mandatory doc upload (passport or driving licence — one required). No skill selection at registration. Node ID issued at signup. Set @username after first login. Already registered? Log in with node ID (or @username) + password.
 2. **Profile** — animated score ring, claims list, add claim button, QR vouch button
 3. **Map** — D3 choropleth heatmap of London, skill pins, live counter "X / 9,000,000 verified"
 4. **Find (public)** — search by skill or area, results grouped by borough, no login required
@@ -131,14 +131,15 @@ The seed script creates:
 
 ## Build phases
 
-| Phase | What | Est. | Who |
-|---|---|---|---|
-| 1 | Seed script + DB schema + register + login | ~3h | Ray + Aryan |
-| 2 | Claims + Gemini Vision + score + profile UI | ~4h | Ray + Aryan + Hemish |
-| 3 | QR vouch flow + vouch/flag + penalty logic | ~3h | Tao + Hemish + Maalav |
-| 4 | Heatmap + map pins + Yellow Pages + polish + demo | ~4h | Ray + Maalav + Hemish |
+| Phase | What | Est. | Who | Status |
+|---|---|---|---|---|
+| 0 | Scaffold — all files, types, stubs, docs, PlantUML diagrams | done | Ray | **DONE** |
+| 1 | Supabase project + DB schema + RLS + register + login | ~3h | Ray + Aryan | blocked on Supabase provisioning |
+| 2 | Claims + Gemini Vision + score + profile UI | ~4h | Ray + Aryan + Hemish | not started |
+| 3 | QR vouch flow + vouch/flag + penalty logic | ~3h | Tao + Hemish + Maalav | not started |
+| 4 | Heatmap + map pins + Yellow Pages + polish + demo | ~4h | Ray + Maalav + Hemish | not started |
 
-**Total: ~14h. Hackathon budget: 28h. Real coding time: ~15-18h. Realistic.**
+**Total: ~14h implementation. Hackathon budget: 28h. Real coding time: ~15-18h. Realistic.**
 
 ---
 
@@ -168,6 +169,8 @@ The seed script creates:
 | P05 currency / exchange | Out of scope entirely. |
 | External database checks | All databases are wiped in scenario. |
 | Post for help / help requests | Cut by team decision. |
+| Skill selection at registration | Cut. `skill` defaults to `'Other'`, set via profile later. |
+| National ID card as signup doc | Cut. Signup accepts `passport` or `driving_licence` only. |
 
 ## Stretch — only if everything else ships
 
@@ -179,7 +182,7 @@ The seed script creates:
 
 ## Stack
 
-Next.js 15, Tailwind v4, shadcn/ui, D3.js, Supabase, Gemini 2.0 Flash, qrcode.js, html5-qrcode
+Next.js 16, Tailwind v4, shadcn/ui, D3.js, Supabase, Gemini 2.0 Flash, qrcode.js, html5-qrcode
 
 ---
 
@@ -199,7 +202,7 @@ Next.js 15, Tailwind v4, shadcn/ui, D3.js, Supabase, Gemini 2.0 Flash, qrcode.js
 ## Demo path (4 minutes)
 
 1. **0:00** — Open with lore: "It's T+14h. Sarah is a surgeon. Her hospital locked her out."
-2. **0:30** — Sarah registers. Name + PIN + Doctor. Gets BLK-00471-LDN. Score: 0.
+2. **0:30** — Sarah registers. Name + password + uploads passport. Gets BLK-00471-LDN. Score: 0.
 3. **1:00** — Submits medical degree. Gemini reads "UCL Medicine, Dr. Sarah Mitchell." Score: 15.
 4. **1:30** — Submits NHS employer letter. Score: 30. Now Partial.
 5. **2:00** — Dr. Osei (pre-seeded, 74) sees Sarah in area. QR vouch. Sarah → 40pts. Still Partial.

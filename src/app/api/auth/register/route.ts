@@ -1,11 +1,17 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { hashPin, generateNodeId, signToken } from "@/lib/auth";
-import type { ApiResponse } from "@/types";
+import { hashPassword, generateNodeId, signToken } from "@/lib/auth";
+import type { ApiResponse, MandatoryDocType } from "@/types";
+
+// POST /api/auth/register
+// Owner: Aryan
+// Input: { display_name, password, doc_image_base64, doc_type } — doc_type must be 'passport' or 'driving_licence'
+// Returns: { token, user_id, node_id }
 
 interface RegisterBody {
   display_name: string;
-  pin: string;
-  skill: string;
+  password: string;
+  doc_image_base64?: string;
+  doc_type?: MandatoryDocType;
   borough?: string;
 }
 
@@ -23,28 +29,27 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ success: false, error: "Invalid JSON" } satisfies ApiResponse<never>, { status: 400 });
   }
 
-  const { display_name, pin, skill, borough } = body;
+  const { display_name, password, doc_type, borough } = body;
 
   if (!display_name?.trim()) {
     return Response.json({ success: false, error: "display_name is required" } satisfies ApiResponse<never>, { status: 400 });
   }
-  if (!pin || !/^\d{4}$/.test(pin)) {
-    return Response.json({ success: false, error: "PIN must be exactly 4 digits" } satisfies ApiResponse<never>, { status: 400 });
+  if (!password || password.length < 6) {
+    return Response.json({ success: false, error: "Password must be at least 6 characters" } satisfies ApiResponse<never>, { status: 400 });
   }
-  if (!skill?.trim()) {
-    return Response.json({ success: false, error: "skill is required" } satisfies ApiResponse<never>, { status: 400 });
+  if (!doc_type || !['passport', 'driving_licence'].includes(doc_type)) {
+    return Response.json({ success: false, error: "doc_type must be 'passport' or 'driving_licence'" } satisfies ApiResponse<never>, { status: 400 });
   }
 
   const node_id = generateNodeId();
-  const pin_hash = hashPin(pin);
+  const password_hash = hashPassword(password);
 
   const { data, error } = await supabaseAdmin
     .from("users")
     .insert({
       node_id,
       display_name: display_name.trim(),
-      skill: skill.trim(),
-      pin_hash,
+      password_hash,
       borough: borough?.trim() ?? null,
     })
     .select("id, node_id")
