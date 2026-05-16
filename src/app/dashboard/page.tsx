@@ -32,18 +32,6 @@ function claimBadge(status: string): string {
   return status.toUpperCase()
 }
 
-const ACTIVITY = [
-  { icon: 'done_all', title: 'Medical Degree verified', sub: 'Dr. Aris Thorne · gov. voucher', time: '2h', color: '#40e56c' },
-  { icon: 'handshake', title: 'New vouch from Hemish R.', sub: '+5 pts · community', time: '8h', color: '#b0c6ff' },
-  { icon: 'hub', title: 'Connected to Southwark hub', sub: 'mesh edge added', time: '1d', color: '#b0c6ff' },
-  { icon: 'person_add', title: 'Account created', sub: 'welcome to the mesh', time: '2w', color: '#8c90a1' },
-]
-
-const FALLBACK_EVIDENCE = [
-  { icon: 'id_card', title: 'Passport', sub: '6 vouches · 2 gov.', color: '#40e56c', badge: 'VERIFIED' },
-  { icon: 'school', title: 'Medical Degree (MBBS)', sub: '4 vouches · UCL', color: '#40e56c', badge: 'VERIFIED' },
-  { icon: 'receipt_long', title: 'Utility bill — Southwark', sub: 'awaiting 2 more vouches', color: '#fbbf24', badge: 'PENDING' },
-]
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -107,9 +95,7 @@ export default function DashboardPage() {
     return claims.slice(0, 3).map(c => ({
       icon: claimIcon(c.doc_type),
       title: c.doc_type,
-      sub: c.extracted_institution
-        ? `${c.vouches} vouches · ${c.extracted_institution}`
-        : `${c.vouches} vouches`,
+      sub: c.extracted_institution ?? '',
       color: claimColor(c.status),
       badge: claimBadge(c.status),
     }))
@@ -196,73 +182,41 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* Bottom row: evidence + activity */}
-        <div style={{ display: 'grid', gridTemplateColumns: '1.4fr 1fr', gap: 18 }}>
-
-          <div style={{ border: '1px solid rgba(66,70,85,0.5)', borderRadius: 14, padding: 22, background: '#181c22' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 18 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Your evidence</h2>
-              <span className="meta">
-                {evidenceRows.length} ITEMS · {evidenceRows.filter(e => e.badge === 'PENDING').length} PENDING
-              </span>
-            </div>
-
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-              {claimsLoaded && evidenceRows.length === 0 && (
-                <div style={{ padding: '28px 14px', textAlign: 'center', border: '1px solid rgba(66,70,85,0.4)', borderRadius: 10, background: '#10141a', color: '#8c90a1', fontSize: 13 }}>
-                  No verified evidence yet — add your first document to start building trust.
-                </div>
-              )}
-              {evidenceRows.map((e, i) => (
-                <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 14, border: '1px solid rgba(66,70,85,0.5)', borderRadius: 10, background: '#10141a' }}>
-                  <div style={{ width: 42, height: 42, borderRadius: 10, background: `${e.color}18`, border: `1px solid ${e.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 20, color: e.color }}>{e.icon}</span>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, fontSize: 14 }}>{e.title}</div>
-                    <div style={{ fontSize: 12, color: '#8c90a1', marginTop: 2 }}>{e.sub}</div>
-                  </div>
-                  <span style={{ padding: '3px 10px', borderRadius: 999, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: e.color, background: `${e.color}1a`, border: `1px solid ${e.color}55` }}>
-                    {e.badge}
-                  </span>
-                </div>
-              ))}
-              <Link
-                href="/add-evidence"
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px', border: '1.5px dashed #424655', borderRadius: 10, color: '#8c90a1', fontSize: 13, textDecoration: 'none' }}
-              >
-                <Icon name="add" size={16} /> Add another claim
-              </Link>
-            </div>
+        {/* Bottom row: evidence (full width) */}
+        <div style={{ border: '1px solid rgba(66,70,85,0.5)', borderRadius: 14, padding: 22, background: '#181c22' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 18 }}>
+            <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Your evidence</h2>
+            <span className="meta">
+              {evidenceRows.length} ITEMS · {evidenceRows.filter(e => e.badge === 'PENDING').length} PENDING
+            </span>
           </div>
 
-          <div style={{ border: '1px solid rgba(66,70,85,0.5)', borderRadius: 14, padding: 22, background: '#181c22' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', marginBottom: 18 }}>
-              <h2 style={{ fontSize: 18, fontWeight: 700, margin: 0 }}>Activity</h2>
-              <span className="meta">LAST 7 DAYS</span>
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column' }}>
-              {ACTIVITY.map((a, i) => (
-                <div
-                  key={i}
-                  style={{
-                    display: 'flex', gap: 14,
-                    paddingTop: i === 0 ? 0 : 14,
-                    paddingBottom: 14,
-                    borderBottom: i < ACTIVITY.length - 1 ? '1px solid rgba(66,70,85,0.35)' : 'none',
-                  }}
-                >
-                  <div style={{ width: 32, height: 32, borderRadius: '50%', background: `${a.color}18`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                    <span className="material-symbols-outlined" style={{ fontSize: 14, color: a.color }}>{a.icon}</span>
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600 }}>{a.title}</div>
-                    <div style={{ fontSize: 12, color: '#8c90a1', marginTop: 2 }}>{a.sub}</div>
-                  </div>
-                  <span className="meta">{a.time}</span>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+            {claimsLoaded && evidenceRows.length === 0 && (
+              <div style={{ padding: '28px 14px', textAlign: 'center', border: '1px solid rgba(66,70,85,0.4)', borderRadius: 10, background: '#10141a', color: '#8c90a1', fontSize: 13 }}>
+                No verified evidence yet — add your first document to start building trust.
+              </div>
+            )}
+            {evidenceRows.map((e, i) => (
+              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 14, border: '1px solid rgba(66,70,85,0.5)', borderRadius: 10, background: '#10141a' }}>
+                <div style={{ width: 42, height: 42, borderRadius: 10, background: `${e.color}18`, border: `1px solid ${e.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <span className="material-symbols-outlined" style={{ fontSize: 20, color: e.color }}>{e.icon}</span>
                 </div>
-              ))}
-            </div>
+                <div style={{ flex: 1 }}>
+                  <div style={{ fontWeight: 600, fontSize: 14 }}>{e.title}</div>
+                  {e.sub && <div style={{ fontSize: 12, color: '#8c90a1', marginTop: 2 }}>{e.sub}</div>}
+                </div>
+                <span style={{ padding: '3px 10px', borderRadius: 999, fontSize: 10, fontWeight: 700, letterSpacing: '0.08em', color: e.color, background: `${e.color}1a`, border: `1px solid ${e.color}55` }}>
+                  {e.badge}
+                </span>
+              </div>
+            ))}
+            <Link
+              href="/add-evidence"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px', border: '1.5px dashed #424655', borderRadius: 10, color: '#8c90a1', fontSize: 13, textDecoration: 'none' }}
+            >
+              <Icon name="add" size={16} /> Add another claim
+            </Link>
           </div>
         </div>
       </main>
