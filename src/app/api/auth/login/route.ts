@@ -1,10 +1,56 @@
-import { NextResponse } from 'next/server'
-import type { ApiResponse } from '@/types'
+import { supabaseAdmin } from "@/lib/supabase";
+import { signToken, verifyPassword } from "@/lib/auth";
+import { getTier } from "@/types";
+import type { ApiResponse, Session } from "@/types";
 
 // POST /api/auth/login
 // Owner: Aryan
-// Input: { identifier, pin } — identifier is node_id OR @username
-// Returns: { node_id, username, display_name, score, tier, skill }
-export async function POST(): Promise<NextResponse<ApiResponse<null>>> {
-  return NextResponse.json({ success: false, data: null, error: 'Not implemented' }, { status: 501 })
+// Input: { identifier, password } — identifier is node_id OR @username
+// Returns: { token, user_id, node_id, username, display_name, score, tier }
+
+interface LoginBody {
+  identifier: string; // node_id or @username
+  password: string;
+}
+
+export async function POST(request: Request): Promise<Response> {
+  let body: LoginBody;
+  try {
+    body = await request.json();
+  } catch {
+    return Response.json({ success: false, error: "Invalid JSON" } satisfies ApiResponse<never>, { status: 400 });
+  }
+
+  const { identifier, password } = body;
+
+  if (!identifier?.trim() || !password) {
+    return Response.json({ success: false, error: "identifier and password are required" } satisfies ApiResponse<never>, { status: 400 });
+  }
+
+  const clean = identifier.trim().replace(/^@/, "");
+  const isNodeId = /^BLK-\d{5}-LDN$/i.test(identifier.trim());
+
+  const { data: user } = await supabaseAdmin
+    .from("users")
+    .select("id, node_id, username, display_name, skill, score, borough, password_hash")
+    .eq(isNodeId ? "node_id" : "username", isNodeId ? identifier.trim().toUpperCase() : clean)
+    .single();
+
+  if (!user || !verifyPassword(password, user.password_hash)) {
+    return Response.json({ success: false, error: "Invalid credentials" } satisfies ApiResponse<never>, { status: 401 });
+  }
+
+  const session: Session = {
+    token: signToken(user.id),
+    user_id: user.id,
+    node_id: user.node_id,
+    username: user.username ?? null,
+    display_name: user.display_name,
+    skill: user.skill ?? 'Other',
+    score: user.score,
+    tier: getTier(user.score),
+    borough: user.borough ?? null,
+  };
+
+  return Response.json({ success: true, data: session } satisfies ApiResponse<Session>);
 }

@@ -1,0 +1,65 @@
+@startuml
+skinparam backgroundColor #ffffff
+skinparam defaultFontSize 13
+skinparam roundcorner 8
+skinparam activityBorderColor #444444
+skinparam activityArrowColor #333333
+
+title CivicTrust — User Registration Flow
+
+|#dae8fc|User|
+start
+:Enter display name;
+:Set password (min 6 chars);
+:Select mandatory doc type\n(passport  or  driving_licence);
+:Upload doc image (optional — for Gemini analysis);
+:Optional: select borough;
+
+|#fff2cc|Frontend|
+:Validate required fields\n(display_name, password, doc_type);
+if (Password >= 6 chars?) then (no)
+  :Show: "Password must be at least 6 characters";
+  |#dae8fc|User|
+  :Fix and resubmit;
+  |#fff2cc|Frontend|
+else (yes)
+endif
+if (doc_type is passport or driving_licence?) then (no)
+  :Show: "Select a valid document type";
+  stop
+else (yes)
+  :POST /api/auth/register\n{display_name, password, doc_type,\ndoc_image_base64?, borough?};
+endif
+
+|#e1d5e7|API|
+:Validate payload;
+:hashPassword(password);
+:generateNodeId() — BLK-XXXXX-LDN;
+:Insert user row in Supabase\n(score=0, tier=unverified);
+if (Insert fails?) then (yes)
+  :Return 500;
+  |#fff2cc|Frontend|
+  :Show generic error;
+  stop
+else (no)
+endif
+:signToken(user_id) — JWT;
+:Return 201\n{token, user_id, node_id};
+
+note right
+  Gemini Vision doc analysis at
+  registration is planned (CLAUDE.md)
+  but not yet implemented in the route.
+  Doc image is accepted but not analysed here.
+  Full analysis happens on claim submit.
+end note
+
+|#fff2cc|Frontend|
+:Store session in localStorage;
+:Redirect to Profile page;
+
+|#dae8fc|User|
+:Prompted: set @username\n(PATCH /api/auth/username\n3-20 chars, letters/numbers/underscores);
+
+stop
+@enduml

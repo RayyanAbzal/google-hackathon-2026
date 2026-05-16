@@ -6,5 +6,10 @@ import type { Claim } from '@/types'
 // Claim card: type icon, status badge, vouch count, flag button
 // Props: { claim: Claim, onFlag?: () => void }
 export function ClaimCard({ claim, onFlag }: { claim: Claim; onFlag?: () => void }) {
-  return <div>ClaimCard {claim.type} {claim.status} — TODO (Hemish)</div>
+  return (
+    <div>
+      ClaimCard {claim.type} {claim.status} — TODO (Hemish)
+      {onFlag && <button type="button" onClick={onFlag}>Flag</button>}
+    </div>
+  )
 }

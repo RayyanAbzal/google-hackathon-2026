@@ -1,11 +1,11 @@
 import { GoogleGenerativeAI } from '@google/generative-ai'
-import type { DocumentAnalysis, DocType } from '@/types'
+import type { DocumentAnalysis } from '@/types'
 
 function getGeminiModel() {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) throw new Error('GEMINI_API_KEY is not set')
   return new GoogleGenerativeAI(apiKey).getGenerativeModel({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
   })
 }
 
@@ -17,7 +17,7 @@ export async function generateText(prompt: string): Promise<string> {
 
 export async function analyseDocument(
   imageBase64: string,
-  docType: DocType
+  docType: string
 ): Promise<DocumentAnalysis> {
   const model = getGeminiModel()
 
@@ -32,24 +32,23 @@ Respond ONLY with valid JSON in this exact shape:
 
 No other text.`
 
-  const result = await model.generateContent([
-    prompt,
-    { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
-  ])
-
-  const raw = result.response.text().trim()
-
-  let parsed: { full_name: string | null; institution: string | null; confidence: number }
   try {
-    parsed = JSON.parse(raw)
-  } catch {
-    return { extracted_name: null, doc_type: docType, confidence: 0, institution: null }
-  }
+    const result = await model.generateContent([
+      prompt,
+      { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
+    ])
 
-  return {
-    extracted_name: parsed.full_name ?? null,
-    doc_type: docType,
-    confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,
-    institution: parsed.institution ?? null,
+    const raw = result.response.text().trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
+    const parsed: { full_name: string | null; institution: string | null; confidence: number } =
+      JSON.parse(raw)
+
+    return {
+      extracted_name: parsed.full_name ?? null,
+      doc_type: docType,
+      institution: parsed.institution ?? null,
+      confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,
+    }
+  } catch {
+    return { extracted_name: null, doc_type: docType, institution: null, confidence: 0 }
   }
 }

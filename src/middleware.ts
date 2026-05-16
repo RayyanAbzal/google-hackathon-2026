@@ -8,9 +8,8 @@
 // Next.js requires this file at src/middleware.ts (not in a subdirectory).
 
 import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
 
-export function middleware(request: NextRequest) {
+export function middleware() {
   // TODO (Tao): implement rate limiting
   return NextResponse.next()
 }

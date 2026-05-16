@@ -1,0 +1,70 @@
+@startuml
+skinparam backgroundColor #ffffff
+skinparam defaultFontSize 13
+skinparam roundcorner 8
+skinparam activityBorderColor #444444
+skinparam activityArrowColor #333333
+
+title CivicTrust — Yellow Pages (Find) Flow\n[/api/find owned by Tao — stub returning 501]
+
+|#dae8fc|Visitor (any user)|
+start
+:Open /find — no login required;
+:Enter search term\n(skill: "Doctor" / "Engineer"\nor resource: "insulin" / "water");
+:Optional: filter by borough\n(Southwark / Hackney / etc.);
+
+|#fff2cc|Frontend|
+:GET /api/find?skill=...&borough=...;
+
+|#e1d5e7|API (Tao)|
+:No auth required;
+:Query Supabase:\nVerified users (score >= 50)\nmatching skill + borough;
+:Aggregate results by borough\n{borough, skill, count, avg_score};
+
+note right
+  Names never returned.
+  Only: borough + skill + count + avg_score.
+  Response shape: ApiResponse<AggResult[]>
+end note
+
+:Return 200 + aggregated results;
+
+|#fff2cc|Frontend|
+:Render map with anonymous skill pins\n(no names, no addresses);
+:Render list:\n"3 verified doctors in Southwark";
+
+|#dae8fc|Visitor (any user)|
+:Tap a result pin / list entry;
+
+|#fff2cc|Frontend|
+:Check session in localStorage;
+if (Logged in?) then (no)
+  :Redirect to Login\nwith return URL;
+  stop
+else (yes)
+endif
+
+:GET /api/users/[username] or score/[userId];
+
+|#e1d5e7|API|
+:verifyAuth — validate JWT;
+:Fetch viewer's own tier;
+if (Viewer tier >= verified (score 50+)?) then (no)
+  :Return 403;
+  |#fff2cc|Frontend|
+  :Redirect to Profile page;
+  :Show: "Submit a claim to reach Verified";
+  stop
+else (yes)
+endif
+
+:Return full profile\n{display_name, score, skill, borough,\nclaims summary, tier};
+
+|#fff2cc|Frontend|
+:Render full profile view;
+
+|#dae8fc|Visitor (any user)|
+:View verified person's profile;
+
+stop
+@enduml

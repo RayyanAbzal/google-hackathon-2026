@@ -12,5 +12,6 @@ export function VouchQR({
   nodeId: string
   onVouchComplete: (newScore: number) => void
 }) {
+  void onVouchComplete
   return <div>VouchQR {nodeId} — TODO (Hemish)</div>
 }

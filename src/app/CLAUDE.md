@@ -1,38 +1,52 @@
-# Pages + Routing — Maalav
+# Pages + Routing - Maalav
 
 ## Owner: Maalav
 All page files live here. Import components from `src/components/`. Do not build UI primitives here.
 
-## Pages to build
+## Current State - all pages shipped
 
-| Route | File | Notes |
+All routes are implemented with the Tactical Resilience design system. Maalav's page/routing work is wired for the demo path.
+
+| Route | Status | Notes |
 |---|---|---|
-| `/` | `page.tsx` | Landing — hero text + register CTA + login link |
-| `/register` | `(auth)/register/page.tsx` | Registration form. Name + PIN + skill + mandatory doc upload. |
-| `/login` | `(auth)/login/page.tsx` | Node ID (or @username) + PIN form. |
-| `/profile/[username]` | `profile/[username]/page.tsx` | User profile. Score ring, claims, vouch QR. Requires login. |
-| `/map` | `map/page.tsx` | D3 heatmap + skill pins + live counter. Ray provides the D3 component. |
-| `/find` | `find/page.tsx` | Yellow Pages — public. Skill OR resource search, area filter, map + list. |
+| `/` | Done | Landing, how-it-works, tiers, fraud resistance, CTA |
+| `/login` | Done | Username + password, calls `/api/auth/login`, stores session, prompts for first username |
+| `/register` | Done | Name + password + doc upload, calls `/api/auth/register` |
+| `/unverified` | Done | Post-registration splash, links to add-evidence + vouch |
+| `/dashboard` | Done | Score ring, metrics, evidence grid, notifications in TopBar |
+| `/add-evidence` | Done | 4-step wizard, protected, submits claims |
+| `/vouch` | Done | QR display, User ID lookup, request carousel, confirm vouch flow |
+| `/find` | Done | Public search + filters + expandable result details |
+| `/find-help` | Done | Alias route for `/find` |
+| `/map` | Done | Heatmap, skill pins, stat panel, legend |
+| `/settings` | Done | Profile/Security/Notifications/Privacy tabs |
+| `/profile/[username]` | Done | Protected profile view with score + claims |
 
-## Rules
-- Use `src/components/` for all UI elements — do not write raw HTML forms
-- Tailwind v4 only — no inline styles
-- Pages fetch data via API routes — do not call Supabase directly from pages
-- All pages except `/` and `/find` (search view) require auth — redirect to `/login` if no session
-- Viewing individual profiles on `/find` also requires auth
-- Mobile-responsive but optimise for laptop (demo is on a laptop)
+## Completed Maalav/Hemish Focus Areas
 
-## Priority order
-1. `/register` + `/login` — team cannot test anything without auth
-2. `/profile/[username]` — needed to demo the score ring
-3. `/map` — demo wow moment
-4. `/find` — Yellow Pages, public search
-5. `/` — landing page (last, after everything works)
+1. **Auth guards** - protected pages check `localStorage` key `civictrust_session` and redirect to `/login`.
+2. **Real data** - shared chrome and key pages read session data from localStorage.
+3. **API wiring** - dashboard fetches claims; add-evidence posts to `/api/claims`; vouch posts to `/api/vouch`.
+4. **Map** - heatmap and skill pins are wired for the demo path.
 
-## Session handling
+## Design System Note
+
+Pages use inline styles for design-token colours because the Tactical Resilience tokens (`#10141a`, `#b0c6ff`, etc.) are defined as CSS custom properties and plain CSS utilities in `globals.css`. When adding UI to existing pages, match the pattern used in that page.
+
+## Shared Civic Components
+
+Located at `src/components/civic/`:
+- `TopBar` - fixed top nav, notifications popup, avatar menu
+- `Sidebar` - fixed left nav, identity card, active state
+- `TierBadge` - tier-0 through gov_official badges
+- `Icon` - Material Symbols Outlined wrapper
+
+## Session Handling
+
 Check for session in `localStorage` (key: `civictrust_session`).
 If no session on a protected page, redirect to `/login`.
-Session object: `{ node_id: string, username: string | null, score: number, tier: string, skill: string }`
+Session type: `Session` from `src/types/index.ts`.
 
-## Demo path pages used
-Register → Profile → Map → Find (in that order in the demo)
+## Demo Path
+
+Register -> Unverified -> Add Evidence -> Dashboard -> Vouch -> Find Help -> Map -> Profile

@@ -39,3 +39,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+# local claude instructions — each person keeps their own
+# CLAUDE.md is intentionally tracked (shared project context for AI tools)

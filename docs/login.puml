@@ -1,0 +1,51 @@
+@startuml
+skinparam backgroundColor #ffffff
+skinparam defaultFontSize 13
+skinparam roundcorner 8
+skinparam activityBorderColor #444444
+skinparam activityArrowColor #333333
+
+title CivicTrust — Login Flow
+
+|#dae8fc|User|
+start
+:Enter identifier\n(BLK-XXXXX-LDN  or  @username);
+:Enter password;
+
+|#fff2cc|Frontend|
+:Validate: identifier + password present;
+:POST /api/auth/login\n{identifier, password};
+
+|#e1d5e7|API|
+:Detect identifier type\n(node_id regex: BLK-\d{5}-LDN — else treat as username);
+:Query Supabase by node_id or username;
+if (User found?) then (no)
+  :Return 401 — "Invalid credentials";
+  |#fff2cc|Frontend|
+  :Show error (no hint about which field);
+  stop
+else (yes)
+endif
+
+:Compare hashPassword(password) vs stored password_hash;
+if (Hash matches?) then (no)
+  :Return 401 — "Invalid credentials";
+  |#fff2cc|Frontend|
+  :Show error;
+  stop
+else (yes)
+endif
+
+:Sign JWT token (user_id);
+:getTier(score) — derive tier from score;
+:Return 200 + Session\n{token, user_id, node_id, username,\ndisplay_name, score, tier};
+
+|#fff2cc|Frontend|
+:Store session in localStorage;
+:Redirect to Profile page;
+
+|#dae8fc|User|
+:Authenticated;
+
+stop
+@enduml
