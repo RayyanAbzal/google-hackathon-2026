@@ -31,7 +31,7 @@ export async function recalculateUserScore(
   let gov_vouched = false;
   if (voucherIds.length > 0) {
     const { count } = await supabaseAdmin
-      .from("gov_anchors")
+      .from("gov_officials")
       .select("*", { count: "exact", head: true })
       .in("user_id", voucherIds);
     gov_vouched = (count ?? 0) > 0;

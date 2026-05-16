@@ -71,8 +71,17 @@ export default function TopBar({ authMode = 'auto' }: TopBarProps) {
       }}
     >
       <Link href="/" style={{ display: 'flex', alignItems: 'center', gap: 10, textDecoration: 'none' }}>
-        <div style={{ width: 28, height: 28, borderRadius: 6, background: '#b0c6ff', color: '#002d6f', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 11, fontWeight: 700 }}>CT</div>
-        <span style={{ fontSize: 15, fontWeight: 600, color: '#dfe2eb' }}>CivicTrust</span>
+        <svg width="28" height="28" viewBox="0 0 28 28">
+          <circle cx="6"  cy="8"  r="3"   fill="#b0c6ff" />
+          <circle cx="22" cy="10" r="2.5" fill="#40e56c" />
+          <circle cx="14" cy="20" r="3.5" fill="#b0c6ff" />
+          <circle cx="22" cy="22" r="2"   fill="#b0c6ff" />
+          <line x1="6"  y1="8"  x2="14" y2="20" stroke="#b0c6ff" strokeOpacity=".6" />
+          <line x1="22" y1="10" x2="14" y2="20" stroke="#b0c6ff" strokeOpacity=".6" />
+          <line x1="14" y1="20" x2="22" y2="22" stroke="#b0c6ff" strokeOpacity=".6" />
+        </svg>
+        <span style={{ fontWeight: 700, letterSpacing: '-0.01em', fontSize: 15, color: '#dfe2eb' }}>CivicTrust</span>
+        <span className="mono" style={{ fontSize: 10, color: '#8c90a1', padding: '2px 6px', border: '1px solid #424655', borderRadius: 4 }}>LONDON · MESH</span>
       </Link>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
