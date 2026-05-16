@@ -1,4 +1,4 @@
-import type { User, Claim, HelpPost, DocumentAnalysis } from '@/types'
+import type { User, Claim, DocumentAnalysis } from '@/types'
 
 export const USE_FALLBACKS = process.env.USE_FALLBACKS === 'true'
 
@@ -46,18 +46,6 @@ export const FALLBACK_CLAIMS: Partial<Claim>[] = [
     confidence: 0.92,
     vouches: 3,
     flags: 0,
-  },
-]
-
-// ─── Fallback help posts ──────────────────────────────────────────────────────
-
-export const FALLBACK_HELP_POSTS: Partial<HelpPost>[] = [
-  {
-    content: 'Need insulin — elderly neighbour, critical',
-    skill_tag: 'Doctor',
-    resource_tag: null,
-    borough: 'Southwark',
-    urgency: 'high',
   },
 ]
 

@@ -5,7 +5,7 @@ function getGeminiModel() {
   const apiKey = process.env.GEMINI_API_KEY
   if (!apiKey) throw new Error('GEMINI_API_KEY is not set')
   return new GoogleGenerativeAI(apiKey).getGenerativeModel({
-    model: 'gemini-2.0-flash',
+    model: 'gemini-2.5-flash',
   })
 }
 
@@ -38,7 +38,7 @@ No other text.`
       { inlineData: { mimeType: 'image/jpeg', data: imageBase64 } },
     ])
 
-    const raw = result.response.text().trim()
+    const raw = result.response.text().trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
     const parsed: { full_name: string | null; institution: string | null; confidence: number } =
       JSON.parse(raw)
 
