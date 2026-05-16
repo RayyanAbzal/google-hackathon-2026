@@ -7,18 +7,18 @@ Copy this block at the start of each new session to restore context fast.
 ## Current state
 
 **Branch:** dev
-**Last commit:** `fix(scripts): correct gov_anchors table name in seed scripts`
+**Last commit:** `fix(scripts): correct gov_officials table name in seed scripts`
 **Demo status:** Backend API done, all 10 pages built, wiring tasks + seed remaining
 **Vercel:** Live at https://google-hackathon-gamma.vercel.app (all env vars set, auto-deploys on push to dev)
 
 ## What was completed (sessions 1–11)
 
-- DB schema live: `users`, `claims`, `vouches`, `gov_anchors` (all RLS enabled)
+- DB schema live: `users`, `claims`, `vouches`, `gov_officials` (all RLS enabled)
 - All 9 Aryan API routes implemented and merged to dev
 - All 10 frontend pages built (Tactical Resilience dark theme, inline SVG, shadcn/ui)
 - D3 heatmap + skill pins implemented
 - Gemini integration: `analyseDocument()` in `src/lib/gemini.ts`
-- `scripts/seed.ts` + `scripts/seedGov.ts` written and fixed (gov_anchors correct)
+- `scripts/seed.ts` + `scripts/seedGov.ts` written and fixed (gov_officials correct)
 - RLS policies confirmed active (Ray via Supabase MCP, 2026-05-16)
 - Architecture, decisions, and CI docs added
 
@@ -39,7 +39,7 @@ Copy this block at the start of each new session to restore context fast.
 
 ## Known issues / watch-outs
 
-- Table name is `gov_anchors` NOT `gov_officials` — both seed scripts and migration are now aligned; do not revert
+- Table name is `gov_officials` NOT `gov_officials` — both seed scripts and migration are now aligned; do not revert
 - Pages use inline styles for colours (`#b0c6ff`, `#40e56c`) — do not switch to Tailwind classes for colour values
 - Hardcoded session data: "Sarah Mitchell / BLK-0471-LDN / score 55" everywhere — Maalav must wire real session before demo
 - GEMINI_API_KEY is in `.env.local` (not committed) — confirm it is present before seeding

@@ -57,7 +57,8 @@ Goal: find a verified professional near them as quickly as possible.
 
 **Formula (build version):**
 ```
-score = min(100, claims_verified * 15 + vouches_received * 10 + gov_vouched * 20)
+score = passport*20 + other_doc*15 (max 3 docs) + vouch*5 (max 10) + gov_vouch*20
+// vouch gate: 1 doc=5 vouches, 2 docs=3, 3 docs=2 — below min capped at 19
 // penalty: vouchers.forEach(v => v.score -= 15)
 ```
 

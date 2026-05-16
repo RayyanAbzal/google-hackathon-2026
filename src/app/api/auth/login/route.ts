@@ -1,5 +1,5 @@
 import { supabaseAdmin } from "@/lib/supabase";
-import { hashPassword, signToken } from "@/lib/auth";
+import { signToken, verifyPassword } from "@/lib/auth";
 import { getTier } from "@/types";
 import type { ApiResponse, Session } from "@/types";
 
@@ -36,7 +36,7 @@ export async function POST(request: Request): Promise<Response> {
     .eq(isNodeId ? "node_id" : "username", isNodeId ? identifier.trim().toUpperCase() : clean)
     .single();
 
-  if (!user || user.password_hash !== hashPassword(password)) {
+  if (!user || !verifyPassword(password, user.password_hash)) {
     return Response.json({ success: false, error: "Invalid credentials" } satisfies ApiResponse<never>, { status: 401 });
   }
 

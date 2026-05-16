@@ -20,11 +20,10 @@ const NAV = [
 ]
 
 function tierLabel(score: number): string {
-  if (score >= 95) return 'Gov'
-  if (score >= 90) return 'Tier 3'
-  if (score >= 50) return 'Tier 2'
-  if (score >= 30) return 'Tier 1'
-  return 'Tier 0'
+  if (score >= 91) return 'Gov'
+  if (score >= 55) return 'Trusted'
+  if (score >= 20) return 'Verified'
+  return 'Unverified'
 }
 
 export default function Sidebar({ active, session: sessionOverride }: SidebarProps) {

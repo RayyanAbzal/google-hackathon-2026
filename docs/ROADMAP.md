@@ -18,14 +18,15 @@ Sarah registers → uploads passport → gets BLK-XXXXX-LDN node ID
 → Yellow Pages: search "Doctor" → "Southwark: 3 verified doctors"
 ```
 
-**Score formula:** `min(100, claims_verified × 15 + vouches × 10 + gov_vouched × 20)`
+**Score formula:** passport×20 + other_doc×15 (max 3 docs) + vouch×5 (max 10) + gov_vouch×20 (can exceed 90 cap)
+Vouch minimum gate: 1 doc=5 vouches, 2 docs=3, 3 docs=2 — below minimum, score capped at 19.
 
 | Score | Tier | Colour |
 |-------|------|--------|
-| 0-24 | Unverified | Red |
-| 25-59 | Verified | Green |
-| 60-89 | Trusted | Amber |
-| 90-100 | Gov Official | Gold |
+| 0-19 | Unverified | Red |
+| 20-54 | Verified | Green |
+| 55-90 | Trusted | Amber |
+| 91-100 | Gov Official | Gold |
 
 ---
 

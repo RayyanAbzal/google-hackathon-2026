@@ -3,10 +3,9 @@
 // Do not run separately unless debugging gov anchors only.
 
 import { createClient } from '@supabase/supabase-js'
-import { createHash } from 'crypto'
+import { randomBytes, scryptSync } from 'crypto'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
-import { getTier } from '../src/types/index'
 
 function loadEnv(): Record<string, string> {
   const content = readFileSync(resolve(process.cwd(), '.env.local'), 'utf-8')
@@ -29,7 +28,9 @@ const supabase = createClient(
 )
 
 function hashPassword(password: string): string {
-  return createHash('sha256').update(password).digest('hex')
+  const salt = randomBytes(16).toString('hex')
+  const key = scryptSync(password, salt, 64).toString('hex')
+  return `scrypt$${salt}$${key}`
 }
 
 function nodeId(n: number): string {
