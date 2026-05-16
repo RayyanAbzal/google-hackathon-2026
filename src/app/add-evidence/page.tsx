@@ -1,10 +1,14 @@
 'use client'
 
-import { useState, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
 import Icon from '@/components/civic/Icon'
+import DocumentCameraCapture from '@/components/claims/DocumentCameraCapture'
+import type { Claim, ClaimType as ApiClaimType, Session, TrustTier } from '@/types'
+import { protectedFetch, requireSession, updateStoredSession } from '@/app/_lib/session'
 
 type ClaimType = 'Identity' | 'Credential' | 'Employment' | 'Residency'
 
@@ -16,6 +20,26 @@ const CLAIM_TYPES: { id: ClaimType; icon: string; desc: string }[] = [
 ]
 
 const STEPS = ['Choose type', 'Upload document', 'Review extracted info', 'Submit']
+
+const CLAIM_TYPE_TO_API: Record<ClaimType, ApiClaimType> = {
+  Identity: 'identity',
+  Credential: 'credential',
+  Employment: 'work',
+  Residency: 'identity',
+}
+
+const CLAIM_TYPE_TO_DOC: Record<ClaimType, string> = {
+  Identity: 'passport',
+  Credential: 'degree',
+  Employment: 'employer_letter',
+  Residency: 'utility_bill',
+}
+
+interface ClaimResult {
+  claim: Claim
+  new_score: number
+  tier: TrustTier
+}
 
 function StepCircle({ n, status }: { n: number; status: 'done' | 'active' | 'pending' }) {
   const styles: React.CSSProperties =
@@ -79,19 +103,103 @@ function SummaryBar({ claimType, step }: { claimType: ClaimType; step: number })
 }
 
 export default function AddEvidencePage() {
-  const [step, setStep] = useState(3)
+  const router = useRouter()
+  const [session, setSession] = useState<Session | null>(null)
+  const [step, setStep] = useState(1)
   const [claimType, setClaimType] = useState<ClaimType>('Identity')
-  const [, setSelectedFile] = useState<File | null>(null)
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [statusMessage, setStatusMessage] = useState('')
+  const [error, setError] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [cameraOpen, setCameraOpen] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    queueMicrotask(() => setSession(requireSession(router)))
+  }, [router])
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
     setSelectedFile(e.target.files?.[0] ?? null)
+    setError('')
+    setStatusMessage(e.target.files?.[0] ? 'Document ready for review.' : '')
+  }
+
+  function handleCameraCapture(file: File) {
+    setSelectedFile(file)
+    setError('')
+    setStatusMessage('Photo captured and ready for review.')
+  }
+
+  function removeSelectedFile() {
+    setSelectedFile(null)
+    setStatusMessage('')
+    setError('')
+    if (fileRef.current) fileRef.current.value = ''
+  }
+
+  function fileToBase64(file: File): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader()
+      reader.onload = () => {
+        const result = reader.result
+        if (typeof result !== 'string') {
+          reject(new Error('Could not read file'))
+          return
+        }
+        resolve(result.split(',')[1] ?? result)
+      }
+      reader.onerror = () => reject(new Error('Could not read file'))
+      reader.readAsDataURL(file)
+    })
+  }
+
+  async function submitClaim() {
+    if (!session) return
+    if (!selectedFile) {
+      setError('Choose a document before submitting.')
+      setStep(2)
+      return
+    }
+
+    setSubmitting(true)
+    setError('')
+    setStatusMessage('Submitting claim...')
+
+    try {
+      const imageBase64 = await fileToBase64(selectedFile)
+      const json = await protectedFetch<ClaimResult>('/api/claims', session, {
+        method: 'POST',
+        body: JSON.stringify({
+          type: CLAIM_TYPE_TO_API[claimType],
+          doc_type: CLAIM_TYPE_TO_DOC[claimType],
+          image_base64: imageBase64,
+        }),
+      })
+
+      if (!json.success) {
+        setError(json.error)
+        setStatusMessage('')
+        return
+      }
+
+      const updated = updateStoredSession({
+        score: json.data.new_score,
+        tier: json.data.tier,
+      })
+      if (updated) setSession(updated)
+      setStatusMessage(`Claim verified. Score is now ${json.data.new_score}.`)
+    } catch {
+      setError('Could not submit the claim. Try again.')
+      setStatusMessage('')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   return (
     <div style={{ background: '#10141a', minHeight: '100vh', color: '#dfe2eb' }}>
       <TopBar />
-      <Sidebar active="add-evidence" />
+      <Sidebar active="add-evidence" session={session} />
       <main className="ml-60 pt-14 px-8 py-8">
 
         {/* Back + header */}
@@ -144,7 +252,7 @@ export default function AddEvidencePage() {
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 20 }}>
 
           {/* Step content */}
-          <div style={{ gridColumn: 'span 8' }}>
+          <div style={{ gridColumn: step > 2 ? 'span 8' : 'span 12' }}>
 
             {step === 1 && (
               <div className="bento">
@@ -199,7 +307,7 @@ export default function AddEvidencePage() {
                     Drag a file here
                   </div>
                   <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-                    <button className="btn-ghost" style={{ fontSize: 13 }}>
+                    <button className="btn-ghost" style={{ fontSize: 13 }} onClick={() => setCameraOpen(true)}>
                       <Icon name="photo_camera" size={16} />
                       Use camera
                     </button>
@@ -219,6 +327,47 @@ export default function AddEvidencePage() {
                       onChange={handleFile}
                     />
                   </div>
+                  {selectedFile && (
+                    <div
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 10,
+                        maxWidth: '100%',
+                        marginTop: 14,
+                        padding: '8px 10px',
+                        borderRadius: 8,
+                        background: 'rgba(64,229,108,0.06)',
+                        border: '1px solid rgba(64,229,108,0.25)',
+                        color: '#40e56c',
+                        fontSize: 12,
+                      }}
+                    >
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {selectedFile.name}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={removeSelectedFile}
+                        aria-label="Remove selected document"
+                        style={{
+                          width: 26,
+                          height: 26,
+                          borderRadius: 6,
+                          border: '1px solid rgba(255,180,171,0.3)',
+                          background: 'rgba(255,180,171,0.08)',
+                          color: '#ffb4ab',
+                          cursor: 'pointer',
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          flexShrink: 0,
+                        }}
+                      >
+                        <Icon name="close" size={16} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -349,9 +498,11 @@ export default function AddEvidencePage() {
                   }}
                 >
                   <span style={{ fontSize: 14, color: '#c2c6d8' }}>
-                    Your score: 55 → <strong style={{ color: '#40e56c' }}>70</strong>
+                    Your score: {session?.score ?? 0} → <strong style={{ color: '#40e56c' }}>{Math.min(100, (session?.score ?? 0) + 15)}</strong>
                   </span>
                   <button
+                    onClick={submitClaim}
+                    disabled={submitting}
                     style={{
                       padding: '10px 24px',
                       borderRadius: 8,
@@ -360,25 +511,39 @@ export default function AddEvidencePage() {
                       color: '#40e56c',
                       fontSize: 14,
                       fontWeight: 700,
-                      cursor: 'pointer',
+                      cursor: submitting ? 'not-allowed' : 'pointer',
+                      opacity: submitting ? 0.7 : 1,
                       display: 'flex',
                       alignItems: 'center',
                       gap: 8,
                     }}
                   >
                     <Icon name="upload_file" size={16} />
-                    Submit claim
+                    {submitting ? 'Submitting...' : 'Submit claim'}
                   </button>
                 </div>
+                {(statusMessage || error) && (
+                  <p style={{ fontSize: 13, color: error ? '#ffb4ab' : '#40e56c', margin: '14px 0 0' }}>
+                    {error || statusMessage}
+                  </p>
+                )}
               </div>
             )}
           </div>
 
           {/* Summary sidebar */}
-          <div style={{ gridColumn: 'span 4' }}>
-            <SummaryBar claimType={claimType} step={step} />
-          </div>
+          {step > 2 && (
+            <div style={{ gridColumn: 'span 4' }}>
+              <SummaryBar claimType={claimType} step={step} />
+            </div>
+          )}
         </div>
+
+        {(statusMessage || error) && step !== 4 && (
+          <p style={{ fontSize: 13, color: error ? '#ffb4ab' : '#40e56c', margin: '16px 0 0' }}>
+            {error || statusMessage}
+          </p>
+        )}
 
         {/* Step navigation footer */}
         <div
@@ -402,14 +567,31 @@ export default function AddEvidencePage() {
           <span style={{ fontSize: 13, color: '#8c90a1' }}>Step {step} of 4</span>
           <button
             className="btn-primary"
-            onClick={() => setStep((s) => Math.min(4, s + 1))}
+            onClick={() => {
+              if (step === 4) {
+                void submitClaim()
+                return
+              }
+              if (step === 2 && !selectedFile) {
+                setError('Choose a document before continuing.')
+                return
+              }
+              setError('')
+              setStep((s) => Math.min(4, s + 1))
+            }}
+            disabled={submitting}
           >
-            {step === 4 ? 'Submit' : 'Continue'}
+            {step === 4 ? (submitting ? 'Submitting...' : 'Submit') : 'Continue'}
             <Icon name="arrow_forward" size={16} />
           </button>
         </div>
 
       </main>
+      <DocumentCameraCapture
+        open={cameraOpen}
+        onClose={() => setCameraOpen(false)}
+        onCapture={handleCameraCapture}
+      />
     </div>
   )
 }

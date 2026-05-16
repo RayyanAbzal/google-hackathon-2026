@@ -18,6 +18,7 @@
 | `POST /api/vouch/flag` | Aryan | Flag a claim as fraudulent, trigger penalty |
 | `GET /api/score/[userId]` | Aryan | Get current trust score + tier |
 | `GET /api/users/[username]` | Aryan | Get public profile (requires auth) |
+| `GET /api/users/node/[nodeId]` | Aryan | Resolve node ID to user — used by vouch page (no auth required) |
 | `GET /api/find` | Tao | Yellow Pages search — skill OR resource, by borough |
 
 ## Rules
@@ -30,7 +31,17 @@
 ## Score calc
 Use `calculateScore()` and `getTier()` from `src/types/index.ts`. Do not implement score logic inline.
 
-Score thresholds: 0-29 Unverified, 30-49 Partial, 50-89 Verified, 90-94 Trusted, 95+ Gov Official
+Score thresholds: 0-19 Unverified, 20-54 Verified, 55-90 Trusted, 91-100 Gov Official
+
+Score formula (Aryan overhaul, session 14):
+- passport doc: 20pts each (max 3 docs total across passport + other)
+- other doc (degree, employer_letter, nhs_card, driving_licence): 15pts each
+- vouches: 5pts each, max 10 counted
+- gov vouch bonus: +20, can push past 90 cap
+- vouch minimum gate: 1 doc needs 5 vouches, 2 docs needs 3, 3 docs needs 2 — below minimum, score capped at 19
+- user cap (without gov vouch): 90
+
+`recalculateUserScore()` in `src/lib/score.ts` — queries `gov_officials` table (not gov_anchors)
 
 ## Anti-scam (backend only)
 - Name consistency: Gemini returns `extracted_name` — compare against `user.display_name`

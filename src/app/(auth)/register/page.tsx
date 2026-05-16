@@ -4,7 +4,8 @@ import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import TopBar from '@/components/civic/TopBar'
-import type { MandatoryDocType } from '@/types'
+import type { MandatoryDocType, Session } from '@/types'
+import { saveSession } from '@/app/_lib/session'
 
 interface RegisterResult { token: string; user_id: string; node_id: string }
 
@@ -43,7 +44,8 @@ export default function RegisterPage() {
       const json = await resp.json() as { success: boolean; data?: RegisterResult; error?: string }
       if (!json.success || !json.data) { setError(json.error ?? 'Registration failed'); return }
 
-      localStorage.setItem('civictrust_session', JSON.stringify({ ...json.data, display_name: name.trim(), score: 0, tier: 'unverified', username: null }))
+      const session: Session = { ...json.data, display_name: name.trim(), score: 0, tier: 'unverified', username: null, skill: null }
+      saveSession(session)
       router.push('/unverified')
     } catch {
       setError('Something went wrong. Try again.')
@@ -54,7 +56,7 @@ export default function RegisterPage() {
 
   return (
     <div style={{ background: '#10141a', minHeight: '100vh', color: '#dfe2eb' }}>
-      <TopBar />
+      <TopBar authMode="public" />
       <main style={{ paddingTop: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '80px 24px' }}>
         <div style={{ width: '100%', maxWidth: 520 }}>
           <div style={{ textAlign: 'center', marginBottom: 32 }}>

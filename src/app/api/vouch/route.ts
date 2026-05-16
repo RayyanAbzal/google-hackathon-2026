@@ -21,8 +21,8 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ success: false, error: "Unauthorized" } satisfies ApiResponse<never>, { status: 401 });
   }
 
-  if (voucher.score < 50) {
-    return Response.json({ success: false, error: "You must be Verified (50+) to vouch" } satisfies ApiResponse<never>, { status: 403 });
+  if (voucher.score < 20) {
+    return Response.json({ success: false, error: "You must be Verified (score 20+) to vouch" } satisfies ApiResponse<never>, { status: 403 });
   }
 
   let body: VouchBody;

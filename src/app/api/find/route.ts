@@ -8,7 +8,7 @@ import type { ApiResponse } from "@/types";
 //
 // Flow alignment:
 // - No auth required
-// - Only verified users: score >= 50
+// - Only verified users: score >= 20
 // - Aggregate by borough + skill
 // - Never return names, usernames, user IDs, node IDs, or profile details
 // - Help/resource search is intentionally paused for MVP
@@ -82,7 +82,7 @@ export async function GET(request: Request): Promise<Response> {
   let query = supabaseAdmin
     .from("users")
     .select("borough, skill, score")
-    .gte("score", 50)
+    .gte("score", 20)
     .limit(1000);
 
   if (skill) {

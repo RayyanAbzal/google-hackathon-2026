@@ -14,7 +14,7 @@
 
 ## ADR-002: Score formula — additive, integer, capped at 100
 
-**Decision:** `score = min(100, claims_verified * 15 + vouches_received * 10)`. Gov voucher adds +20. Penalty: vouch a fraudster = -15 to the voucher.
+**Decision (updated session 14):** passport×20 + other_doc×15 (max 3 docs total) + vouch×5 (max 10 vouches) + gov_vouch×20 (bypasses 90 cap). Vouch minimum gate: below minimum vouches for doc count, score capped at 19. Tiers: 0-19 Unverified, 20-54 Verified, 55-90 Trusted, 91-100 Gov Official. Penalty: vouch a fraudster = -15 to voucher.
 
 **Context:** Needed a simple formula the judges could see update live. Floating-point decay was cut (28h window — irrelevant). Score is recalculated on every claim/vouch event.
 
@@ -44,11 +44,11 @@
 
 ## ADR-005: Yellow Pages is public — profiles need Verified status
 
-**Decision:** `/find` page requires no login to search. Viewing individual profiles requires login AND Verified (score 50+).
+**Decision:** `/find` page requires no login to search. Viewing individual profiles requires login AND Verified (score 25+).
 
 **Context:** Public search maximises reach (any survivor can find a doctor). Profile privacy prevents mass scraping.
 
-**Consequences:** Unverified/Partial users who log in are redirected to their profile with a "submit a claim" prompt instead of the profile they tried to view.
+**Consequences:** Unverified users who log in are redirected to their profile with a "submit a claim" prompt instead of the profile they tried to view.
 
 ---
 

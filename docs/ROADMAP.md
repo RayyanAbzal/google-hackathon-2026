@@ -11,22 +11,22 @@ After a solar flare wipes all digital records, people prove identity using physi
 **Demo story (4 min):**
 ```
 Sarah registers → uploads passport → gets BLK-XXXXX-LDN node ID
-→ uploads medical degree → score rises to 30 (Partial)
+→ uploads medical degree → score rises to 15 (Unverified)
+→ submits NHS employer letter → score 30 → Verified tier
 → Dr. Osei (pre-seeded) QR-vouches Sarah → score 40
-→ second vouch → score hits 50 → Verified tier
 → Doctor pin appears on London map in Southwark
 → Yellow Pages: search "Doctor" → "Southwark: 3 verified doctors"
 ```
 
-**Score formula:** `min(100, claims_verified × 15 + vouches × 10 + gov_vouched × 20)`
+**Score formula:** passport×20 + other_doc×15 (max 3 docs) + vouch×5 (max 10) + gov_vouch×20 (can exceed 90 cap)
+Vouch minimum gate: 1 doc=5 vouches, 2 docs=3, 3 docs=2 — below minimum, score capped at 19.
 
 | Score | Tier | Colour |
 |-------|------|--------|
-| 0-29 | Unverified | Red |
-| 30-49 | Partial | Orange |
-| 50-89 | Verified | Green |
-| 90-94 | Trusted | Amber |
-| 95-100 | Gov Official | Gold |
+| 0-19 | Unverified | Red |
+| 20-54 | Verified | Green |
+| 55-90 | Trusted | Amber |
+| 91-100 | Gov Official | Gold |
 
 ---
 
@@ -34,11 +34,11 @@ Sarah registers → uploads passport → gets BLK-XXXXX-LDN node ID
 
 | Person | Role | Progress | Status |
 |--------|------|----------|--------|
-| Ray | Full-stack lead, DB, AI, map | 6 done / 2 remaining | 🟡 Nearly done |
+| Ray | Full-stack lead, DB, AI, map | 6 done / 3 remaining | 🟡 Nearly done |
 | Aryan | Backend API + Supabase setup | 10 done / 1 confirmation needed | 🟡 Nearly done |
 | Tao | Find API + rate limiting | 1 done / 3 remaining | 🔴 Needs work |
-| Hemish | UI shell + wiring | 4 done / 2 remaining | 🟡 Nearly done |
-| Maalav | Pages + routing | 9 done / 3 wiring tasks | 🟡 Nearly done |
+| Hemish | UI shell + wiring | 4 done / 4 remaining | 🔴 Needs work |
+| Maalav | Pages + routing | 9 done / 5 wiring tasks | 🔴 Needs work |
 
 ---
 
@@ -72,6 +72,8 @@ Sarah registers → uploads passport → gets BLK-XXXXX-LDN node ID
 - [x] Sidebar — fixed left nav, identity card, tier progress bar, active state
 - [x] TierBadge — all 5 tiers with correct colours
 - [x] Icon — Material Symbols Outlined wrapper
+- [ ] Wire Sidebar to show real session data (display_name, node_id) — **HEMISH** 🔴 (visible every page)
+- [ ] Wire TopBar avatar initials from real session — **HEMISH** 🟡
 - [ ] Wire dashboard evidence cards → `GET /api/claims/[userId]` — **HEMISH** 🟡
 - [ ] Wire vouch confirm button → `POST /api/vouch` — **HEMISH** 🟡
 
@@ -89,6 +91,8 @@ Sarah registers → uploads passport → gets BLK-XXXXX-LDN node ID
 - [ ] Auth guards on protected pages — **MAALAV** 🔴 (anyone can hit /dashboard now)
 - [ ] Wire real session data into pages — **MAALAV** 🔴 (hardcoded "Sarah Mitchell" everywhere)
 - [ ] Wire add-evidence submit → `POST /api/claims` — **MAALAV** 🟡
+- [ ] Wire unverified page session data (node_id, display_name) — **MAALAV** 🟡
+- [ ] Wire settings "Save username" → `PATCH /api/auth/username` — **MAALAV** 🟡 (low priority)
 
 ### Phase 5 — Demo prep
 - [ ] Supabase realtime enabled on `users` table — **ARYAN** 🟡
@@ -104,14 +108,15 @@ Sarah registers → uploads passport → gets BLK-XXXXX-LDN node ID
 
 ```
 BLOCKING RIGHT NOW:
-  Maalav: auth guards + real session data   ← unauthed users can see everything
-  Tao: /api/find                            ← Yellow Pages shows no results
+  Maalav: auth guards + real session data          ← unauthed users see everything
+  Hemish: Sidebar hardcoded "Sarah Mitchell"       ← visible on every protected page
+  Tao: /api/find                                   ← Yellow Pages shows no results
 
 NEEDED FOR FULL DEMO:
-  Hemish: wire claims + vouch calls         ← dashboard shows placeholder data
-  Maalav: wire add-evidence submit          ← form does nothing on submit
-  Aryan: confirm realtime on users table    ← live score updates won't fire
-  Ray: run seed scripts                     ← map is empty
+  Hemish: wire claims + vouch calls                ← dashboard shows placeholder data
+  Maalav: wire add-evidence submit                 ← form does nothing on submit
+  Aryan: enable realtime on users table            ← live score updates won't fire
+  Ray: run seed scripts + wire map real data       ← map is empty
 
 LAST:
   Full demo rehearsal x2
@@ -135,6 +140,7 @@ LAST:
 | 6 | `src/components/map/SkillPin.tsx` — coloured circle per skill | ✅ Done |
 | 7 | Run seed scripts against live Supabase | ⏳ Pending |
 | 8 | Confirm live counter on map page subscribes to realtime | ⏳ Pending |
+| 9 | Wire map heatmap + pins from real Supabase data (currently uses FALLBACK_USERS) | ⏳ Pending |
 
 ### Remaining tasks
 
@@ -149,6 +155,14 @@ Creates: 3 Gov Officials + NHS/Met/Council anchors + Dr. Osei (BLK-00471-LDN, sc
 
 **Task 8 — Live counter**
 Map page should show "X / 9,000,000 verified" — confirm it's hooked up to realtime subscription.
+
+**Task 9 — Wire map real data**
+`src/app/map/page.tsx` line 8 imports `FALLBACK_USERS` and passes it to `<HeatMap users={FALLBACK_USERS} />`. After seed runs, replace with a Supabase query:
+```typescript
+const { data: users } = await supabaseAdmin.from('users').select('borough, skill, tier, score').eq('tier', 'verified')
+```
+Also replace the hardcoded `PINS` array with real pin data grouped by borough and skill.
+Do this AFTER seed is confirmed (otherwise the query returns 0 rows and map looks empty).
 
 ### Demo day responsibilities
 - Run seed script the morning of demo
@@ -221,7 +235,7 @@ Coordinate with Ray. seedGov must run before seed.ts (vouch chains depend on gov
 
 ## HEMISH — UI components + wiring
 
-> Shell components done. Two API wiring tasks remain.
+> Shell components done. Four wiring tasks remain — Sidebar is highest priority (visible every page).
 
 | # | Task | Status |
 |---|------|--------|
@@ -229,8 +243,10 @@ Coordinate with Ray. seedGov must run before seed.ts (vouch chains depend on gov
 | 2 | Sidebar — identity card, tier progress bar | ✅ Done |
 | 3 | TierBadge — all 5 tiers | ✅ Done |
 | 4 | Icon wrapper (Material Symbols) | ✅ Done |
-| 5 | Wire dashboard evidence cards → `GET /api/claims/[userId]` | 🟡 Remaining |
-| 6 | Wire vouch confirm → `POST /api/vouch` | 🟡 Remaining |
+| 5 | Wire Sidebar real session data (display_name, node_id from localStorage) | 🔴 Blocking |
+| 6 | Wire TopBar avatar initials from real session | 🟡 Remaining |
+| 7 | Wire dashboard evidence cards → `GET /api/claims/[userId]` | 🟡 Remaining |
+| 8 | Wire vouch confirm → `POST /api/vouch` | 🟡 Remaining |
 
 ### Component status note
 
@@ -238,11 +254,27 @@ The original planned components (TrustRing as separate file, ProfileCard, ScoreB
 
 ClaimCard and ClaimForm stubs exist but are low priority — dashboard evidence cards and add-evidence wizard are both handled inline in page files.
 
-### Task 5 — Wire dashboard evidence cards
+### Task 5 — Wire Sidebar session data (do first)
+
+`src/components/civic/Sidebar.tsx` line 27 hardcodes "Sarah Mitchell" and "BLK-0471-LDN". Replace with real data from localStorage:
+```typescript
+const [session, setSession] = useState<{ display_name: string; node_id: string; tier: TrustTier } | null>(null)
+useEffect(() => {
+  const raw = localStorage.getItem('civictrust_session')
+  if (raw) setSession(JSON.parse(raw))
+}, [])
+```
+Use `session?.display_name`, `session?.node_id`, `session?.tier` in the identity card and progress bar.
+
+### Task 6 — Wire TopBar avatar
+
+`src/components/civic/TopBar.tsx`: show first initial of `session.display_name` in the avatar circle instead of a static placeholder.
+
+### Task 7 — Wire dashboard evidence cards
 
 In `src/app/dashboard/page.tsx`: fetch `GET /api/claims/[userId]` using the session user_id. Replace the hardcoded placeholder evidence with real claim data.
 
-### Task 6 — Wire vouch confirm
+### Task 8 — Wire vouch confirm
 
 In `src/app/vouch/page.tsx`: on QR scan success (or manual confirm), call `POST /api/vouch` with `{ voucher_id, vouchee_id }`. Handle success (show new score) and error (already vouched, score too low).
 
@@ -266,6 +298,8 @@ In `src/app/vouch/page.tsx`: on QR scan success (or manual confirm), call `POST 
 | 10 | Auth guards on protected pages | 🔴 Blocking |
 | 11 | Wire real session into pages | 🔴 Blocking |
 | 12 | Wire add-evidence submit → `POST /api/claims` | 🟡 Remaining |
+| 13 | Wire unverified page session data (node_id, display_name) | 🟡 Remaining |
+| 14 | Wire settings "Save username" → `PATCH /api/auth/username` | 🟡 Remaining (low priority) |
 
 ### Task 10 — Auth guards (security, blocking)
 
@@ -273,15 +307,22 @@ Protected pages (`/dashboard`, `/map`, `/vouch`, `/add-evidence`, `/settings`) c
 
 Add at the top of each protected page:
 ```typescript
-const sessionStr = localStorage.getItem('civictrust_session')
-if (!sessionStr) redirect('/login')
-const session = JSON.parse(sessionStr) // { node_id, username, display_name, score, tier, skill }
+'use client'
+import { useEffect } from 'react'
+import { useRouter } from 'next/navigation'
+
+// Inside component:
+const router = useRouter()
+useEffect(() => {
+  const raw = localStorage.getItem('civictrust_session')
+  if (!raw) router.push('/login')
+}, [router])
 ```
 
 ### Task 11 — Real session data (blocking)
 
 Pages currently show hardcoded "Sarah Mitchell" / placeholder values. Wire the `session` object from localStorage into:
-- Dashboard: display real username, score, tier
+- Dashboard: display real display_name, score, tier
 - Map: use real user_id for realtime subscription
 - Vouch: pass real node_id as the voucher
 - Settings: pre-fill real username/display_name
@@ -294,6 +335,14 @@ In `src/app/add-evidence/page.tsx`: the wizard form collects doc type + file. On
 3. Show loading while Gemini processes
 4. On success: show new score + redirect to dashboard
 5. On error: show "name doesn't match" or other error message
+
+### Task 13 — Wire unverified page session data
+
+`src/app/(auth)/unverified/page.tsx` line 30 hardcodes `BLK-0471-LDN`. Read from localStorage and show real `session.node_id` + `session.display_name`.
+
+### Task 14 — Wire settings username save (low priority)
+
+`src/app/settings/page.tsx`: "Save changes" button for the @username field should call `PATCH /api/auth/username` with `{ node_id, username }`. Show success/error feedback. Password change form: leave UI as-is but non-functional (not in demo path).
 
 ---
 
@@ -308,10 +357,10 @@ In `src/app/add-evidence/page.tsx`: the wizard form collects doc type + file. On
 - [ ] Register as Sarah Mitchell + passport upload → node ID issued, tier: Unverified
 - [ ] Login → set @sarah_mitchell username
 - [ ] Submit medical degree → Gemini reads "UCL Medicine" → score 15, tier: Unverified
-- [ ] Submit NHS employer letter → score 30, tier: Partial
+- [ ] Submit NHS employer letter → score 30, tier: Verified
 - [ ] Bad actor test: upload doc with wrong name → rejected ("name doesn't match")
 - [ ] Login as Dr. Osei (`BLK-00471-LDN` / `password123`) → QR-vouch Sarah → score 40
-- [ ] Second vouch → score 50 → tier: **Verified** → Doctor pin appears on Southwark
+- [ ] Doctor pin appears on Southwark map
 - [ ] Map: 200+ pins visible, counter shows "1,847 / 9,000,000"
 - [ ] Yellow Pages: search "Doctor" → "Southwark: 3 verified doctors"
 - [ ] Yellow Pages: search "insulin" → returns relevant results

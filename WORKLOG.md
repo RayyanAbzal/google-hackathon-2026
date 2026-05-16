@@ -1,74 +1,65 @@
 # WORKLOG
 
-**Updated:** 2026-05-16 (session 11)
+**Updated:** 2026-05-16 (session 16)
 
 ## Active task
-Idle — DB provisioned, schema aligned, seed scripts fixed, pushed to dev
+Demo readiness — tier fixes committed, E2E path verified
 
 ## Phase
-implementing
+reviewing
 
 ## Files changed this session
-- `supabase/migrations/0001_init.sql` — full rewrite: password_hash, skill nullable, drop help_posts, rename gov_officials -> gov_anchors, add CHECK constraints, sync RLS policies to live DB
-- `src/lib/CLAUDE.md` — gov_officials -> gov_anchors table name
-- `src/lib/fallbacks.ts` — expand FALLBACK_USERS to 20 boroughs, remove FALLBACK_HELP_POSTS (feature cut)
-- `src/components/map/HeatMap.tsx` — implement D3 choropleth + skill pins (was TODO stub)
-- `src/components/map/SkillPin.tsx` — implement SVG circle with gov ring variant
-- `docs/TASKS.md` — mark Aryan's Supabase setup items done (schema + RLS applied via MCP), flag Realtime as still outstanding
-- `scripts/seed.ts` — fix gov_officials -> gov_anchors (was reverted by hook/process)
-- `scripts/seedGov.ts` — fix gov_officials -> gov_anchors (same)
-- `package.json` / `package-lock.json` — install d3 + @types/d3
-- `PLAN.md` (root) — DELETED (duplicate of docs/PLAN.md)
-- `ROLES.md` (root) — DELETED (stale, covered by AGENTS.md)
-
-**Supabase (via MCP):**
-- Renamed `gov_officials` -> `gov_anchors` in live DB
-- Fixed claims RLS: was SELECT WHERE status='verified' only — changed to SELECT all
-- Added missing INSERT policies for all tables
-- Added `gov_anchors_insert` policy
-- Confirmed all 4 tables live: users, claims, vouches, gov_anchors (all RLS enabled, 0 rows)
-- GEMINI_API_KEY added to .env.local
+- `src/app/_components/LandingContent.tsx` — tier table corrected (0-19/20-54/55-90/91-100, names: Unverified/Verified/Trusted/Gov Official). Also refactored by teammate: landing content extracted from page.tsx into this component, Sidebar added to landing with SidebarProvider context.
+- `src/app/page.tsx` — now a 12-line shell importing LandingContent (teammate refactor)
+- `src/app/vouch/page.tsx` — stale comment "score gate >=50" corrected to >=20
+- `src/components/civic/Sidebar.tsx` — collapsible sidebar (240px/56px), AUTH_NAV vs PUBLIC_NAV modes (teammate)
+- `src/components/civic/SidebarProvider.tsx` — new: context + useSidebar() hook, persists collapse state to localStorage `sidebar_collapsed` (teammate)
 
 ## Next step
-Run seed script once Aryan confirms Realtime is enabled:
-```
-npx tsx scripts/seed.ts --wipe
-```
-Then verify 200+ rows in Supabase dashboard.
+Re-run `npx tsx scripts/seed.ts --wipe` before demo to reset Dr. Osei to score 74 + clean slate.
+Then do one manual walkthrough in browser: register → add-evidence × 2 → vouch × 3 → dashboard shows Verified.
 
 ## Open questions
-- Aryan: Enable Realtime on `users` table — Supabase dashboard > Database > Replication > Tables > users > toggle on
-- Aryan: does /api/auth/register call Gemini at signup, or deferred to claims only?
-- Tao: /api/find ETA? Blocks Yellow Pages demo step
-- `skill` defaults to 'Other' at signup — Settings page enough, or needs dedicated edit flow?
+- QR vouch flow not tested in browser (only via curl). Confirm Hemish's QR scanner works on mobile at demo.
+- `find/route.ts` uses `score >= 20` (confirmed correct this session — old worklog was stale saying 50).
 
-## Key decisions — LOCKED
+## Key decisions
 
-**DB table name:** `gov_anchors` (NOT gov_officials). Both seed scripts and migration now aligned. DB renamed via MCP migration.
+**Scoring (confirmed correct in code as of session 16):**
+- passport = 20pts each, other doc = 15pts each, max 3 docs total
+- vouches = 5pts each, max 10 counted
+- gov vouch bonus: +20, bypasses 90 cap
+- Vouch minimum gate: 1 doc = 5 vouches, 2 docs = 3, 3 docs = 2 — below min, score capped at 19
+- User cap without gov vouch: 90
+- Tiers: 0-19 Unverified | 20-54 Verified | 55-90 Trusted | 91-100 Gov Official
+- Vouch gate: score >= 20
 
-**Gemini API:** staying with Gemini (not Claude) — GDGC = Google hackathon, judges are Google-affiliated, strategic advantage.
+**E2E path verified via curl (session 16):**
+- Register → 2 claims (with USE_FALLBACKS=true) → 3 vouches from seeded users → score 50, tier verified
+- Gate math confirmed: 2 docs needs 3 vouches minimum. Score stays 19 until 3rd vouch lands.
+- Seeded users login via node_id (BLK-10XXX-LDN), NOT username (only dr_osei has username set)
+- Good demo vouchers: BLK-10003-LDN (score 20), BLK-10010-LDN (score 94)
+- Global doc dedup: rejected claims also store hash — need unique image bytes per claim submission
 
-**Frontend design:** Tactical Resilience dark theme (bg #10141a, primary #b0c6ff, secondary #40e56c). Inline styles for design token colours — not Tailwind classes for colour values. Do not switch patterns.
+**DB cleanup (session 16):** Two test users deleted from Supabase (Sarah Test + Sarah Mitchell + their claims/vouches)
 
-**Components superseded:** TrustRing, ScoreBadge, ProfileCard, VouchQR — implemented inline in pages. Do not rebuild. TopBar, Sidebar, TierBadge, Icon live in `src/components/civic/`.
+**Commit:** `4e6a69f` — fix(ui): correct tier thresholds to 0-19/20-54/55-90/91-100 across all UI
 
-**Profile removed:** /profile/[username] redirects to /dashboard. Dashboard IS the profile.
+**Auth:** node_id OR @username + password. Session in localStorage key `civictrust_session`.
 
-**Auth:** node_id OR @username + password. Session in localStorage key `civictrust_session`. Min 6 char password, SHA256 hashed.
+**Fallback toggle:** `NEXT_PUBLIC_USE_FALLBACKS=true` in `.env.local` — flip to true if Gemini fails at demo.
 
-**Score formula:** `min(100, claims_verified * 15 + vouches_received * 10 + gov_vouched ? 20 : 0)`
+**Seed:** re-run with `--wipe` before demo. Password: password123 | Gov: govpassword99.
 
-**Score thresholds:** 0-29 Unverified | 30-49 Partial | 50-89 Verified | 90-94 Trusted | 95+ Gov Official
-
-**Dedup:** doc content hash is global — same document cannot be used across any account.
-
-**Vouch:** vouchee score recalculates on vouch. Voucher penalty (-15) fires only on flagged claim.
-
-**Git workflow:** dev = integration. Never commit to main. Ray merges dev -> main before demo.
+**Git workflow:** dev = integration. Never commit to main. Ray merges dev → main before demo.
 
 **Team roles:**
-- Ray: full-stack lead, Gemini Vision, seed scripts, heatmap (D3), realtime
-- Aryan: Supabase setup + API (auth, claims, vouch, flag, score)
-- Tao: /api/find, rate limiting middleware, seedGov
-- Hemish: civic components done; now wiring dashboard claims + vouch confirm
-- Maalav: all pages built; now wiring auth guards + real session data + add-evidence submit
+- Ray: full-stack lead, Gemini Vision, seed scripts, heatmap, realtime
+- Aryan: all core API routes (auth, claims, vouch, score) — done
+- Tao: /api/find, middleware, seedGov, realtime.ts — done
+- Hemish: civic components (Sidebar collapsible + SidebarProvider added this session) — done
+- Maalav: all pages + guards + wiring — done
+
+**Frontend design:** Tactical Resilience dark theme (bg #10141a, primary #b0c6ff, secondary #40e56c). Inline styles for design tokens.
+
+**Gemini:** staying with Gemini — GDGC = Google hackathon.

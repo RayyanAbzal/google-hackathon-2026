@@ -42,8 +42,9 @@ CivicTrust is a post-disaster identity and trust system. Physical documents + co
 ## Score formula
 
 ```
-score = min(100, claims_verified * 15 + vouches_received * 10)
-gov_vouch adds +20 per gov voucher
+score = passport*20 + other_doc*15 (max 3 docs) + vouch*5 (max 10) + gov_vouch*20
+Vouch gate: 1 doc needs 5 vouches, 2 docs needs 3, 3 docs needs 2. Below min: capped at 19.
+Tiers: 0-19 Unverified | 20-54 Verified | 55-90 Trusted | 91-100 Gov Official
 ```
 
 Penalty: vouching a fraud = -15pts to the voucher.
@@ -52,11 +53,10 @@ Penalty: vouching a fraud = -15pts to the voucher.
 
 | Range | Tier | Key capability |
 |---|---|---|
-| 0–29 | Unverified | Submit claims. Cannot view profiles or vouch. |
-| 30–49 | Partial | Can request vouches. Cannot view profiles. |
-| 50–89 | Verified | View all profiles. Vouch others. Appear on map + Yellow Pages. |
-| 90–94 | Trusted | Gov vouch eligible. 2x vouch weight. |
-| 95–100 | Gov Official | Pre-seeded. GOV badge on map. |
+| 0–24 | Unverified | Submit claims. Cannot view profiles or vouch. |
+| 25–59 | Verified | View all profiles. Vouch others. Appear on map + Yellow Pages. |
+| 60–89 | Trusted | Gov vouch eligible. |
+| 90–100 | Gov Official | Pre-seeded. GOV badge on map. |
 
 ## Trust graph / government hierarchy
 
