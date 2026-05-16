@@ -319,7 +319,7 @@ export default function SettingsPage() {
                     </button>
                   </div>
                   <p style={{ fontSize: 12, color: '#424655', marginTop: 6 }}>
-                    Your User ID is permanent and cannot be changed.
+                    Your Node ID is permanent and cannot be changed.
                   </p>
                 </div>
               </div>
