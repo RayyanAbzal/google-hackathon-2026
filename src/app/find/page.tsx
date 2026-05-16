@@ -255,12 +255,13 @@ export default function FindPage() {
           </div>
 
           {/* Full-width map hero */}
-          <div style={{ position: 'relative', height: 480, border: '1px solid rgba(66,70,85,0.5)', borderRadius: 10, overflow: 'hidden', background: '#0a0e14', marginBottom: 16, contain: 'paint' }}>
+          <div style={{ position: 'relative', height: 480, border: '1px solid rgba(66,70,85,0.5)', borderRadius: 10, overflow: 'hidden', background: '#0a0e14', marginBottom: 16 }}>
             <HeatMap
               users={mapUsers}
               selectedBorough={activeBorough}
               activeSkill={mapSkill}
               onBoroughClick={(name) => setActiveBorough(name)}
+              sidebarWidth={sidebarWidth}
             />
 
             {/* Bottom-left: map hint — changes with search */}

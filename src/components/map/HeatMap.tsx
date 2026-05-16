@@ -1,7 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { CircleMarker, GeoJSON, MapContainer, Popup, TileLayer, Tooltip } from 'react-leaflet'
+import { CircleMarker, GeoJSON, MapContainer, Popup, TileLayer, Tooltip, useMap } from 'react-leaflet'
 import type { Layer, LeafletMouseEvent, PathOptions } from 'leaflet'
 import type { Feature, FeatureCollection } from 'geojson'
 import * as d3 from 'd3'
@@ -10,12 +10,22 @@ import type { SkillTag } from '@/types'
 import type { MapPOI, MapUser } from './map-data'
 import { buildMapInsights } from './map-data'
 
+function MapResizer({ sidebarWidth }: { sidebarWidth?: number }) {
+  const map = useMap()
+  useEffect(() => {
+    const t = setTimeout(() => map.invalidateSize(), 220)
+    return () => clearTimeout(t)
+  }, [map, sidebarWidth])
+  return null
+}
+
 interface HeatMapProps {
   users?: MapUser[]
   pois?: MapPOI[]
   selectedBorough?: string
   activeSkill?: SkillTag | 'All'
   onBoroughClick?: (name: string) => void
+  sidebarWidth?: number
 }
 
 const SKILL_COLORS: Record<SkillTag, string> = {
@@ -44,6 +54,7 @@ export function HeatMap({
   selectedBorough,
   activeSkill = 'All',
   onBoroughClick,
+  sidebarWidth,
 }: HeatMapProps) {
   const [geojson, setGeojson] = useState<FeatureCollection | null>(null)
   const [centroids, setCentroids] = useState<CentroidMap>({})
@@ -145,9 +156,10 @@ export function HeatMap({
     <MapContainer
       center={[51.505, -0.09]}
       zoom={10}
-      style={{ height: '100%', width: '100%', overflow: 'hidden' }}
+      style={{ height: '100%', width: '100%' }}
       zoomControl
     >
+      <MapResizer sidebarWidth={sidebarWidth} />
       <TileLayer
         url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
