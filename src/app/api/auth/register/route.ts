@@ -37,20 +37,6 @@ export async function POST(request: Request): Promise<Response> {
 
   const { display_name, password, doc_type, borough, skill } = body;
 
-  if (!skill?.trim()) {
-    return Response.json(
-      { success: false, error: "skill is required" } satisfies ApiResponse<never>,
-      { status: 400 }
-    );
-  }
-
-  if (!borough?.trim()) {
-    return Response.json(
-      { success: false, error: "borough is required" } satisfies ApiResponse<never>,
-      { status: 400 }
-    );
-  }
-
   if (!display_name?.trim()) {
     return Response.json({ success: false, error: "display_name is required" } satisfies ApiResponse<never>, { status: 400 });
   }
@@ -88,9 +74,9 @@ export async function POST(request: Request): Promise<Response> {
     .insert({
       node_id,
       display_name: display_name.trim(),
-      skill: skill.trim(),
+      skill: skill?.trim() ?? 'Other',
       password_hash,
-      borough: borough.trim(),
+      borough: borough?.trim() ?? 'Westminster',
     })
     .select("id, node_id")
     .single();
