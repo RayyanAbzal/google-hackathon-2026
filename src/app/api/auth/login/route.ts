@@ -32,7 +32,7 @@ export async function POST(request: Request): Promise<Response> {
 
   const { data: user } = await supabaseAdmin
     .from("users")
-    .select("id, node_id, username, display_name, skill, score, password_hash")
+    .select("id, node_id, username, display_name, skill, score, borough, password_hash")
     .eq(isNodeId ? "node_id" : "username", isNodeId ? identifier.trim().toUpperCase() : clean)
     .single();
 
@@ -49,6 +49,7 @@ export async function POST(request: Request): Promise<Response> {
     skill: user.skill ?? 'Other',
     score: user.score,
     tier: getTier(user.score),
+    borough: user.borough ?? null,
   };
 
   return Response.json({ success: true, data: session } satisfies ApiResponse<Session>);

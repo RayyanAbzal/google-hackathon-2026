@@ -14,7 +14,7 @@ export default function LandingContent() {
             <MeshGraph width={1280} height={680} dense seed={3} />
           </div>
           <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at 30% 50%, rgba(16,20,26,0) 0%, rgba(16,20,26,0.85) 60%, rgba(16,20,26,1) 100%)', pointerEvents: 'none' }} />
-          <div style={{ position: 'relative', maxWidth: 760 }}>
+          <div style={{ position: 'relative', maxWidth: 760, margin: '0 auto' }}>
             <span className="meta" style={{ color: '#b0c6ff' }}>BLACKOUT · T+14:00 · LONDON</span>
             <h1 style={{ fontSize: 80, fontWeight: 700, lineHeight: 0.96, letterSpacing: '-0.03em', marginTop: 18, marginBottom: 0 }}>
               Trust is a<br />

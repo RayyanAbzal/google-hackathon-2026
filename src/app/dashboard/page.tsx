@@ -8,8 +8,8 @@ import Sidebar from '@/components/civic/Sidebar'
 import Icon from '@/components/civic/Icon'
 import EgoGraph from '@/components/civic/svg/EgoGraph'
 import { useSidebar } from '@/components/civic/SidebarProvider'
-import type { Claim, Session } from '@/types'
-import { getDisplayFirstName, protectedFetch, requireSession } from '@/app/_lib/session'
+import type { ApiResponse, Claim, Session, TrustTier } from '@/types'
+import { getDisplayFirstName, protectedFetch, requireSession, updateStoredSession } from '@/app/_lib/session'
 
 const CIRCUMFERENCE = 276.46
 
@@ -50,6 +50,7 @@ export default function DashboardPage() {
   const { width: sidebarWidth } = useSidebar()
   const [session, setSession] = useState<Session | null>(null)
   const [claims, setClaims] = useState<Claim[]>([])
+  const [claimsLoaded, setClaimsLoaded] = useState(false)
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -57,11 +58,23 @@ export default function DashboardPage() {
       setSession(current)
       if (!current) return
 
+      // Refresh score from DB — catches vouches received since last login
+      fetch(`/api/score/${current.user_id}`)
+        .then(r => r.json() as Promise<ApiResponse<{ score: number; tier: TrustTier }>>)
+        .then(json => {
+          if (json.success && (json.data.score !== current.score || json.data.tier !== current.tier)) {
+            const updated = updateStoredSession({ score: json.data.score, tier: json.data.tier })
+            if (updated) setSession(updated)
+          }
+        })
+        .catch(() => {})
+
       protectedFetch<Claim[]>(`/api/claims/${current.user_id}`, current)
         .then((json) => {
           if (json.success) setClaims(json.data)
         })
-        .catch(() => setClaims([]))
+        .catch(() => {})
+        .finally(() => setClaimsLoaded(true))
     })
   }, [router])
 
@@ -91,7 +104,6 @@ export default function DashboardPage() {
   }, [score])
 
   const evidenceRows = useMemo(() => {
-    if (claims.length === 0) return FALLBACK_EVIDENCE
     return claims.slice(0, 3).map(c => ({
       icon: claimIcon(c.doc_type),
       title: c.doc_type,
@@ -194,7 +206,13 @@ export default function DashboardPage() {
                 {evidenceRows.length} ITEMS · {evidenceRows.filter(e => e.badge === 'PENDING').length} PENDING
               </span>
             </div>
+
             <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+              {claimsLoaded && evidenceRows.length === 0 && (
+                <div style={{ padding: '28px 14px', textAlign: 'center', border: '1px solid rgba(66,70,85,0.4)', borderRadius: 10, background: '#10141a', color: '#8c90a1', fontSize: 13 }}>
+                  No verified evidence yet — add your first document to start building trust.
+                </div>
+              )}
               {evidenceRows.map((e, i) => (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 14, border: '1px solid rgba(66,70,85,0.5)', borderRadius: 10, background: '#10141a' }}>
                   <div style={{ width: 42, height: 42, borderRadius: 10, background: `${e.color}18`, border: `1px solid ${e.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>

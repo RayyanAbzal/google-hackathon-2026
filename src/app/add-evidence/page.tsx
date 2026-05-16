@@ -35,6 +35,13 @@ const CLAIM_TYPE_TO_DOC: Record<ClaimType, string> = {
   Residency: 'utility_bill',
 }
 
+const CLAIM_TYPE_POINTS: Record<ClaimType, number> = {
+  Identity: 20,   // passport
+  Credential: 15,
+  Employment: 15,
+  Residency: 15,
+}
+
 interface ClaimResult {
   claim: Claim
   new_score: number
@@ -432,12 +439,10 @@ export default function AddEvidencePage() {
                     }}
                   >
                     {[
-                      { label: 'Name', value: 'Sarah J. Mitchell' },
-                      { label: 'Document', value: 'UK Passport' },
-                      { label: 'Issuer', value: 'HMPO' },
-                      { label: 'Date of birth', value: '12 Mar 1991' },
-                      { label: 'Expires', value: '04 Aug 2031' },
-                      { label: 'Doc number', value: '***-8921' },
+                      { label: 'Name on account', value: session?.display_name ?? '—' },
+                      { label: 'Claim type', value: claimType },
+                      { label: 'Document', value: CLAIM_TYPE_TO_DOC[claimType] },
+                      { label: 'Gemini analysis', value: 'Runs on submit' },
                     ].map(({ label, value }) => (
                       <div
                         key={label}
@@ -464,9 +469,9 @@ export default function AddEvidencePage() {
                 </h2>
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12, marginBottom: 24 }}>
                   {[
-                    { icon: 'person', label: 'Name match', detail: 'Sarah J. Mitchell found in document' },
-                    { icon: 'content_copy', label: 'Not a duplicate', detail: 'No matching claim found' },
-                    { icon: 'verified', label: 'Document recognised', detail: 'UK Passport confirmed' },
+                    { icon: 'person', label: 'Name match', detail: `${session?.display_name ?? 'Your name'} will be checked against document` },
+                    { icon: 'content_copy', label: 'Duplicate check', detail: 'Document hash checked on submit' },
+                    { icon: 'psychology', label: 'Gemini Vision', detail: `Analysing ${CLAIM_TYPE_TO_DOC[claimType]} on submit` },
                   ].map(({ icon, label, detail }) => (
                     <div
                       key={label}
@@ -498,7 +503,7 @@ export default function AddEvidencePage() {
                   }}
                 >
                   <span style={{ fontSize: 14, color: '#c2c6d8' }}>
-                    Your score: {session?.score ?? 0} → <strong style={{ color: '#40e56c' }}>{Math.min(100, (session?.score ?? 0) + 15)}</strong>
+                    Your score: {session?.score ?? 0} → <strong style={{ color: '#40e56c' }}>{Math.min(100, (session?.score ?? 0) + CLAIM_TYPE_POINTS[claimType])}</strong> (+{CLAIM_TYPE_POINTS[claimType]} pts if verified)
                   </span>
                   <button
                     onClick={submitClaim}
