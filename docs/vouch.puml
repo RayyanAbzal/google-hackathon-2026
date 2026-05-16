@@ -13,62 +13,82 @@ start
 :Tap "Show QR Code";
 
 |#fff2cc|Frontend|
-:Generate QR from node_id;
+:Generate QR from vouchee user_id\n(client-side, qrcode.js);
 :Display QR on screen;
 
-|#dae8fc|Vouchee (receives vouch)|
-:Show screen to Voucher;
-
 |#f8cecc|Voucher (gives vouch)|
-:Open camera / scan tab;
-:Scan QR code;
+:Open scan tab;
+:Scan QR — decode vouchee_id;
 
 |#fff2cc|Frontend|
-:Decode node_id from QR;
 :Show "Vouch for [name]?" confirmation;
+:Display fraud warning:\n"If this person is found fraudulent\nyour score drops 15 pts";
 
 |#f8cecc|Voucher (gives vouch)|
 :Confirm "Yes, I know this person IRL";
 
+|#fff2cc|Frontend|
+:POST /api/vouch\n{vouchee_id};
+
 |#e1d5e7|API|
-:Authenticate voucher session;
-if (Voucher score >= 50 (Verified)?) then (no)
-  :Return 403 — must be Verified to vouch;
-  |#fff2cc|Frontend|
-  :Show "You need Verified status to vouch";
+:verifyAuth — validate JWT (voucher);
+if (Authenticated?) then (no)
+  :Return 401;
   stop
 else (yes)
 endif
 
-:Check vouch rate limit\n(max 5 vouches / 24h for voucher);
-if (Rate limit hit?) then (yes)
-  :Return 429 — daily limit reached;
+if (voucher.score < 50 (not Verified)?) then (yes)
+  :Return 403 — "must be Verified to vouch";
+  |#fff2cc|Frontend|
+  :Show "You need Verified status to vouch";
+  stop
+else (no)
+endif
+
+if (vouchee_id == voucher.id?) then (yes)
+  :Return 400 — "Cannot vouch for yourself";
+  stop
+else (no)
+endif
+
+:Lookup vouchee in Supabase;
+if (Vouchee exists?) then (no)
+  :Return 404 — "User not found";
+  stop
+else (yes)
+endif
+
+:Rate limit check\n(max 5 vouches / 24h for voucher);
+if (Limit reached?) then (yes)
+  :Return 429 — "5 per 24h";
   |#fff2cc|Frontend|
   :Show cooldown message;
   stop
 else (no)
 endif
 
-:Check: already vouched this person?;
-if (Duplicate vouch?) then (yes)
-  :Return 409 — already vouched;
+:Insert vouch row\n(voucher_id, vouchee_id);
+if (DB unique constraint fails (23505)?) then (yes)
+  :Return 409 — "Already vouched";
   stop
 else (no)
 endif
 
-:Record vouch in Supabase\n(voucher_id, vouchee_id, timestamp);
-:Update vouchee score: +10;
-:Return 200 + new scores;
-
-|#fff2cc|Frontend|
-:Both devices receive Supabase Realtime event;
-:Animate score rings on both devices;
+:recalculateUserScore(vouchee_id)\n= min(100, verified_claims*15\n+ vouches*10 + gov_vouched*20);
+:Update vouchee score + tier;
+:Return 201 {new_score, tier};
 
 note right
-  Warning shown at vouch time:
-  "If this person is found fraudulent,
-  your score drops 15 pts."
+  Only vouchee score updates.
+  Voucher score unchanged (penalty
+  only applies if vouchee is later
+  flagged as fraudulent).
 end note
+
+|#fff2cc|Frontend|
+:Supabase Realtime pushes\nnew score to vouchee's device;
+:Animate score ring on vouchee device;
 
 stop
 @enduml
