@@ -8,6 +8,7 @@ export { generateNodeId };
 const SESSION_SECRET = process.env.SESSION_SECRET ?? "civictrust-dev-secret";
 const PASSWORD_HASH_PREFIX = "scrypt";
 const PASSWORD_KEY_LENGTH = 64;
+const TOKEN_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 export function hashPassword(password: string): string {
   const salt = randomBytes(16).toString("hex");
@@ -30,17 +31,13 @@ export function verifyPassword(password: string, storedHash: string): boolean {
 }
 
 // Token format: base64url(userId:issuedAt).hmac_sha256(payload, SESSION_SECRET)
-export function signToken(userId: string): string {
-  const payload = Buffer.from(`${userId}:${Date.now()}`).toString("base64url");
+export function signToken(userId: string, issuedAt = Date.now()): string {
+  const payload = Buffer.from(`${userId}:${issuedAt}`).toString("base64url");
   const sig = createHmac("sha256", SESSION_SECRET).update(payload).digest("hex");
   return `${payload}.${sig}`;
 }
 
-function extractUserId(token: string): string | null {
-  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(token)) {
-    return token;
-  }
-
+export function verifyToken(token: string, now = Date.now()): string | null {
   const dot = token.lastIndexOf(".");
   if (dot === -1) return null;
   const payload = token.slice(0, dot);
@@ -52,7 +49,14 @@ function extractUserId(token: string): string | null {
     return null;
   }
   const decoded = Buffer.from(payload, "base64url").toString();
-  return decoded.split(":")[0] ?? null;
+  const [userId, issuedAtRaw] = decoded.split(":");
+  const issuedAt = Number(issuedAtRaw);
+
+  if (!userId || !Number.isFinite(issuedAt)) return null;
+  if (issuedAt > now) return null;
+  if (now - issuedAt > TOKEN_TTL_MS) return null;
+
+  return userId;
 }
 
 // Expects: Authorization: Bearer <signed_token>
@@ -61,7 +65,7 @@ export async function verifyAuth(request: Request): Promise<User | null> {
   const auth = request.headers.get("Authorization");
   if (!auth?.startsWith("Bearer ")) return null;
   const token = auth.slice(7).trim();
-  const userId = extractUserId(token);
+  const userId = verifyToken(token);
   if (!userId) return null;
 
   const { data } = await supabaseAdmin
