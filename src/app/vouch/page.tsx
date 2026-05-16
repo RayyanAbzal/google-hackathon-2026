@@ -33,6 +33,7 @@ export default function VouchPage() {
   const [nodeInput, setNodeInput]     = useState('')
   const [foundUser, setFoundUser]     = useState<FoundUser | null>(null)
   const [vouchState, setVouchState]   = useState<VouchState>('idle')
+  const [voucheeNewScore, setVoucheeNewScore] = useState<number | null>(null)
   const [errorMsg, setErrorMsg]       = useState('')
   const [scanState, setScanState]     = useState<ScanState>('off')
   const scannerRef                    = useRef<HTMLDivElement>(null)
@@ -117,6 +118,7 @@ export default function VouchPage() {
       })
       const json = await res.json()
       if (!json.success) { setErrorMsg(json.error ?? 'Vouch failed'); setVouchState('found'); return }
+      setVoucheeNewScore(json.data?.new_score ?? null)
       setVouchState('success')
     } catch {
       setErrorMsg('Network error — try again')
@@ -129,6 +131,7 @@ export default function VouchPage() {
     setNodeInput('')
     setVouchState('idle')
     setErrorMsg('')
+    setVoucheeNewScore(null)
     setScanState('off')
   }
 
@@ -306,7 +309,10 @@ export default function VouchPage() {
                 <Icon name="check_circle" size={48} style={{ color: '#40e56c', marginBottom: 12 }} />
                 <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Vouch confirmed</div>
                 <div style={{ fontSize: 14, color: '#8c90a1' }}>
-                  {foundUser?.display_name} has been vouched. Their score will update shortly.
+                  {foundUser?.display_name} has been vouched.
+                  {voucheeNewScore !== null && (
+                    <> Their score is now <strong style={{ color: '#40e56c' }}>{voucheeNewScore}</strong>.</>
+                  )}
                 </div>
                 <button onClick={handleReject} className="btn-ghost" style={{ marginTop: 20 }}>
                   Vouch someone else
