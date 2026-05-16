@@ -111,3 +111,15 @@ export interface DocumentAnalysis {
   institution: string | null
   confidence: number
 }
+
+export interface HelpPost {
+  id: string
+  author_id: string
+  content: string
+  skill_tag: string | null
+  resource_tag: string | null
+  borough: string
+  urgency: 'low' | 'medium' | 'high'
+  expires_at: string
+  created_at: string
+}
