@@ -25,7 +25,11 @@ type ScanState  = 'off' | 'scanning' | 'done'
 
 export default function VouchPage() {
   const router = useRouter()
-  const [session, setSession]         = useState<Session | null>(null)
+  const [session]                      = useState<Session | null>(() => {
+    if (typeof window === 'undefined') return null
+    const raw = localStorage.getItem('civictrust_session')
+    return raw ? JSON.parse(raw) as Session : null
+  })
   const [nodeInput, setNodeInput]     = useState('')
   const [foundUser, setFoundUser]     = useState<FoundUser | null>(null)
   const [vouchState, setVouchState]   = useState<VouchState>('idle')
@@ -37,10 +41,8 @@ export default function VouchPage() {
   const html5QrRef                    = useRef<any>(null)
 
   useEffect(() => {
-    const raw = localStorage.getItem('civictrust_session')
-    if (!raw) { router.push('/login'); return }
-    setSession(JSON.parse(raw) as Session)
-  }, [router])
+    if (!session) router.push('/login')
+  }, [session, router])
 
   const lookupByNodeId = useCallback(async (id: string) => {
     const normalized = id.trim().toUpperCase()
@@ -60,7 +62,7 @@ export default function VouchPage() {
       setErrorMsg('Network error — try again')
       setVouchState('error')
     }
-  }, [session?.user_id])
+  }, [session])
 
   const stopScanner = useCallback(async () => {
     if (html5QrRef.current) {
