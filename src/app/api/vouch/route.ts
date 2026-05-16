@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifyAuth } from "@/lib/auth";
 import { recalculateUserScore } from "@/lib/score";
+import { createNotification } from "@/lib/notifications";
 import type { ApiResponse, TrustTier } from "@/types";
 
 interface VouchBody {
@@ -76,6 +77,17 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const { score: new_score, tier } = await recalculateUserScore(vouchee_id);
+
+  // Create notification for vouchee
+  await createNotification({
+    user_id: vouchee_id,
+    type: 'vouch_received',
+    title: `${voucher.display_name} vouched for you`,
+    detail: 'Regular vouch · +5 pts',
+    icon: 'handshake',
+    color: '#b0c6ff',
+    related_user_id: voucher.id,
+  });
 
   return Response.json({
     success: true,

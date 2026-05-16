@@ -73,6 +73,38 @@ export interface GovOfficial {
 }
 export type GovAnchor = GovOfficial
 
+export type NotificationType = 'vouch_received' | 'claim_verified' | 'tier_changed' | 'account_created'
+
+export interface Notification {
+  id: string
+  user_id: string
+  type: NotificationType
+  title: string
+  detail: string | null
+  icon: string
+  color: string
+  read: boolean
+  related_user_id: string | null
+  created_at: string
+}
+
+export interface CreateNotificationPayload {
+  user_id: string
+  type: NotificationType
+  title: string
+  detail: string | null
+  icon: string
+  color: string
+  related_user_id?: string | null
+}
+
+export interface NotificationPreferences {
+  vouch_received: boolean
+  claim_verified: boolean
+  tier_changed: boolean
+  account_created: boolean
+}
+
 // ─── API response wrapper ──────────────────────────────────────────────────
 
 export type ApiResponse<T> =

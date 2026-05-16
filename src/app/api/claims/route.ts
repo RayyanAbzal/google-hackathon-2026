@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { verifyAuth } from "@/lib/auth";
 import { analyseDocument } from "@/lib/gemini";
 import { recalculateUserScore } from "@/lib/score";
+import { createNotification } from "@/lib/notifications";
 import { USE_FALLBACKS } from "@/lib/fallbacks";
 import type { ApiResponse, Claim, ClaimType, TrustTier } from "@/types";
 
@@ -137,6 +138,16 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const { score: new_score, tier } = await recalculateUserScore(user.id);
+
+  // Create notification for verified claim
+  await createNotification({
+    user_id: user.id,
+    type: 'claim_verified',
+    title: `Your ${doc_type} was verified`,
+    detail: 'Certificate registered',
+    icon: 'done_all',
+    color: '#40e56c',
+  });
 
   return Response.json({
     success: true,

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
 import Icon from '@/components/civic/Icon'
-import type { Session } from '@/types'
+import type { Session, NotificationPreferences } from '@/types'
 import { getInitials, requireSession } from '@/app/_lib/session'
 
 type Tab = 'Profile' | 'Security' | 'Notifications' | 'Privacy'
@@ -15,6 +15,12 @@ export default function SettingsPage() {
   const router = useRouter()
   const [activeTab, setActiveTab] = useState<Tab>('Profile')
   const [session, setSession] = useState<Session | null>(null)
+  const [prefs, setPrefs] = useState<NotificationPreferences>({
+    vouch_received: true,
+    claim_verified: true,
+    tier_changed: true,
+    account_created: true,
+  })
 
   useEffect(() => {
     queueMicrotask(() => setSession(requireSession(router)))
@@ -65,9 +71,60 @@ export default function SettingsPage() {
           })}
         </div>
 
-        {activeTab !== 'Profile' && (
+        {activeTab !== 'Profile' && activeTab !== 'Notifications' && (
           <div className="bento" style={{ color: '#8c90a1', fontSize: 14, textAlign: 'center', padding: 48 }}>
             Coming soon
+          </div>
+        )}
+
+        {activeTab === 'Notifications' && (
+          <div className="bento">
+            <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 24px' }}>Notification preferences</h2>
+
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {[
+                { key: 'vouch_received' as const, label: 'New vouch received', description: 'Get notified when someone vouches for you' },
+                { key: 'claim_verified' as const, label: 'Claim verified', description: 'Get notified when your documents are verified' },
+                { key: 'tier_changed' as const, label: 'Tier promoted', description: 'Get notified when your trust tier increases' },
+                { key: 'account_created' as const, label: 'Account created', description: 'Welcome notifications and onboarding updates' },
+              ].map(({ key, label, description }) => (
+                <div
+                  key={key}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 16,
+                    padding: '16px',
+                    borderRadius: 10,
+                    background: '#10141a',
+                    border: '1px solid #424655',
+                  }}
+                >
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{label}</div>
+                    <div style={{ fontSize: 13, color: '#8c90a1' }}>{description}</div>
+                  </div>
+                  <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={prefs[key]}
+                      onChange={(e) => setPrefs({ ...prefs, [key]: e.target.checked })}
+                      style={{
+                        width: 18,
+                        height: 18,
+                        cursor: 'pointer',
+                        accentColor: '#b0c6ff',
+                      }}
+                    />
+                  </label>
+                </div>
+              ))}
+            </div>
+
+            <div style={{ display: 'flex', gap: 10, marginTop: 28, justifyContent: 'flex-end' }}>
+              <button className="btn-ghost">Cancel</button>
+              <button className="btn-primary" onClick={() => {}}>Save preferences</button>
+            </div>
           </div>
         )}
 

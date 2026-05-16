@@ -1,6 +1,7 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { hashPassword, signToken } from "@/lib/auth";
 import { generateUniqueNodeId } from "@/lib/nodeId";
+import { createNotification } from "@/lib/notifications";
 import type { ApiResponse, MandatoryDocType, SkillTag } from "@/types";
 
 // POST /api/auth/register
@@ -97,6 +98,16 @@ export async function POST(request: Request): Promise<Response> {
   if (error) {
     return Response.json({ success: false, error: "Registration failed" } satisfies ApiResponse<never>, { status: 500 });
   }
+
+  // Create welcome notification
+  await createNotification({
+    user_id: data.id,
+    type: 'account_created',
+    title: 'Welcome to CivicTrust',
+    detail: 'Start building your trust profile',
+    icon: 'person_add',
+    color: '#8c90a1',
+  });
 
   return Response.json({
     success: true,

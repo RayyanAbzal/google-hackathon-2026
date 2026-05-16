@@ -8,7 +8,7 @@ import Sidebar from '@/components/civic/Sidebar'
 import Icon from '@/components/civic/Icon'
 import EgoGraph from '@/components/civic/svg/EgoGraph'
 import { useSidebar } from '@/components/civic/SidebarProvider'
-import type { ApiResponse, Claim, Session, TrustTier } from '@/types'
+import type { ApiResponse, Claim, Session, TrustTier, Notification } from '@/types'
 import { getDisplayFirstName, protectedFetch, requireSession, updateStoredSession } from '@/app/_lib/session'
 
 const CIRCUMFERENCE = 276.46
@@ -32,6 +32,11 @@ function claimBadge(status: string): string {
   return status.toUpperCase()
 }
 
+const FALLBACK_EVIDENCE = [
+  { icon: 'id_card', title: 'Passport', sub: '6 vouches', color: '#40e56c', badge: 'VERIFIED' },
+  { icon: 'school', title: 'Medical Degree', sub: '2 vouches', color: '#40e56c', badge: 'VERIFIED' },
+  { icon: 'receipt_long', title: 'Utility bill', sub: 'Awaiting review', color: '#fbbf24', badge: 'PENDING' },
+]
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -39,6 +44,7 @@ export default function DashboardPage() {
   const [session, setSession] = useState<Session | null>(null)
   const [claims, setClaims] = useState<Claim[]>([])
   const [claimsLoaded, setClaimsLoaded] = useState(false)
+  const [notifications, setNotifications] = useState<Notification[]>([])
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -63,6 +69,13 @@ export default function DashboardPage() {
         })
         .catch(() => {})
         .finally(() => setClaimsLoaded(true))
+        .catch(() => setClaims([]))
+
+      protectedFetch<Notification[]>('/api/notifications?limit=3', current)
+        .then((json) => {
+          if (json.success) setNotifications(json.data)
+        })
+        .catch(() => setNotifications([]))
     })
   }, [router])
 
@@ -217,6 +230,42 @@ export default function DashboardPage() {
             >
               <Icon name="add" size={16} /> Add another claim
             </Link>
+          </div>
+          {/* Activity */}
+          <div style={{ border: '1px solid #424655', borderRadius: 12, padding: 22, background: '#181c22' }}>
+            <h2 style={{ fontSize: 16, fontWeight: 600, margin: '0 0 16px' }}>Recent activity</h2>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+              {notifications.length === 0 ? (
+                <div style={{ fontSize: 13, color: '#8c90a1', padding: '20px 0' }}>No activity yet</div>
+              ) : (
+                notifications.map((n) => {
+                  const time = new Date(n.created_at)
+                  const now = new Date()
+                  const diffMs = now.getTime() - time.getTime()
+                  const diffMins = Math.floor(diffMs / 60000)
+                  const diffHours = Math.floor(diffMs / 3600000)
+                  const diffDays = Math.floor(diffMs / 86400000)
+                  let timeStr = 'just now'
+                  if (diffMins < 60) timeStr = `${diffMins}m ago`
+                  else if (diffHours < 24) timeStr = `${diffHours}h ago`
+                  else if (diffDays < 7) timeStr = `${diffDays}d ago`
+                  else timeStr = time.toLocaleDateString()
+
+                  return (
+                    <div key={n.id} style={{ display: 'flex', gap: 12 }}>
+                      <div style={{ width: 32, height: 32, borderRadius: '50%', background: `${n.color}18`, border: `1px solid ${n.color}40`, color: n.color, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                        <Icon name={n.icon} size={14} />
+                      </div>
+                      <div>
+                        <div style={{ fontWeight: 600, fontSize: 14 }}>{n.title}</div>
+                        <div style={{ fontSize: 12, color: '#c2c6d8', marginTop: 2 }}>{n.detail}</div>
+                        <div style={{ fontSize: 11, color: '#8c90a1', marginTop: 4 }}>{timeStr}</div>
+                      </div>
+                    </div>
+                  )
+                })
+              )}
+            </div>
           </div>
         </div>
       </main>
