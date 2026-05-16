@@ -15,6 +15,7 @@ export default function MeshGraph({
   highlight = '#40e56c',
   seed = 1,
 }: MeshGraphProps) {
+  const r2 = (n: number) => Math.round(n * 100) / 100
   const rand = (i: number) => {
     const x = Math.sin(seed * 9301 + i * 49297) * 233280
     return x - Math.floor(x)
@@ -23,9 +24,9 @@ export default function MeshGraph({
   const nodes: { x: number; y: number; r: number; kind: string }[] = []
   for (let i = 0; i < N; i++) {
     nodes.push({
-      x: 40 + rand(i) * (width - 80),
-      y: 40 + rand(i + 100) * (height - 80),
-      r: 2 + rand(i + 200) * 3,
+      x: r2(40 + rand(i) * (width - 80)),
+      y: r2(40 + rand(i + 100) * (height - 80)),
+      r: r2(2 + rand(i + 200) * 3),
       kind: rand(i + 300) > 0.78 ? 'hl' : rand(i + 400) > 0.4 ? 'mid' : 'dim',
     })
   }
@@ -50,7 +51,7 @@ export default function MeshGraph({
       </defs>
       {edges.map(([i, j, d], k) => {
         const a = nodes[i], b = nodes[j]
-        const op = Math.max(0.05, 0.35 - d / 600)
+        const op = r2(Math.max(0.05, 0.35 - d / 600))
         return (
           <line
             key={k}
