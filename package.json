@@ -9,7 +9,7 @@
     "lint": "eslint",
     "seed": "tsx scripts/seed.ts",
     "seed:wipe": "tsx scripts/seed.ts --wipe",
-    "seed:gov": "tsx scripts/seedGov.ts"
+    "seed:gov": "tsx scripts/seedGov.ts",
     "prepare": "husky"
   },
   "dependencies": {
