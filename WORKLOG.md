@@ -1,49 +1,109 @@
 # WORKLOG
 
-**Updated:** 2026-05-16 — PLAN LOCKED. Ready for implementation.
+**Updated:** 2026-05-16 — scaffold committed, PR #2 open, team ready to build
 
 ## Active task
-Plan finalised. Waiting for team to pick app name, then write implementation plan.
+PR #2 open — waiting for Ray to merge to main so team can pull and start
 
 ## Phase
-Planning → Implementation (transition)
-
-## Key decisions — LOCKED
-
-- **Platform:** Web app, laptop-optimised demo
-- **Auth:** Node ID + 4-digit PIN. No email. No facial recognition (cut — too complex).
-- **Claims: 3 types only:** Identity, Credential, Work. Resource + Information claims cut.
-- **Screens: 3 only:** Onboarding, Profile+Claims, Map
-- **Cut hard:** facial recognition, tinder swipe, dispute mechanic, verify queue (Screen 4), resource claims, info claims, score decay, voice, offline/PWA, P05
-- **Trust score formula (build):** `score = min(100, claims_verified * 15 + vouches * 10)`
-- **Doc verification:** Gemini Vision reads name/DOB/doc type. Name must match across all docs.
-- **Vouch + Flag only** (no dispute in UI). Flag triggers penalty cascade (-15pts to vouchers).
-- **Gov hierarchy:** L0 (hardcoded seed) → L1 (NHS/Met/council, pre-seeded) → L2 (75+) → L3 (50+)
-- **All demo data fake:** 200 Londoners, 3 gov anchors, Dr. Osei, fake Sarah docs
-- **Lore anchor:** CivicTrust deployed at T+6h post-flare by emergency coalition
-- **User value:** Verified = NHS/Met/councils accept as temp staff credential
-- **Wow:** skill pins on map, live counter (X/9M), vouch arc animation (stretch)
-- **Demo close:** "142 are doctors. First hospital ward reopens tomorrow. Not from a server. From people."
-- **Build estimate:** 13–14h (realistic for 28h hackathon after cuts)
-
-## Team roles
-- Ray: Gemini Vision, seed script, heatmap, glue, architecture
-- Aryan: Supabase schema, API routes, trust score, penalty cascade, realtime
-- Hemish: score ring, profile card, claim form, vouch/flag UI, polish
-- Maalav: onboarding page, profile page, map page, routing
-
-## Build order
-1. Seed script + Supabase schema + register/login
-2. Claim submit + Gemini Vision + trust score + profile
-3. QR vouch + flag + penalty
-4. Heatmap + skill pins + counter + polish
-
-## Open (only thing blocking implementation plan)
-- **App name** — TBD. Pick one: ANCHOR, VOUCH, NODE, THREAD, CivicTrust
+Implementation (transition — scaffold done, coding starts next)
 
 ## Files changed this session
-- `docs/theme.md` — created
-- `memory/*` — theme, status, solution plan all updated
-- `.superpowers/.../final.html` — definitive locked plan with roles, hard cuts, advisor warning
-- `scripts/test-face-match.mjs` — created (face-match test, not needed since facial recog cut)
+- `CLAUDE.md` — updated with locked decisions, layer ownership, Ray owns DB
 - `WORKLOG.md` — this file
+- `docs/theme.md` — BLACKOUT theme reference
+- `docs/PLAN.md` — full implementation plan (idea, flows, score, demo path, anti-scam)
+- `docs/TASKS.md` — per-person task list with DB schema + demo checklist
+- `src/types/index.ts` — shared TS types + calculateScore + getTier functions
+- `src/app/api/CLAUDE.md` — Aryan + Tao API route map and rules
+- `src/components/CLAUDE.md` — Hemish component list + priority order
+- `src/app/CLAUDE.md` — Maalav page list + session handling + priority
+- `src/lib/CLAUDE.md` — Ray lib ownership + Supabase table reference
+- `scripts/test-face-match.mjs` — Gemini face-match test (reference, not in build)
+- `memory/project_hackathon_theme.md` — full lore, constraints, OTB angles
+- `memory/project_solution_plan.md` — full plan + all confirmed decisions
+- `memory/project_marking_rubric.md` — 100pt rubric with per-category actions
+- `memory/MEMORY.md` — index updated
+
+## Next step
+Ray merges PR #2 to main → all team members pull → Ray creates Supabase project + runs DB schema → development starts
+
+## Open questions
+- **App name** — still TBD. Only unresolved item. CivicTrust is placeholder.
+
+## Key decisions — ALL LOCKED
+
+**Product:**
+- App: CivicTrust (name TBD) — trust score + Yellow Pages + post for help
+- Primary problems: P01, P03, P04, P07, P08
+- Platform: web app, laptop-optimised for demo
+- Lore: deployed at T+6h post-flare by emergency coalition
+
+**Auth:**
+- Node ID (BLK-XXXXX-LDN) issued on signup → user sets @username after first login
+- Login: node ID (or @username) + 4-digit PIN
+- No email, no facial recognition, no biometrics, no device fingerprinting
+
+**Mandatory doc at signup:**
+- Passport OR driving licence required during registration
+- Everyone starts Unverified regardless — vouches push to 50+
+
+**Score thresholds (updated):**
+- 0–49: Unverified (default)
+- 50–89: Verified
+- 90–94: Trusted
+- 95–100: Gov Official
+
+**Score formula (build):**
+`score = min(100, claims_verified * 15 + vouches_received * 10)`
+
+**Claims: 3 types only:**
+Identity, Credential, Work. Resource + Info claims cut.
+
+**Screens: 4 pages:**
+Register/Login, Profile+Claims, Map, /find (Yellow Pages), /help (post for help)
+
+**Yellow Pages (/find):**
+- Map + search: public (no login)
+- Profile details: login required
+- Search by skill OR resource
+
+**Post for help (/help):**
+- Any registered user can post
+- Only Verified (50+) can respond
+- Posts expire 24h
+
+**Gov hierarchy:**
+- L0: 3 hardcoded seed accounts (T+6h coalition)
+- L1: NHS admin, Met Police, council (pre-seeded at 95)
+- L2: Trusted (90+)
+- L3: Verified (50+)
+
+**Anti-scam (backend only, no UI):**
+- Name consistency: Gemini reads name from doc, must match registered name
+- Doc dedup: content hash, reject duplicates
+- Penalty cascade: vouch fraudster = -15pts, drop below 50 = lose Verified
+- Rate limiting: 5 vouches/24h, 3 claims/10 min
+
+**Cut hard (confirmed):**
+Facial recognition, device fingerprinting, Face ID, biometrics, tinder swipe, dispute mechanic, verify queue, resource claims, info claims, score decay, voice input, offline/PWA, P05, external DB checks
+
+**Demo data:** all fake and pre-seeded. Seed script = Ray's first task.
+
+**Team roles:**
+- Ray: full-stack lead, Gemini Vision, DB + seed script, heatmap, architecture
+- Aryan: API routes (auth, claims, vouch, score) — `src/app/api/`
+- Tao: API routes (rate limit, realtime, find, help) — `src/app/api/`
+- Hemish: UI components (score ring, profile, forms) — `src/components/`
+- Maalav: pages + routing — `src/app/` (non-API)
+
+**Build phases:**
+1. (~3h) Seed script + DB schema + register + login
+2. (~4h) Claims + Gemini + score + profile UI
+3. (~4h) QR vouch + Yellow Pages + post for help
+4. (~4h) Heatmap + map pins + counter + polish + demo
+
+**Marking rubric:** Technical 35 (biggest), Idea 30, Design 20, Presentation 15.
+Ship working flows first. Polish second.
+
+**PR:** #2 open at https://github.com/RayyanAbzal/google-hackathon-2026/pull/2
