@@ -1,20 +1,29 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
 import Icon from '@/components/civic/Icon'
+import type { Session } from '@/types'
+import { getInitials, requireSession } from '@/app/_lib/session'
 
 type Tab = 'Profile' | 'Security' | 'Notifications' | 'Privacy'
 const TABS: Tab[] = ['Profile', 'Security', 'Notifications', 'Privacy']
 
 export default function SettingsPage() {
+  const router = useRouter()
   const [activeTab, setActiveTab] = useState<Tab>('Profile')
+  const [session, setSession] = useState<Session | null>(null)
+
+  useEffect(() => {
+    queueMicrotask(() => setSession(requireSession(router)))
+  }, [router])
 
   return (
     <div style={{ background: '#10141a', minHeight: '100vh', color: '#dfe2eb' }}>
       <TopBar />
-      <Sidebar active="settings" />
+      <Sidebar active="settings" session={session} />
       <main className="ml-60 pt-14 px-8 py-8">
 
         <div style={{ marginBottom: 28 }}>
@@ -88,7 +97,7 @@ export default function SettingsPage() {
                     flexShrink: 0,
                   }}
                 >
-                  SM
+                  {getInitials(session?.display_name)}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Profile photo</div>
@@ -105,13 +114,13 @@ export default function SettingsPage() {
                   <label style={{ fontSize: 13, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
                     Full name
                   </label>
-                  <input className="field-input" defaultValue="Sarah Mitchell" />
+                  <input className="field-input" value={session?.display_name ?? ''} readOnly />
                 </div>
                 <div>
                   <label style={{ fontSize: 13, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
                     Display name
                   </label>
-                  <input className="field-input" defaultValue="Sarah M." />
+                  <input className="field-input" value={session?.display_name ?? ''} readOnly />
                 </div>
                 <div>
                   <label style={{ fontSize: 13, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
@@ -143,12 +152,12 @@ export default function SettingsPage() {
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
                   <label style={{ fontSize: 13, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
-                    Node ID
+                    User ID
                   </label>
                   <div style={{ display: 'flex', gap: 8 }}>
                     <input
                       className="field-input"
-                      value="BLK-0471-LDN"
+                      value={session?.user_id ?? ''}
                       disabled
                       style={{ fontFamily: 'monospace', opacity: 0.6 }}
                       readOnly
@@ -159,7 +168,7 @@ export default function SettingsPage() {
                     </button>
                   </div>
                   <p style={{ fontSize: 12, color: '#424655', marginTop: 6 }}>
-                    Your Node ID is permanent and cannot be changed.
+                    Your User ID is permanent and cannot be changed.
                   </p>
                 </div>
               </div>

@@ -1,52 +1,40 @@
 # WORKLOG
 
-**Updated:** 2026-05-16 (session 11)
+**Updated:** 2026-05-16 (session 13)
 
 ## Active task
-Idle — DB provisioned, schema aligned, seed scripts fixed, pushed to dev
+Map wired to live Supabase data + live verified counter with realtime
 
 ## Phase
 implementing
 
 ## Files changed this session
-- `supabase/migrations/0001_init.sql` — full rewrite: password_hash, skill nullable, drop help_posts, rename gov_officials -> gov_anchors, add CHECK constraints, sync RLS policies to live DB
-- `src/lib/CLAUDE.md` — gov_officials -> gov_anchors table name
-- `src/lib/fallbacks.ts` — expand FALLBACK_USERS to 20 boroughs, remove FALLBACK_HELP_POSTS (feature cut)
-- `src/components/map/HeatMap.tsx` — implement D3 choropleth + skill pins (was TODO stub)
-- `src/components/map/SkillPin.tsx` — implement SVG circle with gov ring variant
-- `docs/TASKS.md` — mark Aryan's Supabase setup items done (schema + RLS applied via MCP), flag Realtime as still outstanding
-- `scripts/seed.ts` — fix gov_officials -> gov_anchors (was reverted by hook/process)
-- `scripts/seedGov.ts` — fix gov_officials -> gov_anchors (same)
-- `package.json` / `package-lock.json` — install d3 + @types/d3
-- `PLAN.md` (root) — DELETED (duplicate of docs/PLAN.md)
-- `ROLES.md` (root) — DELETED (stale, covered by AGENTS.md)
+- `src/app/map/page.tsx` — replaced static FALLBACK_USERS with Supabase fetch (verified/trusted/gov_official), added live counter UI, realtime subscription for both count and pins
+- `src/components/map/HeatMap.tsx` — split single effect into two: geojson loads once ([] deps), counts recompute on users change. Added pin tooltips, borough name labels, improved color scale
+- `src/components/civic/TierBadge.tsx` — removed stale 'partial' key from TIER_MAP (not in TrustTier type)
+- `src/lib/fallbacks.ts` — USE_FALLBACKS -> NEXT_PUBLIC_USE_FALLBACKS (was dead in browser bundles)
+- `.env.local` + `.env.local.example` — same rename
 
 **Supabase (via MCP):**
-- Renamed `gov_officials` -> `gov_anchors` in live DB
-- Fixed claims RLS: was SELECT WHERE status='verified' only — changed to SELECT all
-- Added missing INSERT policies for all tables
-- Added `gov_anchors_insert` policy
-- Confirmed all 4 tables live: users, claims, vouches, gov_anchors (all RLS enabled, 0 rows)
-- GEMINI_API_KEY added to .env.local
+- Applied migration: `ALTER PUBLICATION supabase_realtime ADD TABLE users` — realtime now active on users table
+- Verified DB state: 61 verified + 40 trusted + 6 gov_official = 107 users shown on map. Counter shows 107 / 9,000,000
 
 ## Next step
-Run seed script once Aryan confirms Realtime is enabled:
-```
-npx tsx scripts/seed.ts --wipe
-```
-Then verify 200+ rows in Supabase dashboard.
+Demo prep: run seed script one more time with --wipe, then test full demo path end-to-end
 
 ## Open questions
-- Aryan: Enable Realtime on `users` table — Supabase dashboard > Database > Replication > Tables > users > toggle on
 - Aryan: does /api/auth/register call Gemini at signup, or deferred to claims only?
 - Tao: /api/find ETA? Blocks Yellow Pages demo step
-- `skill` defaults to 'Other' at signup — Settings page enough, or needs dedicated edit flow?
+- `skill` defaults to 'Other' at signup — profile edit page needed?
+
+## Known pre-existing issue (not introduced this session)
+**partial tier mismatch:** DB has 40 users with `tier='partial'` but `TrustTier` in `src/types/index.ts` does not include `'partial'` and `getTier()` never produces it. The seed script uses different thresholds (0-29 Unverified, 30-49 Partial...) than the types file (0-24 Unverified, 25-59 Verified...). These users are correctly excluded from the map (partial is not verified+). However, any code path that passes a DB user row directly to `TierBadge` with `tier='partial'` will runtime-crash. Fix before demo: either add 'partial' back to TrustTier, or re-seed with corrected thresholds.
 
 ## Key decisions — LOCKED
 
-**DB table name:** `gov_anchors` (NOT gov_officials). Both seed scripts and migration now aligned. DB renamed via MCP migration.
+**DB table name:** `gov_officials` (renamed from gov_anchors). All code, seeds, migration now aligned.
 
-**Gemini API:** staying with Gemini (not Claude) — GDGC = Google hackathon, judges are Google-affiliated, strategic advantage.
+**Gemini API:** staying with Gemini (not Claude) — GDGC = Google hackathon, strategic advantage.
 
 **Frontend design:** Tactical Resilience dark theme (bg #10141a, primary #b0c6ff, secondary #40e56c). Inline styles for design token colours — not Tailwind classes for colour values. Do not switch patterns.
 
@@ -58,7 +46,11 @@ Then verify 200+ rows in Supabase dashboard.
 
 **Score formula:** `min(100, claims_verified * 15 + vouches_received * 10 + gov_vouched ? 20 : 0)`
 
-**Score thresholds:** 0-29 Unverified | 30-49 Partial | 50-89 Verified | 90-94 Trusted | 95+ Gov Official
+**Score thresholds:** 0-24 Unverified | 25-59 Verified | 60-89 Trusted | 90-100 Gov Official
+
+**Fallback toggle:** `NEXT_PUBLIC_USE_FALLBACKS=true` in `.env.local` (was USE_FALLBACKS — renamed this session)
+
+**Seed:** 207 users live (6 gov + Dr. Osei + 200 Londoners). Password: password123 | Gov: govpassword99. Re-run with --wipe before demo.
 
 **Dedup:** doc content hash is global — same document cannot be used across any account.
 

@@ -56,9 +56,9 @@ CREATE TABLE help_posts (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- gov_anchors
--- gov_anchors (L0 = Emergency Coalition, L1 = NHS/Police/Council)
-CREATE TABLE gov_anchors (
+-- gov_officials
+-- gov_officials (L0 = Emergency Coalition, L1 = NHS/Police/Council)
+CREATE TABLE gov_officials (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id UUID REFERENCES users(id) ON DELETE CASCADE,
   level INTEGER NOT NULL CHECK (level IN (0, 1)),
@@ -71,7 +71,7 @@ ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE claims ENABLE ROW LEVEL SECURITY;
 ALTER TABLE vouches ENABLE ROW LEVEL SECURITY;
 ALTER TABLE help_posts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE gov_anchors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE gov_officials ENABLE ROW LEVEL SECURITY;
 
 -- users
 CREATE POLICY "users_public_read" ON users FOR SELECT USING (true);
@@ -87,12 +87,12 @@ CREATE POLICY "claims_insert_own" ON claims FOR INSERT WITH CHECK (true);
 CREATE POLICY "vouches_public_read" ON vouches FOR SELECT USING (true);
 CREATE POLICY "vouches_insert" ON vouches FOR INSERT WITH CHECK (true);
 
--- gov_anchors
-CREATE POLICY "gov_anchors_public_read" ON gov_anchors FOR SELECT USING (true);
-CREATE POLICY "gov_anchors_insert" ON gov_anchors FOR INSERT WITH CHECK (true);
+-- gov_officials
+CREATE POLICY "gov_officials_public_read" ON gov_officials FOR SELECT USING (true);
+CREATE POLICY "gov_officials_insert" ON gov_officials FOR INSERT WITH CHECK (true);
 
 -- Gov anchors readable by authenticated users
-CREATE POLICY "gov_anchors_read_auth" ON gov_anchors FOR SELECT USING (true);
+CREATE POLICY "gov_officials_read_auth" ON gov_officials FOR SELECT USING (true);
 -- ─── Realtime ─────────────────────────────────────────────────────────────────
 -- Enable realtime on users table in Supabase dashboard:
 -- Database > Replication > Tables > users > toggle on
