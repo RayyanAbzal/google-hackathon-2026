@@ -10,7 +10,7 @@
 | Route | Owner | Purpose |
 |---|---|---|
 | `POST /api/auth/register` | Aryan | Create user + validate mandatory doc via Gemini |
-| `POST /api/auth/login` | Aryan | Node ID or @username + PIN auth, return session |
+| `POST /api/auth/login` | Aryan | Node ID or @username + password auth, return session |
 | `PATCH /api/auth/username` | Aryan | Set @username after first login |
 | `POST /api/claims` | Aryan | Submit new claim, trigger Gemini Vision |
 | `GET /api/claims/[userId]` | Aryan | Get user's claims list |

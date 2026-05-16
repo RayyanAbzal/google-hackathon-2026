@@ -8,6 +8,7 @@
 ## RAY — Full-stack Lead
 
 **Branch:** `ray/setup`
+**Scaffold done.** All files exist as owner-commented stubs. Pull `dev` and implement the bodies.
 **Do these first — everyone else is blocked without the database.**
 
 ### Phase 1 — Database + Seed (do immediately)
@@ -21,8 +22,8 @@ CREATE TABLE users (
   node_id TEXT UNIQUE NOT NULL,
   username TEXT UNIQUE,
   display_name TEXT NOT NULL,
-  skill TEXT NOT NULL,
-  pin_hash TEXT NOT NULL,
+  skill TEXT DEFAULT 'Other',
+  password_hash TEXT NOT NULL,
   score INTEGER DEFAULT 0,
   tier TEXT DEFAULT 'unverified',
   borough TEXT,
@@ -65,9 +66,9 @@ CREATE TABLE gov_officials (
 
 - [ ] Enable Supabase Realtime on the `users` table (for live score updates)
 - [ ] Set RLS policies — users can read all users, only write their own row
-- [ ] Update `src/lib/supabase.ts` with working Supabase client using env vars
-- [ ] Update `src/lib/gemini.ts` — implement `analyseDocument(imageBase64: string, docType: string)` that returns `{ extracted_name, doc_type, confidence, institution }`
-- [ ] Write seed script at `scripts/seed.ts`:
+- [x] `src/lib/supabase.ts` — minimal client scaffold done. Add env vars to `.env.local` and it works.
+- [ ] `src/lib/gemini.ts` — scaffold with function signatures exists. Implement `analyseDocument()` body (Gemini Vision call + response parsing).
+- [ ] `scripts/seed.ts` — scaffold written with correct structure. Run it once Supabase is provisioned.
   - 3 Gov Official accounts (NHS admin, Met Police, London Council) — score 100, tier 'gov_official'
   - Dr. James Osei — score 74, Doctor, Southwark, pre-vouched
   - 200 fake Londoners across all boroughs — mix of scores 30–90, skill tags, vouch chains
@@ -98,6 +99,7 @@ CREATE TABLE gov_officials (
 ## ARYAN — Backend API (core) + Supabase
 
 **Branch:** `aryan/api-core`
+**Scaffold done.** All route files exist as 501 stubs with owner comments. Pull `dev` and implement.
 **Owns:** Supabase project setup, all core API routes.
 
 ### Supabase setup (do first — blocks everyone)
@@ -111,17 +113,17 @@ CREATE TABLE gov_officials (
 
 #### Auth
 - [ ] `POST /api/auth/register`
-  - Input: `{ display_name, pin, skill, doc_image_base64, doc_type }` — doc_type must be 'passport', 'id_card', or 'driving_licence' (at least one required at signup)
+  - Input: `{ display_name, password, doc_image_base64, doc_type }` — doc_type must be 'passport' or 'driving_licence' (required at signup, no skill selection)
   - Calls Ray's `analyseDocument()` to read the mandatory doc
   - Checks extracted name matches display_name (name consistency)
-  - Hashes PIN with bcrypt
+  - Hashes password with bcrypt
   - Generates node_id: `BLK-${randomInt(10000,99999)}-LDN`
   - Creates user row: score 0, tier 'unverified'
   - Returns: `{ node_id, display_name, score: 0, tier: 'unverified' }`
 
 - [ ] `POST /api/auth/login`
-  - Input: `{ identifier, pin }` — identifier is node_id OR @username
-  - Validates PIN hash match
+  - Input: `{ identifier, password }` — identifier is node_id OR @username
+  - Validates password hash match
   - Returns: `{ node_id, username, display_name, score, tier, skill }`
   - Store this in localStorage as `civictrust_session` on client
 
@@ -185,8 +187,8 @@ function getTier(score: number): TrustTier {
   return 'unverified'
 }
 
-function calculateScore(claimsVerified: number, vouchesReceived: number): number {
-  return Math.min(100, claimsVerified * 15 + vouchesReceived * 10)
+function calculateScore(input: { claims_verified: number, vouches_received: number, gov_vouched: boolean }): number {
+  return Math.min(100, input.claims_verified * 15 + input.vouches_received * 10 + (input.gov_vouched ? 20 : 0))
 }
 ```
 
@@ -201,6 +203,7 @@ function calculateScore(claimsVerified: number, vouchesReceived: number): number
 ## TAO — Backend API (features)
 
 **Branch:** `tao/api-features`
+**Scaffold done.** `src/middleware.ts`, `src/app/api/find/route.ts`, `src/lib/realtime.ts`, `scripts/seedGov.ts` all exist as stubs. Pull `dev` and implement.
 **Depends on:** Ray's DB schema, Aryan's auth routes working.
 
 ### All tasks
@@ -236,6 +239,7 @@ function calculateScore(claimsVerified: number, vouchesReceived: number): number
 ## HEMISH — Frontend Components
 
 **Branch:** `hemish/components`
+**Scaffold done.** All component files exist as owner-commented stubs under `src/components/`. Pull `dev` and implement.
 **Depends on:** Ray's types file, Aryan's auth routes to test with real data.
 
 ### All components to build (in priority order)
@@ -298,15 +302,15 @@ function calculateScore(claimsVerified: number, vouchesReceived: number): number
 ## MAALAV — Pages + Routing
 
 **Branch:** `maalav/pages`
+**Scaffold done.** All page files exist as owner-commented stubs under `src/app/`. Pull `dev` and implement.
 **Depends on:** Hemish's components, Aryan's auth routes, Tao's find route.
 
 ### All pages to build (in priority order)
 
 #### 1. Register page (do first — nothing works without auth)
 - [ ] `src/app/(auth)/register/page.tsx`
-  - Step 1: Enter display_name + skill selector dropdown
-  - Step 2: Set 4-digit PIN
-  - Step 3: Upload mandatory doc (passport, national ID card, or driving licence) — file input, required — at least one must be submitted to complete registration
+  - Step 1: Enter display_name + set password
+  - Step 2: Upload mandatory doc (passport or driving licence) — file input, required — at least one must be submitted to complete registration. No skill selection at signup.
   - Calls `POST /api/auth/register`
   - On success: stores session to localStorage, redirects to `/profile/[node_id]`
   - Show loading while Gemini reads document
@@ -315,7 +319,7 @@ function calculateScore(claimsVerified: number, vouchesReceived: number): number
 #### 2. Login page
 - [ ] `src/app/(auth)/login/page.tsx`
   - Input: node ID (BLK-XXXXX-LDN) OR @username
-  - Input: 4-digit PIN
+  - Input: password
   - Calls `POST /api/auth/login`
   - On success: stores session, redirects to `/profile/[username]`
   - If no username set yet: prompts to set @username via `PATCH /api/auth/username`
@@ -419,8 +423,14 @@ export function getTier(score: number): TrustTier {
   return 'unverified'
 }
 
-export function calculateScore(claimsVerified: number, vouchesReceived: number): number {
-  return Math.min(100, claimsVerified * 15 + vouchesReceived * 10)
+export interface ScoreInput {
+  claims_verified: number
+  vouches_received: number
+  gov_vouched: boolean
+}
+
+export function calculateScore(input: ScoreInput): number {
+  return Math.min(100, input.claims_verified * 15 + input.vouches_received * 10 + (input.gov_vouched ? 20 : 0))
 }
 ```
 
