@@ -11,7 +11,7 @@
 **Do these first — everyone else is blocked without the database.**
 
 ### Phase 1 — Database + Seed (do immediately)
-- [ ] Create Supabase project, get URL + anon key, add to `.env.local`
+- [ ] Create Supabase project, get URL + anon key, add to `.env.local` *(Aryan owns this — coordinate)*
 - [ ] Run this SQL in Supabase SQL editor to create all tables:
 
 ```sql
@@ -68,7 +68,7 @@ CREATE TABLE gov_anchors (
 - [ ] Update `src/lib/supabase.ts` with working Supabase client using env vars
 - [ ] Update `src/lib/gemini.ts` — implement `analyseDocument(imageBase64: string, docType: string)` that returns `{ extracted_name, doc_type, confidence, institution }`
 - [ ] Write seed script at `scripts/seed.ts`:
-  - 3 gov anchor accounts (NHS admin, Met Police, London Council) — score 100
+  - 3 gov anchor accounts (NHS admin, Met Police, London Council) — score 100, tier 'gov_official'
   - Dr. James Osei — score 74, Doctor, Southwark, pre-vouched
   - 200 fake Londoners across all boroughs — mix of scores 30–90, skill tags, vouch chains
   - Pre-built vouch relationships so map looks populated
@@ -82,7 +82,7 @@ CREATE TABLE gov_anchors (
   - Export as React component, Maalav embeds in map page
 - [ ] Skill pins layer on map (`src/components/map/SkillPin.tsx`)
   - Coloured circle per skill: green = Doctor, blue = Engineer, purple = Legal, amber = Builder
-  - Click pin → opens profile card (if logged in)
+  - Click pin → opens profile card (requires login)
 - [ ] Live counter component: "X / 9,000,000 verified" — subscribes to Supabase realtime
 - [ ] QR vouch flow glue — coordinate with Hemish (QR display) + Aryan (vouch API)
 
@@ -95,22 +95,29 @@ CREATE TABLE gov_anchors (
 
 ---
 
-## ARYAN — Backend API (core)
+## ARYAN — Backend API (core) + Supabase
 
 **Branch:** `aryan/api-core`
-**Depends on:** Ray's DB schema being live first.
+**Owns:** Supabase project setup, all core API routes.
+
+### Supabase setup (do first — blocks everyone)
+- [ ] Create Supabase project, get URL + anon key
+- [ ] Share URL + anon key with Ray for `.env.local`
+- [ ] Run the SQL schema (from Ray's task list above) in Supabase SQL editor
+- [ ] Enable Realtime on `users` table
+- [ ] Set RLS policies — read all users, write own row only
 
 ### All routes to build
 
 #### Auth
 - [ ] `POST /api/auth/register`
-  - Input: `{ display_name, pin, skill, doc_image_base64, doc_type }`
-  - Calls Ray's `analyseDocument()` to read doc
+  - Input: `{ display_name, pin, skill, doc_image_base64, doc_type }` — doc_type must be 'passport' or 'driving_licence'
+  - Calls Ray's `analyseDocument()` to read the mandatory doc
   - Checks extracted name matches display_name (name consistency)
   - Hashes PIN with bcrypt
   - Generates node_id: `BLK-${randomInt(10000,99999)}-LDN`
-  - Creates user row with score 0, tier 'unverified'
-  - Returns: `{ node_id, display_name, score: 0 }`
+  - Creates user row: score 0, tier 'unverified'
+  - Returns: `{ node_id, display_name, score: 0, tier: 'unverified' }`
 
 - [ ] `POST /api/auth/login`
   - Input: `{ identifier, pin }` — identifier is node_id OR @username
@@ -122,16 +129,17 @@ CREATE TABLE gov_anchors (
   - Input: `{ node_id, username }` — requires auth
   - Validates username is unique and valid format (@handle)
   - Returns: `{ username }`
+  - Note: only settable after first login — this is how users personalise their temp node ID
 
 #### Claims
 - [ ] `POST /api/claims`
   - Input: `{ user_id, type, doc_image_base64, doc_type }`
   - Calls `analyseDocument()` → gets extracted_name, confidence
-  - Checks extracted_name matches user.display_name — if not, reject
+  - Checks extracted_name matches user.display_name — if not, reject with error
   - Hashes doc content for dedup — if hash exists for this user, reject silently
   - Inserts claim row with status 'verified' if confidence > 0.7, else 'pending'
   - Recalculates score: `min(100, claims_verified * 15 + vouches * 10)`
-  - Updates user.score and user.tier
+  - Updates user.score and user.tier using `getTier()` from `src/types/index.ts`
   - Returns: `{ claim_id, score, tier }`
 
 - [ ] `GET /api/claims/[userId]`
@@ -159,12 +167,28 @@ CREATE TABLE gov_anchors (
 #### Users
 - [ ] `GET /api/users/[username]`
   - Returns public profile: username, display_name, skill, score, tier, borough, claims
-  - Requires auth (cannot view profiles without logging in)
+  - Requires auth (cannot view individual profiles without logging in)
 
 #### Score
 - [ ] `GET /api/score/[userId]`
   - Returns current score + tier
   - Used by realtime subscription to confirm score after updates
+
+### Score + tier logic — use in all routes
+```typescript
+// In src/types/index.ts — shared by all routes
+function getTier(score: number): TrustTier {
+  if (score >= 95) return 'gov_official'
+  if (score >= 90) return 'trusted'
+  if (score >= 50) return 'verified'
+  if (score >= 30) return 'partial'
+  return 'unverified'
+}
+
+function calculateScore(claimsVerified: number, vouchesReceived: number): number {
+  return Math.min(100, claimsVerified * 15 + vouchesReceived * 10)
+}
+```
 
 ### Rules for all routes
 - Return `{ success: boolean, data: T | null, error: string | null }` always
@@ -190,9 +214,10 @@ CREATE TABLE gov_anchors (
 #### Yellow Pages API
 - [ ] `GET /api/find`
   - Query params: `skill` (optional), `resource` (optional), `borough` (optional)
+  - Search by EITHER skill (Doctor, Engineer, Legal, Builder) OR resource (insulin, water, tools)
   - Returns grouped results: `[{ borough, skill, count, avg_score }]`
   - No auth required for counts
-  - Example: `GET /api/find?skill=Doctor` → `[{ borough: 'Southwark', count: 3, avg_score: 67 }]`
+  - Example: `GET /api/find?skill=Doctor&borough=Southwark` → `[{ borough: 'Southwark', count: 3, avg_score: 67 }]`
 
 #### Realtime
 - [ ] Set up Supabase realtime subscription helper at `src/lib/realtime.ts`
@@ -203,8 +228,8 @@ CREATE TABLE gov_anchors (
 #### Gov hierarchy seeding helper
 - [ ] Helper function `scripts/seedGov.ts` — creates L0 + L1 anchor accounts
   - Coordinate with Ray's main seed script
-  - L0: 3 accounts, score 100, organisation: 'Emergency Coalition'
-  - L1: NHS admin (score 95), Met Police (score 95), London Council (score 95)
+  - L0: 3 accounts, score 100, tier 'gov_official', organisation: 'Emergency Coalition'
+  - L1: NHS admin (score 100), Met Police (score 100), London Council (score 100), GOV badge
 
 ---
 
@@ -219,14 +244,14 @@ CREATE TABLE gov_anchors (
 - [ ] `src/components/trust/TrustRing.tsx`
   - SVG circle, stroke-dasharray to show score as arc
   - Framer Motion animation from old score to new score on change
-  - Colours: green (≥50 Verified), amber (30–49), red (<30)
+  - Colours by tier: red = Unverified/Partial (<50), green = Verified (50–89), amber = Trusted (90–94), gold = Gov Official (95+)
   - Shows score number in centre
   - Props: `{ score: number, size?: number }`
 
 #### 2. ScoreBadge
 - [ ] `src/components/trust/ScoreBadge.tsx`
   - Shows tier as a pill badge
-  - Unverified = red, Verified = green, Trusted = amber, Gov Official = orange with 🏛 icon
+  - Unverified = red, Partial = orange, Verified = green, Trusted = amber, Gov Official = gold with GOV label
   - Props: `{ tier: TrustTier }`
 
 #### 3. ProfileCard
@@ -281,10 +306,11 @@ CREATE TABLE gov_anchors (
 - [ ] `src/app/(auth)/register/page.tsx`
   - Step 1: Enter display_name + skill selector dropdown
   - Step 2: Set 4-digit PIN
-  - Step 3: Upload mandatory doc (passport OR driving licence) — file input
+  - Step 3: Upload mandatory doc (passport OR driving licence) — file input, required
   - Calls `POST /api/auth/register`
-  - On success: stores session to localStorage, redirects to `/profile/[username]`
+  - On success: stores session to localStorage, redirects to `/profile/[node_id]`
   - Show loading while Gemini reads document
+  - Note: @username is set after first login, not at registration
 
 #### 2. Login page
 - [ ] `src/app/(auth)/login/page.tsx`
@@ -292,6 +318,7 @@ CREATE TABLE gov_anchors (
   - Input: 4-digit PIN
   - Calls `POST /api/auth/login`
   - On success: stores session, redirects to `/profile/[username]`
+  - If no username set yet: prompts to set @username via `PATCH /api/auth/username`
 
 #### 3. Profile page
 - [ ] `src/app/profile/[username]/page.tsx`
@@ -307,11 +334,11 @@ CREATE TABLE gov_anchors (
   - Embeds Ray's HeatMap component
   - Skill pins layer
   - Live counter "X / 9,000,000 verified"
-  - Click pin → sidebar showing area skill breakdown
+  - Click pin → sidebar showing area skill breakdown (profile link requires auth, already handled)
 
-#### 5. Find page — Yellow Pages (public)
+#### 5. Find page — Yellow Pages
 - [ ] `src/app/find/page.tsx`
-  - NO auth required for search + map view
+  - Search is public (no login required)
   - Search input: "Search skill or resource..."
   - Filter pills: Doctor, Engineer, Legal, Builder, Insulin, Water, Tools...
   - Results: grouped by borough — "Southwark: 3 verified doctors"
@@ -345,9 +372,59 @@ const session = JSON.parse(sessionStr)
 
 ## SHARED — all team
 
+### Types — define in `src/types/index.ts` before anything else
+
+```typescript
+export type TrustTier = 'unverified' | 'partial' | 'verified' | 'trusted' | 'gov_official'
+
+export interface User {
+  id: string
+  node_id: string
+  username: string | null
+  display_name: string
+  skill: string
+  score: number
+  tier: TrustTier
+  borough: string | null
+  created_at: string
+}
+
+export interface Claim {
+  id: string
+  user_id: string
+  type: 'identity' | 'credential' | 'work'
+  status: 'pending' | 'verified' | 'rejected'
+  doc_type: string
+  extracted_name: string | null
+  extracted_institution: string | null
+  confidence: number | null
+  vouches: number
+  flags: number
+  created_at: string
+}
+
+export interface Vouch {
+  id: string
+  voucher_id: string
+  vouchee_id: string
+  created_at: string
+}
+
+export function getTier(score: number): TrustTier {
+  if (score >= 95) return 'gov_official'
+  if (score >= 90) return 'trusted'
+  if (score >= 50) return 'verified'
+  if (score >= 30) return 'partial'
+  return 'unverified'
+}
+
+export function calculateScore(claimsVerified: number, vouchesReceived: number): number {
+  return Math.min(100, claimsVerified * 15 + vouchesReceived * 10)
+}
+```
+
 ### Before starting
-- [ ] Pull main after Ray merges the scaffold PR
-- [ ] Read your own CLAUDE.md file in your owned directory
+- [ ] Pull dev after Ray merges the scaffold PR
 - [ ] Read `docs/PLAN.md` for full context
 - [ ] Import ALL types from `src/types/index.ts` — never define types elsewhere
 - [ ] Use `src/lib/supabase.ts` for DB — never create new clients
@@ -370,15 +447,16 @@ Set `USE_FALLBACKS=true` in `.env.local` — activates mock data from `src/lib/f
 ## DEMO CHECKLIST — Ray runs through this before presenting
 
 - [ ] Seed script run — 200 users + gov anchors + Dr. Osei visible on map
-- [ ] Register as Sarah Mitchell + Doctor tag + passport upload → node ID issued
-- [ ] Username set to @sarah_mitchell
-- [ ] Submit medical degree → Gemini reads "UCL Medicine" → score rises to 15
-- [ ] Submit NHS employer letter → score rises to 30
+- [ ] Register as Sarah Mitchell + Doctor tag + passport upload → node ID issued, tier: Unverified
+- [ ] First login → set username to @sarah_mitchell
+- [ ] Submit medical degree → Gemini reads "UCL Medicine" → score 15, tier: Unverified
+- [ ] Submit NHS employer letter → score 30, tier: Partial
 - [ ] Bad actor test: upload doc with wrong name → rejected ("name doesn't match")
-- [ ] Dr. Osei (pre-seeded, score 74) QR-vouches Sarah → score hits 50 → Verified badge
-- [ ] Doctor pin appears on London map in Southwark
+- [ ] Dr. Osei (pre-seeded, score 74) QR-vouches Sarah → score 40, still Partial
+- [ ] A second vouch → score 50 → tier: **Verified** → Doctor pin appears on London map in Southwark
 - [ ] Map: 200+ pins visible, counter shows "1,847 / 9,000,000"
 - [ ] Yellow Pages (/find): search "Doctor" → shows "Southwark: 3 verified doctors"
+- [ ] Yellow Pages: search "insulin" (resource) → returns relevant results
 - [ ] `USE_FALLBACKS=true` tested — app still works if Gemini is down
 - [ ] Full demo rehearsed at least twice before presenting
 
