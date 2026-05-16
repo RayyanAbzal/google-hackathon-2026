@@ -1,0 +1,74 @@
+@startuml
+skinparam backgroundColor #ffffff
+skinparam defaultFontSize 13
+skinparam roundcorner 8
+skinparam activityBorderColor #444444
+skinparam activityArrowColor #333333
+
+title CivicTrust — QR Vouch Flow
+
+|#dae8fc|Vouchee (receives vouch)|
+start
+:Open profile page;
+:Tap "Show QR Code";
+
+|#fff2cc|Frontend|
+:Generate QR from node_id;
+:Display QR on screen;
+
+|#dae8fc|Vouchee (receives vouch)|
+:Show screen to Voucher;
+
+|#f8cecc|Voucher (gives vouch)|
+:Open camera / scan tab;
+:Scan QR code;
+
+|#fff2cc|Frontend|
+:Decode node_id from QR;
+:Show "Vouch for [name]?" confirmation;
+
+|#f8cecc|Voucher (gives vouch)|
+:Confirm "Yes, I know this person IRL";
+
+|#e1d5e7|API|
+:Authenticate voucher session;
+if (Voucher score >= 50 (Verified)?) then (no)
+  :Return 403 — must be Verified to vouch;
+  |#fff2cc|Frontend|
+  :Show "You need Verified status to vouch";
+  stop
+else (yes)
+endif
+
+:Check vouch rate limit\n(max 5 vouches / 24h for voucher);
+if (Rate limit hit?) then (yes)
+  :Return 429 — daily limit reached;
+  |#fff2cc|Frontend|
+  :Show cooldown message;
+  stop
+else (no)
+endif
+
+:Check: already vouched this person?;
+if (Duplicate vouch?) then (yes)
+  :Return 409 — already vouched;
+  stop
+else (no)
+endif
+
+:Record vouch in Supabase\n(voucher_id, vouchee_id, timestamp);
+:Update vouchee score: +10;
+:Return 200 + new scores;
+
+|#fff2cc|Frontend|
+:Both devices receive Supabase Realtime event;
+:Animate score rings on both devices;
+
+note right
+  Warning shown at vouch time:
+  "If this person is found fraudulent,
+  your score drops 15 pts."
+end note
+
+stop
+@enduml

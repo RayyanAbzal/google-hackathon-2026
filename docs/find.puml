@@ -1,0 +1,64 @@
+@startuml
+skinparam backgroundColor #ffffff
+skinparam defaultFontSize 13
+skinparam roundcorner 8
+skinparam activityBorderColor #444444
+skinparam activityArrowColor #333333
+
+title CivicTrust — Yellow Pages (Find) Flow
+
+|#dae8fc|Visitor (any user)|
+start
+:Open /find — no login required;
+:Enter search term\n(skill: "Doctor" / "Engineer"\nor resource: "insulin" / "water");
+:Optional: filter by borough\n(Southwark / Hackney / etc.);
+
+|#fff2cc|Frontend|
+:GET /api/find?skill=...&area=...;
+
+|#e1d5e7|API|
+:Query Supabase for Verified users\n(score >= 50, matching skill + area);
+:Return aggregated results\n(count per borough, anonymous pins — no names);
+
+|#fff2cc|Frontend|
+:Render map with skill pins;
+:Render result list\n("3 verified doctors in Southwark");
+
+note right
+  Names never shown in public results.
+  Only: skill + borough + count.
+end note
+
+|#dae8fc|Visitor (any user)|
+:Tap a result to view profile;
+
+|#e1d5e7|API|
+:Check session cookie;
+if (Logged in?) then (no)
+  :Return 401;
+  |#fff2cc|Frontend|
+  :Redirect to Login with return URL;
+  stop
+else (yes)
+endif
+
+:Fetch user's own trust tier;
+if (Viewer tier >= Verified (score 50+)?) then (no)
+  :Return 403 — insufficient tier;
+  |#fff2cc|Frontend|
+  :Redirect to Profile page;
+  :Show: "Submit a claim to reach Verified";
+  stop
+else (yes)
+endif
+
+:Return full profile data\n(name, score, skill, borough, claims summary);
+
+|#fff2cc|Frontend|
+:Render full profile view;
+
+|#dae8fc|Visitor (any user)|
+:View verified person's profile;
+
+stop
+@enduml

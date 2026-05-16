@@ -1,0 +1,48 @@
+@startuml
+skinparam backgroundColor #ffffff
+skinparam defaultFontSize 13
+skinparam roundcorner 8
+skinparam activityBorderColor #444444
+skinparam activityArrowColor #333333
+
+title CivicTrust — Login Flow
+
+|#dae8fc|User|
+start
+:Enter Node ID (BLK-XXXXX-LDN)\nor @username;
+:Enter 4-digit PIN;
+
+|#fff2cc|Frontend|
+:POST /api/auth/login;
+
+|#e1d5e7|API|
+:Resolve @username -> node_id\n(if username provided);
+if (User found?) then (no)
+  :Return 404;
+  |#fff2cc|Frontend|
+  :Show "Node ID not found";
+  stop
+else (yes)
+endif
+
+:Verify PIN hash against stored hash;
+if (PIN correct?) then (no)
+  :Return 401;
+  |#fff2cc|Frontend|
+  :Show "Incorrect PIN";
+  stop
+else (yes)
+endif
+
+:Issue session token;
+:Return 200 + user payload\n(node_id, score, tier, skill);
+
+|#fff2cc|Frontend|
+:Store session on device;
+:Redirect to Profile page;
+
+|#dae8fc|User|
+:Authenticated;
+
+stop
+@enduml

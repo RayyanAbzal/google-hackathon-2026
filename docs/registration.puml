@@ -1,0 +1,75 @@
+@startuml
+skinparam backgroundColor #ffffff
+skinparam defaultFontSize 13
+skinparam roundcorner 8
+skinparam activityBorderColor #444444
+skinparam activityArrowColor #333333
+
+title CivicTrust — User Registration Flow
+
+|#dae8fc|User|
+start
+:Enter display name;
+:Set 4-digit PIN;
+:Select skill\n(Doctor / Engineer / Lawyer / Builder);
+:Upload mandatory doc\n(Passport **or** Driving Licence **or** National ID);
+
+|#fff2cc|Frontend|
+:Validate required fields;
+if (Fields complete?) then (no)
+  :Show inline error;
+  |#dae8fc|User|
+  :Fix and resubmit;
+  |#fff2cc|Frontend|
+else (yes)
+  :POST /api/auth/register;
+endif
+
+|#e1d5e7|API|
+:Receive registration payload;
+:Forward doc image to Gemini Vision;
+
+|#d5e8d4|Gemini Vision|
+:Extract name, doc type, issuing authority;
+:Return structured JSON;
+
+|#e1d5e7|API|
+if (Extraction successful?) then (no)
+  :Return 422 — unreadable doc;
+  |#fff2cc|Frontend|
+  :Prompt: "Upload a clearer image";
+  stop
+else (yes)
+endif
+
+:Check name match\n(doc name vs entered name);
+if (Names match?) then (no)
+  :Return 422 — name mismatch;
+  |#fff2cc|Frontend|
+  :Show rejection reason;
+  stop
+else (yes)
+endif
+
+:Check doc dedup\n(hash already seen?);
+if (Duplicate?) then (yes)
+  :Return 409 — already submitted;
+  |#fff2cc|Frontend|
+  :Show rejection reason;
+  stop
+else (no)
+endif
+
+:Create user row in Supabase\n(score = 0, tier = Unverified);
+:Generate Node ID — BLK-XXXXX-LDN;
+:Return 201 + node_id;
+
+|#fff2cc|Frontend|
+:Store session token on device;
+:Display Node ID to user;
+
+|#dae8fc|User|
+:Set @username\n(first-login prompt);
+
+stop
+@enduml

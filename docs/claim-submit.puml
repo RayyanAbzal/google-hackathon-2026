@@ -1,0 +1,84 @@
+@startuml
+skinparam backgroundColor #ffffff
+skinparam defaultFontSize 13
+skinparam roundcorner 8
+skinparam activityBorderColor #444444
+skinparam activityArrowColor #333333
+
+title CivicTrust — Claim Submission Flow
+
+|#dae8fc|User|
+start
+:Select claim type\n(Identity / Credential / Work);
+:Photograph or upload doc;
+
+|#fff2cc|Frontend|
+:POST /api/claims/submit\n(doc image + claim type);
+
+|#e1d5e7|API|
+:Check rate limit\n(max 3 submissions / 10 min);
+if (Rate limit exceeded?) then (yes)
+  :Return 429;
+  |#fff2cc|Frontend|
+  :Show cooldown timer;
+  stop
+else (no)
+endif
+
+:Forward doc image to Gemini Vision;
+
+|#d5e8d4|Gemini Vision|
+:Extract: name, doc type,\ninstitution, date;
+:Return structured JSON;
+
+|#e1d5e7|API|
+if (Extraction successful?) then (no)
+  :Return 422 — unreadable doc;
+  |#fff2cc|Frontend|
+  :Prompt: "Upload a clearer image";
+  stop
+else (yes)
+endif
+
+:Name consistency check\n(doc name vs user's registered name);
+if (Names match?) then (no)
+  :Return 422 — name mismatch;
+  |#fff2cc|Frontend|
+  :Show rejection: "Name does not match";
+  stop
+else (yes)
+endif
+
+:Doc dedup check\n(SHA-256 hash already seen?);
+if (Duplicate doc?) then (yes)
+  :Return 409 — already submitted;
+  |#fff2cc|Frontend|
+  :Show "This document was already submitted";
+  stop
+else (no)
+endif
+
+:Store claim as Verified;
+:Update score: +15;
+:Check new tier threshold;
+if (Score >= 50?) then (yes)
+  :Set tier = Verified;
+  :Appear on map + Yellow Pages;
+else (no)
+  if (Score >= 30?) then (yes)
+    :Set tier = Partial;
+  else (no)
+  endif
+endif
+
+:Return 201 + new score + tier;
+
+|#fff2cc|Frontend|
+:Animate score ring to new value;
+:Show success toast;
+
+|#dae8fc|User|
+:See updated score and claim in list;
+
+stop
+@enduml
