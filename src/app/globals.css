@@ -235,3 +235,28 @@
 .leaflet-container .leaflet-popup {
   filter: drop-shadow(0 6px 24px rgba(0, 0, 0, 0.75));
 }
+
+/* Leaflet zoom controls dark theme */
+.leaflet-control-zoom a {
+  background: #181c22 !important;
+  color: #dfe2eb !important;
+  border-color: #424655 !important;
+}
+.leaflet-control-zoom a:hover {
+  background: #1e2530 !important;
+  color: #ffffff !important;
+}
+.leaflet-bar {
+  border: 1px solid #424655 !important;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
+}
+
+/* Borough path transitions */
+.leaflet-interactive {
+  transition: fill 0.2s ease, fill-opacity 0.2s ease, stroke 0.15s ease;
+}
+
+/* Selected borough glow */
+.selected-borough {
+  filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.5));
+}

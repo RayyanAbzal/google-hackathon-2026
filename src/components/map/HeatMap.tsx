@@ -154,7 +154,7 @@ export function HeatMap({
   const heatColorScale = useMemo(
     () => d3.scaleLinear<string>()
       .domain([0, maxWeightedCount])
-      .range(['#0b1220', '#7cc4ff'])
+      .range(['#0b1220', '#b0c6ff'])
       .clamp(true),
     [maxWeightedCount]
   )
@@ -171,8 +171,9 @@ export function HeatMap({
       return {
         fillColor: '#38bdf8',
         fillOpacity: 0.96,
-        color: '#ffffff',
-        weight: 3,
+        color: '#7dd3fc',
+        weight: 4,
+        className: 'selected-borough',
       }
     }
 
@@ -261,7 +262,7 @@ export function HeatMap({
       <MapFlyController borough={focusedBorough} centroids={centroids} />
       <MapResetController active={resetView || resetToOverview} />
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         subdomains="abcd"
         maxZoom={19}
