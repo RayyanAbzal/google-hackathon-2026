@@ -18,6 +18,7 @@ export default function TopBar({ authMode = 'auto' }: TopBarProps) {
   const [bellOpen, setBellOpen] = useState(false)
   const [avatarOpen, setAvatarOpen] = useState(false)
   const [notifications, setNotifications] = useState<Notification[]>([])
+  const [unreadCount, setUnreadCount] = useState(0)
   const bellRef = useRef<HTMLDivElement>(null)
   const avatarRef = useRef<HTMLDivElement>(null)
   const router = useRouter()
@@ -32,14 +33,31 @@ export default function TopBar({ authMode = 'auto' }: TopBarProps) {
       const response = await protectedFetch<Notification[]>(
         '/api/notifications?limit=5',
         session
-      )
+      ) as ApiResponse<Notification[]> & { unread_count?: number }
       if (response.success) {
         setNotifications(response.data)
+        setUnreadCount(response.unread_count ?? 0)
       }
     }
 
     fetchNotifications()
   }, [session])
+
+  function openBell() {
+    const opening = !bellOpen
+    setBellOpen(opening)
+    setAvatarOpen(false)
+    if (opening && session) {
+      const unread = notifications.filter(n => !n.read)
+      unread.forEach(n => {
+        protectedFetch(`/api/notifications/${n.id}`, session, { method: 'PATCH' })
+      })
+      if (unread.length > 0) {
+        setNotifications(prev => prev.map(n => ({ ...n, read: true })))
+        setUnreadCount(0)
+      }
+    }
+  }
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -87,8 +105,11 @@ export default function TopBar({ authMode = 'auto' }: TopBarProps) {
         {showSessionControls && session ? (
           <>
             <div ref={bellRef} style={{ position: 'relative' }}>
-              <button onClick={() => { setBellOpen(v => !v); setAvatarOpen(false) }} style={{ width: 36, height: 36, borderRadius: 8, background: bellOpen ? 'rgba(176,198,255,0.1)' : 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c2c6d8' }}>
+              <button onClick={openBell} style={{ position: 'relative', width: 36, height: 36, borderRadius: 8, background: bellOpen ? 'rgba(176,198,255,0.1)' : 'transparent', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#c2c6d8' }}>
                 <Icon name="notifications" size={20} />
+                {unreadCount > 0 && (
+                  <span style={{ position: 'absolute', top: 6, right: 6, width: 8, height: 8, borderRadius: '50%', background: '#ff4444', border: '2px solid #10141a' }} />
+                )}
               </button>
               {bellOpen && (
                 <div style={{ position: 'absolute', top: '100%', right: 0, marginTop: 8, width: 320, background: '#181c22', border: '1px solid #424655', borderRadius: 12, padding: 16, zIndex: 100 }}>
