@@ -1,6 +1,13 @@
 -- CivicTrust — schema updates
 -- Run this in Supabase SQL Editor AFTER schema.sql has been applied.
 
+-- ─── 0. Auth field rename + skill nullable ────────────────────────────────
+-- Auth changed from 4-digit PIN to password (min 6 chars).
+ALTER TABLE users RENAME COLUMN pin_hash TO password_hash;
+
+-- skill is no longer required at registration.
+ALTER TABLE users ALTER COLUMN skill DROP NOT NULL;
+
 -- ─── 1. borough NOT NULL ──────────────────────────────────────────────────
 -- Backfill any nulls from early registrations before adding the constraint.
 UPDATE users SET borough = 'Westminster' WHERE borough IS NULL;
@@ -8,7 +15,7 @@ ALTER TABLE users ALTER COLUMN borough SET NOT NULL;
 
 -- ─── 2. Global unique index on content_hash ──────────────────────────────
 -- Prevents the same physical document being used across multiple accounts.
--- Partial index so NULL (unset) rows are not constrained.
+-- Partial index so NULL rows are not constrained.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_claims_content_hash_global
   ON claims(content_hash)
   WHERE content_hash IS NOT NULL;
@@ -32,8 +39,7 @@ CREATE INDEX IF NOT EXISTS idx_claims_user_created
 CREATE INDEX IF NOT EXISTS idx_claims_user_status
   ON claims(user_id, status);
 
--- ─── 7. Check constraint: users.tier ─────────────────────────────────────
--- Standardised values — gov_official, not gov.
+-- ─── 7. Check constraint: users.tier (standardised to gov_official) ───────
 ALTER TABLE users ADD CONSTRAINT users_tier_check
   CHECK (tier IN ('unverified', 'partial', 'verified', 'trusted', 'gov_official'));
 
@@ -41,5 +47,5 @@ ALTER TABLE users ADD CONSTRAINT users_tier_check
 ALTER TABLE gov_anchors ADD CONSTRAINT gov_anchors_level_check
   CHECK (level IN (0, 1));
 
--- Note: claims.type, claims.status, and help_posts.urgency already have inline
--- CHECK constraints from schema.sql — no action needed for those.
+-- Note: claims.type, claims.status, and help_posts.urgency already have
+-- inline CHECK constraints from schema.sql — no action needed for those.

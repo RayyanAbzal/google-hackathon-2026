@@ -1,14 +1,13 @@
 // Owner: Ray
 // Run: npx tsx scripts/seed.ts
-// Run with --wipe flag to delete all existing seed data first: npx tsx scripts/seed.ts --wipe
+// Run with --wipe to reset first: npx tsx scripts/seed.ts --wipe
 //
 // Creates:
 //   - Gov anchors (via seedGov.ts)
 //   - Dr. James Osei — BLK-00471-LDN, score 74, Doctor, Southwark
-//   - 200 fake Londoners across 20 boroughs (scores 0-94, skill tags, claims)
+//   - 200 fake Londoners across 20 boroughs (scores 0-94, all skill types)
 //
-// All seed accounts use PIN: 0000 (except gov which use 9999)
-// Re-running is safe — existing seed rows are wiped first if --wipe is passed.
+// All seed accounts password: password123 | Gov accounts password: govpassword99
 
 import { createClient } from '@supabase/supabase-js'
 import { createHash } from 'crypto'
@@ -36,8 +35,8 @@ const supabase = createClient(
   env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-function hashPin(pin: string): string {
-  return createHash('sha256').update(pin).digest('hex')
+function hashPassword(password: string): string {
+  return createHash('sha256').update(password).digest('hex')
 }
 
 function nodeId(n: number): string {
@@ -48,7 +47,7 @@ function contentHash(userId: string, docType: string, n: number): string {
   return createHash('sha256').update(`${userId}:${docType}:${n}`).digest('hex')
 }
 
-const DEMO_PIN = hashPin('0000')
+const DEMO_PASSWORD = hashPassword('password123')
 
 const BOROUGHS = [
   'Southwark', 'Westminster', 'Hackney', 'Tower Hamlets', 'Lewisham',
@@ -78,20 +77,19 @@ const DOC_TYPES = ['passport', 'degree', 'employer_letter', 'nhs_card', 'driving
 // Score distribution across 200 users
 function targetScore(i: number): number {
   const bucket = i % 10
-  if (bucket < 3) return (i % 3) * 10              // 0, 10, 20 — unverified
-  if (bucket < 5) return 30 + (i % 20)              // 30-49 — partial
-  if (bucket < 8) return 50 + (i % 35)              // 50-84 — verified
-  return 90 + (i % 5)                               // 90-94 — trusted
+  if (bucket < 3) return (i % 3) * 10        // 0, 10, 20 — unverified
+  if (bucket < 5) return 30 + (i % 20)        // 30-49 — partial
+  if (bucket < 8) return 50 + (i % 35)        // 50-84 — verified
+  return 90 + (i % 5)                          // 90-94 — trusted
 }
 
-// How many verified claims to insert for a given score
 function claimsForScore(score: number): number {
   return Math.min(5, Math.ceil(score / 15))
 }
 
-async function insertUser(i: number) {
-  const first = FIRST_NAMES[i % FIRST_NAMES.length]
-  const last  = LAST_NAMES[(i * 7 + 3) % LAST_NAMES.length]
+async function insertUser(i: number): Promise<void> {
+  const first   = FIRST_NAMES[i % FIRST_NAMES.length]
+  const last    = LAST_NAMES[(i * 7 + 3) % LAST_NAMES.length]
   const borough = BOROUGHS[i % BOROUGHS.length]
   const skill   = SKILLS[(i * 3) % SKILLS.length]
   const score   = targetScore(i)
@@ -100,10 +98,10 @@ async function insertUser(i: number) {
   const { data: user, error } = await supabase
     .from('users')
     .insert({
-      node_id:      nodeId(10001 + i),
-      display_name: `${first} ${last}`,
+      node_id:       nodeId(10001 + i),
+      display_name:  `${first} ${last}`,
       skill,
-      pin_hash:     DEMO_PIN,
+      password_hash: DEMO_PASSWORD,
       score,
       tier,
       borough,
@@ -111,50 +109,44 @@ async function insertUser(i: number) {
     .select('id')
     .single()
 
-  if (error || !user) {
-    console.error(`  Failed user ${i}:`, error?.message)
-    return
-  }
+  if (error || !user) { console.error(`  Failed user ${i}:`, error?.message); return }
 
-  // Insert verified claims to back up the score
   const numClaims = claimsForScore(score)
   for (let c = 0; c < numClaims; c++) {
     const docType = DOC_TYPES[c % DOC_TYPES.length]
     await supabase.from('claims').insert({
-      user_id:      user.id,
-      type:         c === 0 ? 'identity' : c === 1 ? 'credential' : 'work',
-      status:       'verified',
-      doc_type:     docType,
+      user_id:        user.id,
+      type:           c === 0 ? 'identity' : c === 1 ? 'credential' : 'work',
+      status:         'verified',
+      doc_type:       docType,
       extracted_name: `${first} ${last}`,
-      confidence:   0.95,
-      content_hash: contentHash(user.id, docType, c),
+      confidence:     0.95,
+      content_hash:   contentHash(user.id, docType, c),
     })
   }
 }
 
-async function seedDrOsei() {
+async function seedDrOsei(): Promise<void> {
   console.log('  Seeding Dr. James Osei...')
-
   await supabase.from('users').delete().eq('node_id', 'BLK-00471-LDN')
 
   const { data: user, error } = await supabase
     .from('users')
     .insert({
-      node_id:      'BLK-00471-LDN',
-      username:     'dr_osei',
-      display_name: 'Dr. James Osei',
-      skill:        'Doctor',
-      pin_hash:     DEMO_PIN,
-      score:        74,
-      tier:         'verified',
-      borough:      'Southwark',
+      node_id:       'BLK-00471-LDN',
+      username:      'dr_osei',
+      display_name:  'Dr. James Osei',
+      skill:         'Doctor',
+      password_hash: DEMO_PASSWORD,
+      score:         74,
+      tier:          'verified',
+      borough:       'Southwark',
     })
     .select('id')
     .single()
 
   if (error || !user) { console.error('  Failed Dr. Osei:', error?.message); return }
 
-  // 4 verified claims + 1 vouch from existing users (≈ 4*15 + 1*10 = 70, close enough to 74)
   const docs = ['passport', 'degree', 'employer_letter', 'nhs_card']
   for (let i = 0; i < docs.length; i++) {
     await supabase.from('claims').insert({
@@ -167,17 +159,15 @@ async function seedDrOsei() {
       content_hash:   contentHash(user.id, docs[i], i),
     })
   }
-
   console.log('  ✓ Dr. James Osei (BLK-00471-LDN, Southwark, score 74)')
 }
 
-async function seed() {
+async function seed(): Promise<void> {
   const wipe = process.argv.includes('--wipe')
-
   console.log('🌱 CivicTrust seed starting...')
 
   if (wipe) {
-    console.log('  --wipe: clearing existing seed data...')
+    console.log('  --wipe: clearing all data...')
     await supabase.from('gov_anchors').delete().not('id', 'is', null)
     await supabase.from('vouches').delete().not('id', 'is', null)
     await supabase.from('claims').delete().not('id', 'is', null)
@@ -185,29 +175,22 @@ async function seed() {
     console.log('  Wiped.')
   }
 
-  // Gov anchors first (vouch chains depend on them)
   await seedGovAnchors()
-
-  // Dr. Osei — the demo vouch character
   await seedDrOsei()
 
-  // 200 fake Londoners
   console.log('  Seeding 200 Londoners...')
   const BATCH = 20
   for (let i = 0; i < 200; i += BATCH) {
     await Promise.all(
       Array.from({ length: Math.min(BATCH, 200 - i) }, (_, j) => insertUser(i + j))
     )
-    process.stdout.write(`  ${i + BATCH >= 200 ? 200 : i + BATCH}/200\r`)
+    process.stdout.write(`  ${Math.min(i + BATCH, 200)}/200\r`)
   }
   console.log('  ✓ 200 Londoners seeded.          ')
 
-  // Quick sanity check
-  const { count } = await supabase
-    .from('users')
-    .select('*', { count: 'exact', head: true })
-  console.log(`\n✅ Seed complete — ${count} total users in DB`)
-  console.log('   Demo PINs: seed users = 0000 | gov accounts = 9999')
+  const { count } = await supabase.from('users').select('*', { count: 'exact', head: true })
+  console.log(`\n✅ Done — ${count} total users in DB`)
+  console.log('   Demo passwords: seed users = password123 | gov accounts = govpassword99')
 }
 
 seed().catch((e) => { console.error(e); process.exit(1) })

@@ -31,15 +31,15 @@ const supabase = createClient(
   env.SUPABASE_SERVICE_ROLE_KEY!
 )
 
-function hashPin(pin: string): string {
-  return createHash('sha256').update(pin).digest('hex')
+function hashPassword(password: string): string {
+  return createHash('sha256').update(password).digest('hex')
 }
 
 function nodeId(n: number): string {
   return `BLK-${String(n).padStart(5, '0')}-LDN`
 }
 
-const GOV_PIN = hashPin('9999') // gov accounts use PIN 9999
+const GOV_PASSWORD = hashPassword('govpassword99')
 
 const L0_ACCOUNTS = [
   { node: 1, name: 'Emergency Coalition Alpha', username: 'coalition_a' },
@@ -48,72 +48,61 @@ const L0_ACCOUNTS = [
 ]
 
 const L1_ACCOUNTS = [
-  { node: 10, name: 'NHS Emergency Admin',    username: 'nhs_admin',     org: 'NHS' },
-  { node: 11, name: 'Met Police Command',     username: 'met_police',    org: 'Met Police' },
+  { node: 10, name: 'NHS Emergency Admin',    username: 'nhs_admin',      org: 'NHS' },
+  { node: 11, name: 'Met Police Command',     username: 'met_police',     org: 'Met Police' },
   { node: 12, name: 'London Council Office',  username: 'london_council', org: 'London Council' },
 ]
 
 export async function seedGovAnchors(): Promise<void> {
   console.log('  Seeding gov anchors...')
 
-  // Wipe existing gov data to allow re-runs
   await supabase.from('gov_anchors').delete().not('id', 'is', null)
   await supabase.from('users').delete().in('node_id', [
     ...L0_ACCOUNTS.map(a => nodeId(a.node)),
     ...L1_ACCOUNTS.map(a => nodeId(a.node)),
   ])
 
-  // ─── L0 Emergency Coalition ─────────────────────────────────────────────
+  // ─── L0 Emergency Coalition ────────────────────────────────────────────
   for (const acc of L0_ACCOUNTS) {
     const { data: user, error } = await supabase
       .from('users')
       .insert({
-        node_id:      nodeId(acc.node),
-        username:     acc.username,
-        display_name: acc.name,
-        skill:        'Other',
-        pin_hash:     GOV_PIN,
-        score:        100,
-        tier:         'gov_official',
-        borough:      'Westminster',
+        node_id:       nodeId(acc.node),
+        username:      acc.username,
+        display_name:  acc.name,
+        skill:         'Other',
+        password_hash: GOV_PASSWORD,
+        score:         100,
+        tier:          'gov_official',
+        borough:       'Westminster',
       })
       .select('id')
       .single()
 
     if (error || !user) { console.error(`  Failed L0 ${acc.name}:`, error?.message); continue }
-
-    await supabase.from('gov_anchors').insert({
-      user_id:      user.id,
-      level:        0,
-      organisation: 'Emergency Coalition',
-    })
+    await supabase.from('gov_anchors').insert({ user_id: user.id, level: 0, organisation: 'Emergency Coalition' })
     console.log(`  ✓ L0 ${acc.name} (${nodeId(acc.node)})`)
   }
 
-  // ─── L1 Institutional ───────────────────────────────────────────────────
+  // ─── L1 Institutional ──────────────────────────────────────────────────
   for (const acc of L1_ACCOUNTS) {
     const { data: user, error } = await supabase
       .from('users')
       .insert({
-        node_id:      nodeId(acc.node),
-        username:     acc.username,
-        display_name: acc.name,
-        skill:        'Other',
-        pin_hash:     GOV_PIN,
-        score:        95,
-        tier:         'gov_official',
-        borough:      'Westminster',
+        node_id:       nodeId(acc.node),
+        username:      acc.username,
+        display_name:  acc.name,
+        skill:         'Other',
+        password_hash: GOV_PASSWORD,
+        score:         95,
+        tier:          'gov_official',
+        borough:       'Westminster',
       })
       .select('id')
       .single()
 
     if (error || !user) { console.error(`  Failed L1 ${acc.name}:`, error?.message); continue }
-
-    await supabase.from('gov_anchors').insert({
-      user_id:      user.id,
-      level:        1,
-      organisation: acc.org,
-    })
+    await supabase.from('gov_anchors').insert({ user_id: user.id, level: 1, organisation: acc.org })
     console.log(`  ✓ L1 ${acc.name} (${nodeId(acc.node)})`)
   }
 }
