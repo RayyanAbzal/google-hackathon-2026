@@ -18,7 +18,7 @@ All routes are implemented with the Tactical Resilience design system. Maalav's 
 | `/vouch` | Done | QR display, User ID lookup, request carousel, confirm vouch flow |
 | `/find` | Done | Public search + filters + expandable result details |
 | `/find-help` | Done | Alias route for `/find` |
-| `/map` | Done | Heatmap, skill pins, stat panel, legend |
+| `/map` | Removed | Merged into `/find` — full-width map hero + listings on one page |
 | `/settings` | Done | Profile/Security/Notifications/Privacy tabs |
 | `/profile/[username]` | Done | Protected profile view with score + claims |
 

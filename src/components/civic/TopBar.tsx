@@ -60,7 +60,7 @@ export default function TopBar({ authMode = 'auto' }: TopBarProps) {
       style={{
         position: 'fixed', top: 0, left: 0, right: 0, height: 56,
         background: 'rgba(16,20,26,0.88)', backdropFilter: 'blur(12px)',
-        borderBottom: '1px solid #424655', zIndex: 50,
+        borderBottom: '1px solid #424655', zIndex: 9999,
         display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 20px',
       }}
     >

@@ -1,33 +1,33 @@
 # WORKLOG
 
-**Updated:** 2026-05-16 (latest session)
+**Updated:** 2026-05-16 (session — Yellow Pages / heatmap overhaul)
 
 ## Active task
-Merged Trust Map into /find (Yellow Pages + heatmap combined), wired YP listings to Supabase DB
+Yellow Pages + heatmap redesign: full-width map hero, search-driven skill density, map audit fixes
 
 ## Phase
 implementing
 
 ## Files changed this session
-- `src/app/find/page.tsx` — full rewrite: Leaflet HeatMap replaces SVG map; fetches real listings from /api/find/listings; dynamic borough pills per category; YP listing click highlights borough on heatmap; credential chips in modal; profile link if username exists; single API fetch powers both map and listings
-- `src/app/api/find/listings/route.ts` — NEW: returns per-user YPListingRow[] with credentials aggregated from claims (degree/nhs_card/employer_letter filtered), used by find page
-- `src/app/map/page.tsx` — DELETED (merged into /find)
-- `src/components/civic/Sidebar.tsx` — removed "Trust Map" nav entry from AUTH_NAV and PUBLIC_NAV (now redundant)
-- `src/components/map/HeatMap.tsx` — hover now only changes outline color/weight (not fill), POI pins made solid/opaque with white border so they show above density circles
+- `src/app/find/page.tsx` — full rewrite: full-width map hero above listings; search drives heatmap skill filter (type "doctor" → map shows doctor density); borough chips replace category pills; search→skill overlay hint + live counter sub-count now skill-aware; hardcoded POIs removed; category pills removed; Aid Hub card removed from listings; Status filter removed; icon colors now match skill colors
+- `src/components/map/HeatMap.tsx` — empty boroughs now visible (`#1a2235` / opacity 0.55 instead of near-black 0.18); permanent Tooltip labels on POI markers (removed since POIs removed from find page); tooltip now shows top-2 skills e.g. "Southwark — 14 verified · 5 Doctor · 3 Engineer"; onBoroughClick signature simplified to `(name: string) => void` (dropped unused users param); Tooltip imported
+- `src/components/map/map-data.ts` — removed dead `getDisplayName` function; removed its usage in people sort
+- `src/app/CLAUDE.md` — updated /map row from "Done" to "Removed — merged into /find"
+- `src/app/find/page.tsx.tmp` — deleted (stale scratch file)
 
 ## Next step
-Visual QA: verify listings load from DB, borough pills populate, modal shows credentials, heatmap pins visible, hover outline-only behavior confirmed in browser
+Visual QA in browser — verify: search "doctor" changes map to green density + counter shows doctor count; click borough on map filters listings; modal opens with credentials; tsc stays clean
 
 ## Open questions
-- Scoring formula multipliers still not tuned to tier boundaries (deferred from prev session)
-- seed users all have username=null so "View Profile" won't show in demo — need demo user (@dr_osei) to have tier=verified/trusted and borough set to see the full flow
+- Scoring formula multipliers still not tuned to tier boundaries (deferred)
+- seed users all have username=null so "View Profile" won't show — need @dr_osei to have username set for demo flow
+- Yellow Pages still feels like a directory — discussed "Post for Help" bulletin board feature but user confirmed NOT building it
 
 ## Key decisions
-- No separate listings table needed — users table IS the YP data source (skill+tier+borough+claims)
-- Single fetch to /api/find/listings powers both Leaflet heatmap AND YP results (no duplicate Supabase call from client)
-- Borough pills are dynamic per active category (only show boroughs with data for that skill group)
-- YP listing click → setActiveBorough(row.borough) → map highlights that borough
-- Hover on heatmap: only outline changes (color+weight), fill/fillOpacity untouched — prevents dark boroughs flashing light blue
-- POI pins: solid fill (fillOpacity 0.85) + white border — visible above density glow circles
-- "View Profile →" only shown when username is non-null (seed users won't show it, real registered users will)
-- /map route deleted; sidebar Trust Map entry removed; find-help alias unchanged
+- Combined /find page (map + listings) confirmed — no separate /map route
+- Search drives heatmap `activeSkill`: SEARCH_TO_SKILL mapping covers plurals, synonyms (lawyer→Legal, nhs→Nurse, construction→Builder)
+- Map overlay counter sub-count is skill-aware: searching "builder" → shows "146 builders verified"; no search → shows medical/engineers/legal breakdown
+- Borough chips now show ALL boroughs (not per-category) — simpler, works with search replacing category filter
+- Hardcoded POIs (NHS Emergency HQ, Aid Hubs etc.) removed from map — user wants these searchable not pinned
+- Empty borough style: `#1a2235` fill at 0.55 opacity — visually distinct from "low density" (dark vs dim blue)
+- Icon colors in listings now match skill colors from heatmap legend (Doctor=green, Engineer=blue, Legal=purple, Builder=amber)

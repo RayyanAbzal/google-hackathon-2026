@@ -145,7 +145,7 @@ export function HeatMap({
     <MapContainer
       center={[51.505, -0.09]}
       zoom={10}
-      className="h-full w-full overflow-hidden rounded-xl"
+      style={{ height: '100%', width: '100%', overflow: 'hidden' }}
       zoomControl
     >
       <TileLayer
