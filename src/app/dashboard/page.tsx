@@ -48,6 +48,7 @@ export default function DashboardPage() {
   const [networkNodes, setNetworkNodes] = useState<Array<{ type: 'gov' | 'community'; display_name?: string; username?: string | null; tier?: string; vouched_at?: string }>>([])
   const [networkLoaded, setNetworkLoaded] = useState(false)
   const [ptsThisWeek, setPtsThisWeek] = useState<number | null>(null)
+  const [vouchesReceived, setVouchesReceived] = useState<number>(0)
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -59,9 +60,12 @@ export default function DashboardPage() {
       fetch(`/api/score/${current.user_id}`)
         .then(r => r.json() as Promise<ApiResponse<{ score: number; tier: TrustTier; passport_count: number; other_doc_count: number; vouches_received: number; eligible_vouches: number; weighted_vouch_points: number; gov_vouched: boolean }>>)
         .then(json => {
-          if (json.success && (json.data.score !== current.score || json.data.tier !== current.tier)) {
-            const updated = updateStoredSession({ score: json.data.score, tier: json.data.tier })
-            if (updated) setSession(updated)
+          if (json.success) {
+            setVouchesReceived(json.data.vouches_received)
+            if (json.data.score !== current.score || json.data.tier !== current.tier) {
+              const updated = updateStoredSession({ score: json.data.score, tier: json.data.tier })
+              if (updated) setSession(updated)
+            }
           }
         })
         .catch(() => {})
@@ -115,11 +119,16 @@ export default function DashboardPage() {
 
   const ptsToNext = useMemo(() => {
     if (score >= 91) return null
-    if (tier === 'unverified') return '2 VOUCHES TO VERIFIED'
+    if (tier === 'unverified') {
+      const remaining = Math.max(0, 2 - vouchesReceived)
+      if (remaining === 0) return 'VERIFIED'
+      if (remaining === 1) return '1 MORE VOUCH TO VERIFIED'
+      return `${remaining} VOUCHES TO VERIFIED`
+    }
     if (score >= 55) return `${91 - score} PTS TO GOV. VERIFIED`
     if (score >= 20) return `${55 - score} PTS TO TRUSTED`
     return `${20 - score} PTS TO VERIFIED`
-  }, [score, tier])
+  }, [score, tier, vouchesReceived])
 
   const evidenceRows = useMemo(() => {
     return claims.slice(0, 3).map(c => ({

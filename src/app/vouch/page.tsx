@@ -327,9 +327,6 @@ export default function VouchPage() {
                 <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Vouch confirmed</div>
                 <div style={{ fontSize: 14, color: '#8c90a1' }}>
                   {foundUser?.display_name} has been vouched.
-                  {voucheeNewScore !== null && (
-                    <> Their score is now <strong style={{ color: '#40e56c' }}>{voucheeNewScore}</strong>.</>
-                  )}
                 </div>
                 <button onClick={handleReject} className="btn-ghost" style={{ marginTop: 20 }}>
                   Vouch someone else
