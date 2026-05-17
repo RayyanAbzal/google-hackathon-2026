@@ -185,7 +185,7 @@ export default function VouchPage() {
   const vouchPower = session.tier === 'gov_official' ? 10 : session.tier === 'trusted' ? 6.25 : session.tier === 'verified' ? 5 : 0
 
   async function handleFlag(claimId: string) {
-    if (!session) return
+    if (!session || !foundUser) return
     setFlagging(claimId)
     setFlagConfirm(null)
     try {
@@ -193,7 +193,14 @@ export default function VouchPage() {
         method: 'POST',
         body: JSON.stringify({ claim_id: claimId }),
       })
-      setFlagResult({ claimId, msg: json.success ? `Flagged — ${json.data.penalized_vouchers} voucher(s) penalised.` : json.error })
+      if (json.success) {
+        setFlagResult({ claimId, msg: `Flagged — ${json.data.penalized_vouchers} voucher(s) penalised.` })
+        // Refresh the found user's score so it reflects the penalty immediately
+        const refreshed = await fetch(`/api/users/node/${foundUser.node_id}`).then(r => r.json())
+        if (refreshed.success) setFoundUser(refreshed.data as FoundUser)
+      } else {
+        setFlagResult({ claimId, msg: json.error })
+      }
     } catch {
       setFlagResult({ claimId, msg: 'Could not submit flag. Try again.' })
     } finally {
