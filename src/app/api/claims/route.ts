@@ -21,7 +21,35 @@ interface ClaimResult {
   analysis: DocumentAnalysis;
   new_score: number;
   tier: TrustTier;
-  rejection_reason?: "name_mismatch" | "low_confidence" | "unreadable";
+  rejection_reason?: "name_mismatch" | "low_confidence" | "unreadable" | "expired";
+}
+
+function normalizeName(value: string): string[] {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^a-z\s]/g, " ")
+    .split(/\s+/)
+    .filter((part) => part.length > 1);
+}
+
+function namesMatch(inputName: string, extractedName: string | null | undefined): boolean {
+  if (!extractedName) return false;
+  const inputTokens = normalizeName(inputName);
+  const extractedTokens = normalizeName(extractedName);
+  if (inputTokens.length === 0 || extractedTokens.length === 0) return false;
+  const extractedSet = new Set(extractedTokens);
+  return inputTokens.every((token) => extractedSet.has(token));
+}
+
+function isExpired(expiryDate: string | null | undefined): boolean | null {
+  if (!expiryDate) return null;
+  const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(expiryDate);
+  if (!match) return null;
+  const expiry = new Date(`${expiryDate}T23:59:59.999Z`);
+  if (Number.isNaN(expiry.getTime())) return null;
+  return expiry.getTime() < Date.now();
 }
 
 const RATE_WINDOW_MS = 10 * 60 * 1000;
@@ -109,17 +137,29 @@ export async function POST(request: Request): Promise<Response> {
     analysis = await analyseDocument(image_base64, doc_type, mime_type || "image/jpeg", image_base64_back ?? undefined, mime_type_back ?? undefined);
   }
 
-  // Name consistency check
-  const nameMatch =
-    !analysis.extracted_name ||
-    user.display_name.toLowerCase().includes(analysis.extracted_name.toLowerCase()) ||
-    analysis.extracted_name.toLowerCase().includes(user.display_name.toLowerCase());
+  // Document ID dedup — same doc number cannot be on another account
+  if (analysis.document_id) {
+    const { data: docIdDup } = await supabaseAdmin
+      .from("claims")
+      .select("user_id")
+      .eq("document_id", analysis.document_id)
+      .neq("user_id", user.id)
+      .maybeSingle();
+    if (docIdDup) {
+      return Response.json({ success: false, error: "This document is registered to another account" } satisfies ApiResponse<never>, { status: 409 });
+    }
+  }
 
-  const status = nameMatch && analysis.confidence >= 0.5 ? "verified" : "rejected";
+  const nameMatch = namesMatch(user.display_name, analysis.extracted_name);
+  const expired = isExpired(analysis.expiry_date);
+
+  const status = nameMatch && analysis.confidence >= 0.5 && expired !== true ? "verified" : "rejected";
 
   if (status === "rejected") {
     const rejection_reason =
-      analysis.confidence < 0.5
+      expired === true
+        ? "expired"
+        : analysis.confidence < 0.5
         ? analysis.extracted_name
           ? "low_confidence"
           : "unreadable"
@@ -132,6 +172,8 @@ export async function POST(request: Request): Promise<Response> {
         type,
         status: "rejected",
         doc_type,
+        document_id: analysis.document_id ?? null,
+        expiry_date: analysis.expiry_date ?? null,
         extracted_name: analysis.extracted_name,
         extracted_institution: analysis.institution,
         confidence: analysis.confidence,
@@ -167,6 +209,8 @@ export async function POST(request: Request): Promise<Response> {
       type,
       status,
       doc_type,
+      document_id: analysis.document_id ?? null,
+      expiry_date: analysis.expiry_date ?? null,
       extracted_name: analysis.extracted_name,
       extracted_institution: analysis.institution,
       confidence: analysis.confidence,

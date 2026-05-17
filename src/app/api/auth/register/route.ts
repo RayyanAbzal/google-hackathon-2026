@@ -199,6 +199,8 @@ export async function POST(request: Request): Promise<Response> {
       type: "identity",
       status: "verified",
       doc_type,
+      document_id: analysis.document_id ?? null,
+      expiry_date: analysis.expiry_date ?? null,
       extracted_name: analysis.extracted_name,
       extracted_institution: analysis.institution,
       confidence: analysis.confidence,
