@@ -193,9 +193,6 @@ export default function DashboardPage() {
           <div style={{ border: '1px solid rgba(66,70,85,0.5)', borderRadius: 14, padding: 20, background: '#181c22' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
               <span className="meta">YOUR TRUST NETWORK</span>
-              {ptsThisWeek !== null && ptsThisWeek > 0 && (
-                <span className="meta" style={{ color: '#40e56c' }}>+{ptsThisWeek} PTS THIS WEEK</span>
-              )}
             </div>
             <div style={{ height: 300, marginTop: 6 }}>
               <EgoGraph width={680} height={300} vouchers={networkLoaded ? networkNodes : []} />
