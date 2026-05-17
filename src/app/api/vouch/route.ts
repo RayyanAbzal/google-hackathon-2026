@@ -15,6 +15,12 @@ interface VouchResult {
 
 const VOUCH_WINDOW_MS = 24 * 60 * 60 * 1000;
 const VOUCH_MAX = 5;
+const VOUCH_POINTS_BY_TIER: Record<TrustTier, number> = {
+  unverified: 0,
+  verified: 5,
+  trusted: 6.25,
+  gov_official: 10,
+};
 
 export async function POST(request: Request): Promise<Response> {
   const voucher = await verifyAuth(request);
@@ -22,8 +28,10 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ success: false, error: "Unauthorized" } satisfies ApiResponse<never>, { status: 401 });
   }
 
-  if (voucher.score < 20) {
-    return Response.json({ success: false, error: "You must be Verified (score 20+) to vouch" } satisfies ApiResponse<never>, { status: 403 });
+  const voucherTier = voucher.tier as TrustTier;
+  const vouchPoints = VOUCH_POINTS_BY_TIER[voucherTier] ?? 0;
+  if (vouchPoints <= 0) {
+    return Response.json({ success: false, error: "You must be Verified, Trusted, or Government verified to vouch" } satisfies ApiResponse<never>, { status: 403 });
   }
 
   let body: VouchBody;
@@ -83,7 +91,7 @@ export async function POST(request: Request): Promise<Response> {
     user_id: vouchee_id,
     type: 'vouch_received',
     title: `${voucher.display_name} vouched for you`,
-    detail: 'Regular vouch · +5 pts',
+    detail: `${voucherTier === 'gov_official' ? 'Government' : voucherTier === 'trusted' ? 'Trusted' : 'Verified'} vouch · +${vouchPoints} pts`,
     icon: 'handshake',
     color: '#b0c6ff',
     related_user_id: voucher.id,

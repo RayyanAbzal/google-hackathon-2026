@@ -2,13 +2,15 @@
 
 import { useState, useEffect, useMemo } from 'react'
 import dynamic from 'next/dynamic'
+import { useRouter } from 'next/navigation'
 import { useSidebar } from '@/components/civic/SidebarProvider'
 import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
 import type { MapUser } from '@/components/map/map-data'
-import type { SkillTag, TrustTier } from '@/types'
+import type { Session, SkillTag, TrustTier } from '@/types'
 import type { YPListingRow } from '@/app/api/find/listings/route'
 import type { PopupListing } from '@/components/map/HeatMap'
+import { readSession } from '@/app/_lib/session'
 
 const HeatMap = dynamic(() => import('@/components/map/HeatMap').then(m => m.HeatMap), { ssr: false })
 
@@ -156,6 +158,9 @@ function YPSection({ title, count, children }: { title: string; count: number; c
 }
 
 export default function FindPage() {
+  const router = useRouter()
+  const [session, setSession] = useState<Session | null>(null)
+  const [accessChecked, setAccessChecked] = useState(false)
   const [allListings, setAllListings] = useState<YPListingRow[]>([])
   const [loading, setLoading] = useState(true)
   const [activeBorough, setActiveBorough] = useState<string>('')
@@ -166,12 +171,28 @@ export default function FindPage() {
   const { width: sidebarWidth } = useSidebar()
 
   useEffect(() => {
+    queueMicrotask(() => {
+      const current = readSession()
+      setSession(current)
+      setAccessChecked(true)
+      if (!current) {
+        router.replace('/register')
+        return
+      }
+      if (current.tier === 'unverified') {
+        router.replace('/dashboard')
+      }
+    })
+  }, [router])
+
+  useEffect(() => {
+    if (!session || session.tier === 'unverified') return
     fetch('/api/find/listings')
       .then(r => r.json() as Promise<{ success: boolean; data?: YPListingRow[] }>)
       .then(json => { if (json.success && json.data) setAllListings(json.data) })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [session])
 
   // Debounced Claude NL search
   useEffect(() => {
@@ -282,10 +303,12 @@ export default function FindPage() {
   const totalEngineers = useMemo(() => allListings.filter(r => r.skill === 'Engineer').length, [allListings])
   const totalLegal = useMemo(() => allListings.filter(r => r.skill === 'Legal').length, [allListings])
 
+  if (!accessChecked || !session || session.tier === 'unverified') return null
+
   return (
     <div style={{ background: '#10141a', height: '100vh', color: '#dfe2eb', overflow: 'hidden' }}>
       <TopBar />
-      <Sidebar active="find" />
+      <Sidebar active="find" session={session} />
 
       <main style={{ marginLeft: sidebarWidth, paddingTop: 56, transition: 'margin-left 0.2s ease', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
 

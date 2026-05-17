@@ -16,7 +16,8 @@ export type MandatoryDocType = 'passport' | 'driving_licence'
 export type ClaimType = 'identity' | 'credential' | 'work'
 export type ClaimStatus = 'pending' | 'verified' | 'rejected'
 
-// Score thresholds: 0-19 Unverified, 20-54 Verified, 55-90 Trusted, 91-100 Gov Official
+// Score thresholds after eligibility: 0-19 Unverified, 20-54 Verified,
+// 55-90 Trusted, 100 Gov Official. Government status is set manually.
 export type TrustTier = 'unverified' | 'verified' | 'trusted' | 'gov_official'
 export type Tier = TrustTier  // alias — prefer TrustTier in new code
 
@@ -116,45 +117,40 @@ export type ApiResponse<T> =
 export interface ScoreInput {
   passport_count: number    // 20 pts each
   other_doc_count: number   // 15 pts each (driving_licence, degree, employer_letter, nhs_card)
-  vouches_received: number  // 5 pts each, max 10 counted
-  gov_vouched: boolean      // +20 bonus, can push past 90 cap
+  vouches_received: number  // number of eligible vouches received
+  weighted_vouch_points?: number // verified=5, trusted=6.25, gov=10; max 40 counted
+  gov_vouched: boolean      // kept for API compatibility; gov status is manual, not auto-granted
 }
 
 const MAX_DOCS = 3
-const MAX_VOUCHES = 10
+const MAX_VOUCH_POINTS = 40
 const USER_SCORE_CAP = 90
-
-// Minimum vouches required to unlock Verified, based on doc count
-// More docs = fewer vouches needed. 0 docs = impossible.
-const MIN_VOUCHES_FOR_DOCS: Record<number, number> = { 1: 5, 2: 3, 3: 2 }
+export const MIN_VOUCHES_FOR_VERIFIED = 2
 
 export function calculateScore(input: ScoreInput): number {
   const totalDocs = Math.min(input.passport_count + input.other_doc_count, MAX_DOCS)
+  const weightedVouchPoints = input.weighted_vouch_points ?? input.vouches_received * 5
 
-  // Must have at least 1 doc and minimum vouches for that doc count
   if (totalDocs === 0) return 0
-  const minVouches = MIN_VOUCHES_FOR_DOCS[totalDocs] ?? 1
-  if (input.vouches_received < minVouches) {
-    // Show partial progress but keep them unverified (cap at 19)
-    const partialScore = Math.min(input.passport_count, totalDocs) * 20 +
-      (totalDocs - Math.min(input.passport_count, totalDocs)) * 15 +
-      Math.min(input.vouches_received, MAX_VOUCHES) * 5
-    return Math.min(19, partialScore)
-  }
 
   const passports = Math.min(input.passport_count, totalDocs)
   const others = totalDocs - passports
   const docScore = passports * 20 + others * 15
-  const vouchScore = Math.min(input.vouches_received, MAX_VOUCHES) * 5
-  const base = Math.min(USER_SCORE_CAP, docScore + vouchScore)
-  return input.gov_vouched ? Math.min(100, base + 20) : base
+  const vouchScore = Math.min(weightedVouchPoints, MAX_VOUCH_POINTS)
+  return Math.min(USER_SCORE_CAP, Math.round(docScore + vouchScore))
 }
 
 export function getTier(score: number): TrustTier {
-  if (score >= 91) return 'gov_official'
+  if (score >= 100) return 'gov_official'
   if (score >= 55) return 'trusted'
   if (score >= 20) return 'verified'
   return 'unverified'
+}
+
+export function getEligibleTier(score: number, verifiedDocCount: number, eligibleVouches: number): TrustTier {
+  if (verifiedDocCount < 1 || eligibleVouches < MIN_VOUCHES_FOR_VERIFIED) return 'unverified'
+  const tier = getTier(score)
+  return tier === 'gov_official' ? 'trusted' : tier
 }
 
 // ─── Session (stored in localStorage) ─────────────────────────────────────
@@ -177,6 +173,8 @@ export interface Session {
 export interface DocumentAnalysis {
   extracted_name: string | null
   doc_type: DocType | string
+  document_category?: 'passport' | 'driving_licence' | 'other' | null
+  expiry_date?: string | null
   country?: string | null
   institution: string | null
   confidence: number
