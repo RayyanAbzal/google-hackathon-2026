@@ -1,7 +1,6 @@
 import { supabaseAdmin } from "@/lib/supabase";
 import { verifyAuth } from "@/lib/auth";
 import { recalculateUserScore } from "@/lib/score";
-import { getTier } from "@/types";
 import type { ApiResponse } from "@/types";
 
 interface FlagBody {
@@ -69,7 +68,7 @@ export async function POST(request: Request): Promise<Response> {
         const newScore = Math.max(0, v.score - 15);
         await supabaseAdmin
           .from("users")
-          .update({ score: newScore, tier: getTier(newScore) })
+          .update({ score: newScore })
           .eq("id", v.id);
       })
     );

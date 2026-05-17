@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server'
-import Anthropic from '@anthropic-ai/sdk'
 import type { SkillTag } from '@/types'
 
 const VALID_SKILLS = new Set<string>(['Doctor', 'Nurse', 'Engineer', 'Legal', 'Builder', 'Other'])
@@ -18,7 +17,12 @@ interface InterpretResult {
   borough: string | null
 }
 
-const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY })
+function interpretLocally(query: string): InterpretResult {
+  const lower = query.toLowerCase()
+  const skill = [...VALID_SKILLS].find((candidate) => lower.includes(candidate.toLowerCase())) as SkillTag | undefined
+  const borough = [...LONDON_BOROUGHS].find((candidate) => lower.includes(candidate.toLowerCase())) ?? null
+  return { skill: skill ?? null, borough }
+}
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   try {
@@ -32,7 +36,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     }
     const query = ((body as Record<string, unknown>).query as string).slice(0, 200)
 
-    const message = await client.messages.create({
+    if (!process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json(interpretLocally(query))
+    }
+
+    const response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': process.env.ANTHROPIC_API_KEY,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
       model: 'claude-haiku-4-5-20251001',
       max_tokens: 64,
       messages: [
@@ -52,9 +67,12 @@ Respond ONLY with valid JSON in this exact shape:
 No other text.`,
         },
       ],
+      }),
     })
 
-    const raw = message.content[0].type === 'text' ? message.content[0].text : ''
+    if (!response.ok) return NextResponse.json(interpretLocally(query))
+    const message = await response.json() as { content?: Array<{ type: string; text?: string }> }
+    const raw = message.content?.[0]?.type === 'text' ? message.content[0].text ?? '' : ''
     const cleaned = raw.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
     const parsed: InterpretResult = JSON.parse(cleaned)
 

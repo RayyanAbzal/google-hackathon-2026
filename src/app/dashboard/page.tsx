@@ -57,7 +57,7 @@ export default function DashboardPage() {
 
       // Refresh score from DB — catches vouches received since last login
       fetch(`/api/score/${current.user_id}`)
-        .then(r => r.json() as Promise<ApiResponse<{ score: number; tier: TrustTier; passport_count: number; other_doc_count: number; vouches_received: number; gov_vouched: boolean }>>)
+        .then(r => r.json() as Promise<ApiResponse<{ score: number; tier: TrustTier; passport_count: number; other_doc_count: number; vouches_received: number; eligible_vouches: number; weighted_vouch_points: number; gov_vouched: boolean }>>)
         .then(json => {
           if (json.success && (json.data.score !== current.score || json.data.tier !== current.tier)) {
             const updated = updateStoredSession({ score: json.data.score, tier: json.data.tier })
@@ -98,6 +98,7 @@ export default function DashboardPage() {
   const dashOffset = CIRCUMFERENCE * (1 - score / 100)
   const firstName = getDisplayFirstName(session?.display_name)
   const tier = session?.tier ?? 'unverified'
+  const isUnverified = tier === 'unverified'
 
   const tierLabel = useMemo(() => {
     if (tier === 'gov_official') return 'TIER 3 · GOVERNMENT VERIFIED'
@@ -114,10 +115,11 @@ export default function DashboardPage() {
 
   const ptsToNext = useMemo(() => {
     if (score >= 91) return null
+    if (tier === 'unverified') return '2 VOUCHES TO VERIFIED'
     if (score >= 55) return `${91 - score} PTS TO GOV. VERIFIED`
     if (score >= 20) return `${55 - score} PTS TO TRUSTED`
     return `${20 - score} PTS TO VERIFIED`
-  }, [score])
+  }, [score, tier])
 
   const evidenceRows = useMemo(() => {
     return claims.slice(0, 3).map(c => ({
@@ -157,6 +159,33 @@ export default function DashboardPage() {
             </Link>
           </div>
         </div>
+
+        {/* Top row: ego graph + score ring */}
+        {isUnverified && (
+          <div
+            style={{
+              marginBottom: 18,
+              padding: 20,
+              borderRadius: 14,
+              background: 'rgba(176,198,255,0.1)',
+              border: '1px solid rgba(176,198,255,0.35)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 18,
+            }}
+          >
+            <div>
+              <div style={{ fontSize: 18, fontWeight: 800, color: '#dfe2eb' }}>Finish verification</div>
+              <div style={{ fontSize: 13, color: '#c2c6d8', marginTop: 4 }}>
+                You need at least one approved document and enough eligible vouches before Find Help unlocks.
+              </div>
+            </div>
+            <Link href="/add-evidence" style={{ padding: '12px 18px', background: '#b0c6ff', color: '#002d6f', borderRadius: 8, fontSize: 14, fontWeight: 700, display: 'inline-flex', alignItems: 'center', gap: 8, textDecoration: 'none', flexShrink: 0 }}>
+              <Icon name="upload_file" size={18} /> Add evidence
+            </Link>
+          </div>
+        )}
 
         {/* Top row: ego graph + score ring */}
         <div style={{ display: 'grid', gridTemplateColumns: '1.3fr 1fr', gap: 18, marginBottom: 18 }}>

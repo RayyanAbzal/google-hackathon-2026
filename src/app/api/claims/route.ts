@@ -5,7 +5,6 @@ import { analyseDocument } from "@/lib/gemini";
 import { recalculateUserScore } from "@/lib/score";
 import { createNotification } from "@/lib/notifications";
 import { USE_FALLBACKS } from "@/lib/fallbacks";
-import { getTier } from "@/types";
 import type { ApiResponse, Claim, ClaimType, DocumentAnalysis, TrustTier } from "@/types";
 
 interface ClaimBody {
@@ -56,17 +55,28 @@ export async function POST(request: Request): Promise<Response> {
 
   // Rate limiting: max 3 claims per 10 min
   const windowStart = new Date(Date.now() - RATE_WINDOW_MS).toISOString();
-  const { count: recentCount } = await supabaseAdmin
+  const [{ count: recentCount }, { count: activeDocCount }] = await Promise.all([
+    supabaseAdmin
     .from("claims")
     .select("*", { count: "exact", head: true })
     .eq("user_id", user.id)
-    .gte("created_at", windowStart);
+      .gte("created_at", windowStart),
+    supabaseAdmin
+      .from("claims")
+      .select("*", { count: "exact", head: true })
+      .eq("user_id", user.id)
+      .in("status", ["pending", "verified"]),
+  ]);
 
   if ((recentCount ?? 0) >= RATE_MAX) {
     return Response.json({ success: false, error: "Too many submissions — wait 10 minutes" } satisfies ApiResponse<never>, { status: 429 });
   }
 
   // Hash computed here — dedup is route logic, not Gemini's concern
+  if (user.tier !== "gov_official" && (activeDocCount ?? 0) >= 3) {
+    return Response.json({ success: false, error: "Document limit reached — max 3 documents unless manually government verified" } satisfies ApiResponse<never>, { status: 403 });
+  }
+
   const content_hash = createHash("sha256").update(image_base64).digest("hex");
 
   // Global duplicate document check — same doc cannot be used across any account
@@ -136,7 +146,7 @@ export async function POST(request: Request): Promise<Response> {
           claim: rejectedClaim as Claim,
           analysis,
           new_score: user.score,
-          tier: getTier(user.score),
+          tier: user.tier,
           rejection_reason,
         },
       } satisfies ApiResponse<ClaimResult>,
