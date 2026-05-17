@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import TopBar from '@/components/civic/TopBar'
 import type { MandatoryDocType, Session } from '@/types'
-import { saveSession } from '@/app/_lib/session'
+import { protectedFetch, saveSession, updateStoredSession } from '@/app/_lib/session'
 
 interface RegisterResult { token: string; user_id: string; node_id: string }
 
@@ -17,6 +17,8 @@ export default function RegisterPage() {
   const [file, setFile] = useState<File | null>(null)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
+  const [pendingSession, setPendingSession] = useState<Session | null>(null)
+  const [username, setUsername] = useState('')
   const fileRef = useRef<HTMLInputElement>(null)
   const router = useRouter()
 
@@ -46,9 +48,29 @@ export default function RegisterPage() {
 
       const session: Session = { ...json.data, display_name: name.trim(), score: 0, tier: 'unverified', username: null, skill: null, borough: null }
       saveSession(session)
-      router.push('/unverified')
+      setPendingSession(session)
     } catch {
       setError('Something went wrong. Try again.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  async function handleUsernameSubmit(e: React.FormEvent) {
+    e.preventDefault()
+    if (!pendingSession) return
+    setError('')
+    setLoading(true)
+    try {
+      const json = await protectedFetch<{ username: string }>('/api/auth/username', pendingSession, {
+        method: 'PATCH',
+        body: JSON.stringify({ username: username.trim().replace(/^@/, '') }),
+      })
+      if (!json.success) { setError(json.error); return }
+      updateStoredSession({ username: json.data.username })
+      router.push('/unverified')
+    } catch {
+      setError('Could not set username. Try another one.')
     } finally {
       setLoading(false)
     }
@@ -60,11 +82,15 @@ export default function RegisterPage() {
       <main style={{ paddingTop: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', padding: '80px 24px' }}>
         <div style={{ width: '100%', maxWidth: 520 }}>
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
-            <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.01em' }}>Create your account</h1>
-            <p style={{ color: '#c2c6d8', fontSize: 15, marginTop: 8 }}>No email needed. Just a name, password, and one ID document.</p>
+            <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.01em' }}>
+              {pendingSession ? 'Choose your username' : 'Create your account'}
+            </h1>
+            <p style={{ color: '#c2c6d8', fontSize: 15, marginTop: 8 }}>
+              {pendingSession ? 'This is how people will find your trust profile.' : 'No email needed. Just a name, password, and one ID document.'}
+            </p>
           </div>
 
-          <form className="bento" style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 20 }} onSubmit={handleSubmit}>
+          <form className="bento" style={{ padding: 32, display: pendingSession ? 'none' : 'flex', flexDirection: 'column', gap: 20 }} onSubmit={handleSubmit}>
             <div>
               <label style={{ fontSize: 13, color: '#c2c6d8', display: 'block', marginBottom: 6 }}>Full name</label>
               <input className="field-input" placeholder="As shown on your ID" value={name} onChange={e => setName(e.target.value)} required />
@@ -127,6 +153,38 @@ export default function RegisterPage() {
               <Link href="/login" style={{ color: '#b0c6ff', textDecoration: 'none' }}>Sign in</Link>
             </p>
           </form>
+          {pendingSession && (
+            <form className="bento" style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 20 }} onSubmit={handleUsernameSubmit}>
+              <div>
+                <label style={{ fontSize: 13, color: '#c2c6d8', display: 'block', marginBottom: 6 }}>Username</label>
+                <input
+                  className="field-input"
+                  placeholder="@username"
+                  value={username}
+                  onChange={e => setUsername(e.target.value)}
+                  autoFocus
+                  required
+                />
+                <p style={{ fontSize: 12, color: '#8c90a1', marginTop: 8 }}>
+                  You'll use this to sign in. Letters, numbers and underscores only.
+                </p>
+              </div>
+
+              {error && <p style={{ fontSize: 13, color: '#ffb4ab', margin: 0 }}>{error}</p>}
+
+              <button
+                type="submit"
+                disabled={loading}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px 24px', borderRadius: 8, background: '#b0c6ff', color: '#002d6f', fontWeight: 600, fontSize: 15, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}
+              >
+                {loading ? 'Saving...' : 'Save username'}
+                {!loading && <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>}
+              </button>
+              <button type="button" className="btn-ghost" style={{ justifyContent: 'center' }} onClick={() => router.push('/unverified')}>
+                Skip for now
+              </button>
+            </form>
+          )}
         </div>
       </main>
     </div>
