@@ -69,8 +69,8 @@ function getConfidenceColor(value?: number | null): string {
 
 function getRejectionMessage(reason?: ClaimResult['rejection_reason']): string {
   if (reason === 'name_mismatch') return 'The name read from the document does not match your profile.'
-  if (reason === 'low_confidence') return 'Gemini could read some details, but confidence was too low.'
-  if (reason === 'unreadable') return 'Gemini could not return readable fields. Check the server log for the raw analysis error, or try a JPEG/PNG image.'
+  if (reason === 'low_confidence') return 'We could not confirm your identity from this document. Please try a clearer photo.'
+  if (reason === 'unreadable') return 'This image could not be read. Make sure the document is flat, well-lit, and fully visible, then try again.'
   return 'The document could not be verified.'
 }
 
@@ -125,7 +125,7 @@ function SummaryBar({
           { label: 'Type', value: claimType },
           { label: 'Document', value: documentValue },
           { label: 'Points if verified', value: `+${CLAIM_TYPE_POINTS[claimType]}`, valueColor: '#40e56c' },
-          { label: 'Review', value: claimResult ? 'Gemini complete' : '~2 hours' },
+          { label: 'Review', value: claimResult ? 'AI complete' : '~2 hours' },
         ].map(({ label, value, valueColor }) => (
           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
             <dt style={{ color: '#8c90a1' }}>{label}</dt>
@@ -227,7 +227,7 @@ export default function AddEvidencePage() {
     setSubmitting(true)
     setError('')
     setClaimResult(null)
-    setStatusMessage('Gemini is analysing your document...')
+    setStatusMessage('AI is analysing your document...')
 
     try {
       const imageBase64 = await fileToBase64(selectedFile)
@@ -260,7 +260,7 @@ export default function AddEvidencePage() {
         tier: json.data.tier,
       })
       if (updated) setSession(updated)
-      setStatusMessage(`Gemini verified your document. Score is now ${json.data.new_score}.`)
+      setStatusMessage(`AI verified your document. Score is now ${json.data.new_score}.`)
       setStep(3)
     } catch {
       setError('Could not submit the claim. Try again.')
@@ -454,7 +454,7 @@ export default function AddEvidencePage() {
             {step === 3 && (
               <div className="bento">
                 <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 20px' }}>
-                  Gemini analysis
+                  AI analysis
                 </h2>
                 {claimResult ? (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 20 }}>
@@ -502,7 +502,7 @@ export default function AddEvidencePage() {
                             </div>
                           </>
                         )}
-                        <span style={{ fontSize: 11, color: '#8c90a1' }}>Gemini Vision analysis complete</span>
+                        <span style={{ fontSize: 11, color: '#8c90a1' }}>AI analysis complete</span>
                       </div>
                     </div>
 
@@ -516,11 +516,11 @@ export default function AddEvidencePage() {
                       }}
                     >
                       {[
-                        { label: 'Status', value: claimResult.claim.status, color: claimResult.claim.status === 'verified' ? '#40e56c' : '#ffb4ab' },
-                        { label: 'Extracted name', value: claimResult.analysis.extracted_name ?? 'Not readable' },
+                        { label: 'Status', value: claimResult.claim.status === 'verified' ? 'Verified' : 'Not verified', color: claimResult.claim.status === 'verified' ? '#40e56c' : '#ffb4ab' },
+                        { label: 'Document ID', value: claimResult.analysis.document_id ?? 'Not detected' },
                         { label: 'Document type', value: formatDocType(claimResult.analysis.doc_type) },
-                        { label: 'Country / jurisdiction', value: claimResult.analysis.country ?? 'Not detected' },
-                        { label: 'Institution / issuer', value: claimResult.analysis.institution ?? 'Not detected' },
+                        { label: 'Country / jurisdiction', value: claimResult.analysis.country ?? 'Not found' },
+                        { label: 'Institution / issuer', value: claimResult.analysis.institution ?? 'Not found' },
                         {
                           label: 'Confidence',
                           value: formatConfidence(claimResult.analysis.confidence),
@@ -560,7 +560,7 @@ export default function AddEvidencePage() {
                   </div>
                 ) : (
                   <div style={{ color: '#8c90a1', fontSize: 14 }}>
-                    Upload a document first so Gemini can analyse it.
+                    Upload a document first so AI can analyse it.
                   </div>
                 )}
               </div>
@@ -578,7 +578,7 @@ export default function AddEvidencePage() {
                       label: 'Name check',
                       detail: claimResult?.analysis.extracted_name
                         ? `${claimResult.analysis.extracted_name} read from document`
-                        : 'No readable name found',
+                        : 'Name could not be extracted',
                     },
                     {
                       icon: 'content_copy',
@@ -723,7 +723,7 @@ export default function AddEvidencePage() {
             }}
             disabled={submitting}
           >
-            {step === 2 ? (submitting ? 'Analysing...' : 'Analyse with Gemini') : step === 4 ? 'Done' : 'Continue'}
+            {step === 2 ? (submitting ? 'Analysing...' : 'Analyse with AI') : step === 4 ? 'Done' : 'Continue'}
             <Icon name="arrow_forward" size={16} />
           </button>
         </div>
