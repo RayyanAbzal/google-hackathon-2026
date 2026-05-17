@@ -103,6 +103,32 @@ export async function POST(request: Request): Promise<Response> {
     }
   }
 
+  // Direct penalty on the claim owner
+  if (penalty > 0) {
+    const { data: owner } = await supabaseAdmin
+      .from("users")
+      .select("id, score, tier")
+      .eq("id", claim.user_id)
+      .single();
+
+    if (owner && owner.tier !== "gov_official") {
+      const newScore = Math.max(0, (owner.score ?? 0) - penalty);
+      const newTier = getTier(newScore);
+      await supabaseAdmin
+        .from("users")
+        .update({ score: newScore, tier: newTier })
+        .eq("id", claim.user_id);
+      await createNotification({
+        user_id: claim.user_id,
+        type: "claim_verified",
+        title: `Trust penalty: ${flagType}`,
+        detail: `-${penalty} pts — one of your claims was flagged`,
+        icon: "warning",
+        color: "#ffb4ab",
+      });
+    }
+  }
+
   // Auto-reject claim and recalculate owner score at 3+ flags
   if ((claim.flags ?? 0) + 1 >= 3) {
     await supabaseAdmin.from("claims").update({ status: "rejected" }).eq("id", claim_id);
