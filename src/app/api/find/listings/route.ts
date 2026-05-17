@@ -35,7 +35,7 @@ export async function GET(): Promise<Response> {
   const { data, error } = await supabaseAdmin
     .from('users')
     .select('node_id, username, skill, borough, tier, score, claims(doc_type, status, vouches)')
-    .in('tier', ['verified', 'trusted', 'gov_official'])
+    .in('tier', ['trusted', 'gov_official'])
     .neq('borough', '')
     .limit(1000)
 
