@@ -69,7 +69,7 @@ function MapResetController({ active }: { active: boolean }) {
   const map = useMap()
   useEffect(() => {
     if (!active) return
-    map.flyTo([51.505, -0.09], 10, { duration: 1.2 })
+    map.flyTo([51.505, -0.09], 10, { duration: 0.8 })
   }, [active, map])
   return null
 }
@@ -154,7 +154,7 @@ export function HeatMap({
   const heatColorScale = useMemo(
     () => d3.scaleLinear<string>()
       .domain([0, maxWeightedCount])
-      .range(['#0b1220', '#7cc4ff'])
+      .range(['#0b1220', '#b0c6ff'])
       .clamp(true),
     [maxWeightedCount]
   )
@@ -171,8 +171,9 @@ export function HeatMap({
       return {
         fillColor: '#38bdf8',
         fillOpacity: 0.96,
-        color: '#ffffff',
-        weight: 3,
+        color: '#7dd3fc',
+        weight: 4,
+        className: 'selected-borough',
       }
     }
 
@@ -194,9 +195,15 @@ export function HeatMap({
     }
   }, [heatColorScale, lookup, selectedBorough, activeSkill])
 
-  // Always-current ref so stale onEachFeature closures still call latest boroughStyle
+  // Always-current refs so stale onEachFeature closures still read latest values
   const boroughStyleRef = useRef(boroughStyle)
   boroughStyleRef.current = boroughStyle
+
+  const onBoroughClickRef = useRef(onBoroughClick)
+  onBoroughClickRef.current = onBoroughClick
+
+  const selectedBoroughRef = useRef(selectedBorough)
+  selectedBoroughRef.current = selectedBorough
 
   // Imperatively update GeoJSON styles — avoids remounting the layer on selection change
   useEffect(() => {
@@ -211,7 +218,7 @@ export function HeatMap({
     layer.on({
       mouseover: (e: LeafletMouseEvent) => {
         const path = e.target as { setStyle: (s: PathOptions) => void; bringToFront: () => void }
-        const isSelected = name === selectedBorough
+        const isSelected = name === selectedBoroughRef.current
         if (!isSelected) {
           path.setStyle({ ...boroughStyleRef.current(feature), color: '#60a5fa', weight: 2, fillOpacity: 0.75 })
           path.bringToFront()
@@ -222,10 +229,10 @@ export function HeatMap({
         path.setStyle(boroughStyleRef.current(feature))
       },
       click: () => {
-        onBoroughClick?.(name)
+        onBoroughClickRef.current?.(name)
       },
     })
-  }, [selectedBorough, onBoroughClick])
+  }, [])
 
   if (!geojson) {
     return (
@@ -248,12 +255,14 @@ export function HeatMap({
       zoom={10}
       style={{ height: '100%', width: '100%' }}
       zoomControl
+      attributionControl={false}
+      preferCanvas
     >
       <MapResizer sidebarWidth={sidebarWidth} />
       <MapFlyController borough={focusedBorough} centroids={centroids} />
       <MapResetController active={resetView || resetToOverview} />
       <TileLayer
-        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+        url="https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
         subdomains="abcd"
         maxZoom={19}

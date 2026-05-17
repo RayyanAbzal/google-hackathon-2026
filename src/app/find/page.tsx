@@ -337,7 +337,7 @@ export default function FindPage() {
                 <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#8c90a1', animation: 'spin 1s linear infinite' }}>progress_activity</span>
               )}
               {search && !searchLoading && (
-                <button onClick={() => { setSearch(''); setMapSkill('All') }} style={{ background: 'transparent', border: 'none', color: '#8c90a1', cursor: 'pointer', lineHeight: 1 }}>
+                <button onClick={() => { setSearch(''); setMapSkill('All'); setActiveBorough(''); setResetMap(true); setTimeout(() => setResetMap(false), 100) }} style={{ background: 'transparent', border: 'none', color: '#8c90a1', cursor: 'pointer', lineHeight: 1 }}>
                   <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
                 </button>
               )}
@@ -350,6 +350,7 @@ export default function FindPage() {
 
           {/* LEFT: Map 65% */}
           <div style={{ flex: '0 0 65%', position: 'relative', overflow: 'hidden', borderRight: '1px solid rgba(66,70,85,0.4)' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, transparent 55%, rgba(16,20,26,0.65) 100%)', zIndex: 500, pointerEvents: 'none' }} />
             <HeatMap
               users={mapUsers}
               selectedBorough={activeBorough}
