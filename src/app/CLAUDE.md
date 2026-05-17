@@ -31,7 +31,7 @@ All routes are implemented with the Tactical Resilience design system. Maalav's 
 
 ## Design System Note
 
-Pages use inline styles for design-token colours because the Tactical Resilience tokens (`#10141a`, `#b0c6ff`, etc.) are defined as CSS custom properties and plain CSS utilities in `globals.css`. When adding UI to existing pages, match the pattern used in that page.
+Pages use inline styles for design-token colours because the Tactical Resilience tokens (`#070708`, `#a00020`, etc.) are defined as CSS custom properties and plain CSS utilities in `globals.css`. When adding UI to existing pages, match the pattern used in that page.
 
 ## Shared Civic Components
 

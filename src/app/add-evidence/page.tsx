@@ -9,6 +9,7 @@ import Icon from '@/components/civic/Icon'
 import DocumentCameraCapture from '@/components/claims/DocumentCameraCapture'
 import type { Claim, ClaimType as ApiClaimType, DocumentAnalysis, Session, TrustTier } from '@/types'
 import { protectedFetch, requireSession, updateStoredSession } from '@/app/_lib/session'
+import { formatDocType } from '@/lib/utils'
 
 type ClaimType = 'Identity' | 'Credential' | 'Employment' | 'Residency'
 
@@ -50,10 +51,6 @@ interface ClaimResult {
   rejection_reason?: 'name_mismatch' | 'low_confidence' | 'unreadable'
 }
 
-function formatDocType(value?: string | null): string {
-  if (!value) return '—'
-  return value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
-}
 
 function formatConfidence(value?: number | null): string {
   if (typeof value !== 'number') return '—'
@@ -61,10 +58,10 @@ function formatConfidence(value?: number | null): string {
 }
 
 function getConfidenceColor(value?: number | null): string {
-  if (typeof value !== 'number') return '#8c90a1'
-  if (value >= 0.75) return '#40e56c'
-  if (value >= 0.5) return '#f59e0b'
-  return '#ffb4ab'
+  if (typeof value !== 'number') return '#6a6a70'
+  if (value >= 0.75) return '#00b860'
+  if (value >= 0.5) return '#cc7700'
+  return '#ff2d4a'
 }
 
 function getRejectionMessage(reason?: ClaimResult['rejection_reason']): string {
@@ -77,10 +74,10 @@ function getRejectionMessage(reason?: ClaimResult['rejection_reason']): string {
 function StepCircle({ n, status }: { n: number; status: 'done' | 'active' | 'pending' }) {
   const styles: React.CSSProperties =
     status === 'done'
-      ? { background: '#40e56c', color: '#002d6f', border: '1px solid #40e56c' }
+      ? { background: '#00b860', color: '#f5f5f5', border: '1px solid #00b860' }
       : status === 'active'
-      ? { background: 'rgba(176,198,255,0.15)', color: '#b0c6ff', border: '1px solid #b0c6ff' }
-      : { background: '#0a0e14', color: '#8c90a1', border: '1px solid #424655' }
+      ? { background: 'rgba(160,0,32,0.15)', color: '#a00020', border: '1px solid #a00020' }
+      : { background: 'transparent', color: '#6a6a70', border: '1px solid #28282c' }
   return (
     <div
       style={{
@@ -124,12 +121,12 @@ function SummaryBar({
         {[
           { label: 'Type', value: claimType },
           { label: 'Document', value: documentValue },
-          { label: 'Points if verified', value: `+${CLAIM_TYPE_POINTS[claimType]}`, valueColor: '#40e56c' },
+          { label: 'Points if verified', value: `+${CLAIM_TYPE_POINTS[claimType]}`, valueColor: '#00b860' },
           { label: 'Review', value: claimResult ? 'AI complete' : '~2 hours' },
         ].map(({ label, value, valueColor }) => (
           <div key={label} style={{ display: 'flex', justifyContent: 'space-between', fontSize: 13 }}>
-            <dt style={{ color: '#8c90a1' }}>{label}</dt>
-            <dd style={{ fontWeight: 600, color: valueColor ?? '#dfe2eb', margin: 0 }}>{value}</dd>
+            <dt style={{ color: '#6a6a70' }}>{label}</dt>
+            <dd style={{ fontWeight: 600, color: valueColor ?? '#d2d2d6', margin: 0 }}>{value}</dd>
           </div>
         ))}
       </dl>
@@ -137,10 +134,10 @@ function SummaryBar({
         style={{
           padding: '10px 12px',
           borderRadius: 8,
-          background: 'rgba(176,198,255,0.07)',
-          border: '1px solid rgba(176,198,255,0.2)',
+          background: 'rgba(160,0,32,0.07)',
+          border: '1px solid rgba(160,0,32,0.2)',
           fontSize: 12,
-          color: '#8c90a1',
+          color: '#6a6a70',
           lineHeight: 1.5,
         }}
       >
@@ -155,17 +152,27 @@ export default function AddEvidencePage() {
   const [session, setSession] = useState<Session | null>(null)
   const [step, setStep] = useState(1)
   const [claimType, setClaimType] = useState<ClaimType>('Identity')
+  const [identityDocType, setIdentityDocType] = useState<'passport' | 'driving_licence'>('passport')
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [selectedFileBack, setSelectedFileBack] = useState<File | null>(null)
   const [statusMessage, setStatusMessage] = useState('')
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
+  const [cameraBackOpen, setCameraBackOpen] = useState(false)
   const [claimResult, setClaimResult] = useState<ClaimResult | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+  const fileBackRef = useRef<HTMLInputElement>(null)
+
+  const isIdentity = claimType === 'Identity' && identityDocType === 'driving_licence'
 
   const previewUrl = useMemo(
     () => selectedFile?.type.startsWith('image/') ? URL.createObjectURL(selectedFile) : null,
     [selectedFile]
+  )
+  const previewUrlBack = useMemo(
+    () => selectedFileBack?.type.startsWith('image/') ? URL.createObjectURL(selectedFileBack) : null,
+    [selectedFileBack]
   )
 
   useEffect(() => {
@@ -175,6 +182,12 @@ export default function AddEvidencePage() {
   }, [previewUrl])
 
   useEffect(() => {
+    return () => {
+      if (previewUrlBack) URL.revokeObjectURL(previewUrlBack)
+    }
+  }, [previewUrlBack])
+
+  useEffect(() => {
     queueMicrotask(() => setSession(requireSession(router)))
   }, [router])
 
@@ -182,7 +195,13 @@ export default function AddEvidencePage() {
     setSelectedFile(e.target.files?.[0] ?? null)
     setClaimResult(null)
     setError('')
-    setStatusMessage(e.target.files?.[0] ? 'Document ready for review.' : '')
+    setStatusMessage(e.target.files?.[0] ? 'Front document ready.' : '')
+  }
+
+  function handleFileBack(e: React.ChangeEvent<HTMLInputElement>) {
+    setSelectedFileBack(e.target.files?.[0] ?? null)
+    setClaimResult(null)
+    setError('')
   }
 
   function handleCameraCapture(file: File) {
@@ -192,12 +211,25 @@ export default function AddEvidencePage() {
     setStatusMessage('Photo captured and ready for review.')
   }
 
+  function handleCameraBackCapture(file: File) {
+    setSelectedFileBack(file)
+    setClaimResult(null)
+    setError('')
+  }
+
   function removeSelectedFile() {
     setSelectedFile(null)
     setClaimResult(null)
     setStatusMessage('')
     setError('')
     if (fileRef.current) fileRef.current.value = ''
+  }
+
+  function removeSelectedFileBack() {
+    setSelectedFileBack(null)
+    setClaimResult(null)
+    setError('')
+    if (fileBackRef.current) fileBackRef.current.value = ''
   }
 
   function fileToBase64(file: File): Promise<string> {
@@ -216,10 +248,20 @@ export default function AddEvidencePage() {
     })
   }
 
+  function getEffectiveDocType(): string {
+    if (claimType === 'Identity') return identityDocType
+    return CLAIM_TYPE_TO_DOC[claimType]
+  }
+
   async function submitClaim() {
     if (!session) return
     if (!selectedFile) {
       setError('Choose a document before submitting.')
+      setStep(2)
+      return
+    }
+    if (isIdentity && !selectedFileBack) {
+      setError("Upload the back of your driver's licence too.")
       setStep(2)
       return
     }
@@ -231,13 +273,16 @@ export default function AddEvidencePage() {
 
     try {
       const imageBase64 = await fileToBase64(selectedFile)
+      const imageBase64Back = selectedFileBack ? await fileToBase64(selectedFileBack) : undefined
+      const docType = getEffectiveDocType()
       const json = await protectedFetch<ClaimResult>('/api/claims', session, {
         method: 'POST',
         body: JSON.stringify({
           type: CLAIM_TYPE_TO_API[claimType],
-          doc_type: CLAIM_TYPE_TO_DOC[claimType],
+          doc_type: docType,
           image_base64: imageBase64,
           mime_type: selectedFile.type || 'image/jpeg',
+          ...(imageBase64Back ? { image_base64_back: imageBase64Back, mime_type_back: selectedFileBack?.type || 'image/jpeg' } : {}),
         }),
       })
 
@@ -271,7 +316,7 @@ export default function AddEvidencePage() {
   }
 
   return (
-    <div style={{ background: '#10141a', minHeight: '100vh', color: '#dfe2eb' }}>
+    <div style={{ background: '#070708', minHeight: '100vh', color: '#d2d2d6' }}>
       <TopBar />
       <Sidebar active="add-evidence" session={session} />
       <main className="ml-60 pt-14 px-8 py-8">
@@ -285,7 +330,7 @@ export default function AddEvidencePage() {
               alignItems: 'center',
               gap: 6,
               fontSize: 13,
-              color: '#8c90a1',
+              color: '#6a6a70',
               textDecoration: 'none',
               marginBottom: 12,
             }}
@@ -311,7 +356,7 @@ export default function AddEvidencePage() {
                     style={{
                       fontSize: 13,
                       fontWeight: status === 'active' ? 600 : 400,
-                      color: status === 'active' ? '#dfe2eb' : status === 'done' ? '#8c90a1' : '#8c90a1',
+                      color: status === 'active' ? '#d2d2d6' : status === 'done' ? '#6a6a70' : '#6a6a70',
                     }}
                   >
                     {label}
@@ -348,18 +393,18 @@ export default function AddEvidencePage() {
                         style={{
                           padding: 16,
                           borderRadius: 10,
-                          border: `1px solid ${isActive ? '#b0c6ff' : '#424655'}`,
-                          background: isActive ? 'rgba(176,198,255,0.1)' : '#10141a',
+                          border: `1px solid ${isActive ? '#a00020' : '#28282c'}`,
+                          background: isActive ? 'rgba(160,0,32,0.1)' : '#070708',
                           textAlign: 'left',
                           cursor: 'pointer',
                           transition: 'all 0.15s',
                         }}
                       >
-                        <Icon name={ct.icon} size={22} style={{ color: isActive ? '#b0c6ff' : '#8c90a1' }} />
-                        <div style={{ fontSize: 15, fontWeight: 600, color: '#dfe2eb', marginTop: 8 }}>
+                        <Icon name={ct.icon} size={22} style={{ color: isActive ? '#a00020' : '#6a6a70' }} />
+                        <div style={{ fontSize: 15, fontWeight: 600, color: '#d2d2d6', marginTop: 8 }}>
                           {ct.id}
                         </div>
-                        <div style={{ fontSize: 12, color: '#8c90a1', marginTop: 4 }}>{ct.desc}</div>
+                        <div style={{ fontSize: 12, color: '#6a6a70', marginTop: 4 }}>{ct.desc}</div>
                       </button>
                     )
                   })}
@@ -372,79 +417,158 @@ export default function AddEvidencePage() {
                 <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 20px' }}>
                   Upload your document
                 </h2>
-                <div
-                  style={{
-                    border: '1.5px dashed #424655',
-                    borderRadius: 12,
-                    padding: 48,
-                    textAlign: 'center',
-                    marginBottom: 20,
-                  }}
-                >
-                  <Icon name="cloud_upload" size={40} style={{ color: '#424655', marginBottom: 12 }} />
-                  <div style={{ fontSize: 14, color: '#8c90a1', marginBottom: 16 }}>
-                    Drag a file here
+
+                {/* Identity sub-selector */}
+                {claimType === 'Identity' && (
+                  <div style={{ display: 'flex', gap: 10, marginBottom: 20 }}>
+                    {(['passport', 'driving_licence'] as const).map((dt) => {
+                      const isActive = identityDocType === dt
+                      return (
+                        <button
+                          key={dt}
+                          type="button"
+                          onClick={() => {
+                            setIdentityDocType(dt)
+                            setSelectedFile(null)
+                            setSelectedFileBack(null)
+                            setError('')
+                            setStatusMessage('')
+                            if (fileRef.current) fileRef.current.value = ''
+                            if (fileBackRef.current) fileBackRef.current.value = ''
+                          }}
+                          style={{
+                            padding: '8px 16px',
+                            borderRadius: 8,
+                            border: `1px solid ${isActive ? '#a00020' : '#28282c'}`,
+                            background: isActive ? 'rgba(160,0,32,0.1)' : '#070708',
+                            color: isActive ? '#a00020' : '#6a6a70',
+                            cursor: 'pointer',
+                            fontSize: 13,
+                            fontWeight: isActive ? 600 : 400,
+                          }}
+                        >
+                          {dt === 'passport' ? 'Passport' : "Driver's licence"}
+                        </button>
+                      )
+                    })}
                   </div>
-                  <div style={{ display: 'flex', gap: 10, justifyContent: 'center' }}>
-                    <button className="btn-ghost" style={{ fontSize: 13 }} onClick={() => setCameraOpen(true)}>
-                      <Icon name="photo_camera" size={16} />
-                      Use camera
-                    </button>
-                    <button
-                      className="btn-ghost"
-                      style={{ fontSize: 13 }}
-                      onClick={() => fileRef.current?.click()}
-                    >
-                      <Icon name="folder_open" size={16} />
-                      Choose file
-                    </button>
-                    <input
-                      ref={fileRef}
-                      type="file"
-                      accept="image/*,.pdf"
-                      style={{ display: 'none' }}
-                      onChange={handleFile}
-                    />
-                  </div>
-                  {selectedFile && (
+                )}
+
+                {/* Upload zone(s) */}
+                <div style={{ display: 'grid', gridTemplateColumns: isIdentity ? '1fr 1fr' : '1fr', gap: 16 }}>
+                  {/* Front / single upload */}
+                  <div>
+                    {isIdentity && (
+                      <div style={{ fontSize: 12, color: '#6a6a70', marginBottom: 8, fontWeight: 600 }}>
+                        Front of licence
+                      </div>
+                    )}
                     <div
                       style={{
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: 10,
-                        maxWidth: '100%',
-                        marginTop: 14,
-                        padding: '8px 10px',
-                        borderRadius: 8,
-                        background: 'rgba(64,229,108,0.06)',
-                        border: '1px solid rgba(64,229,108,0.25)',
-                        color: '#40e56c',
-                        fontSize: 12,
+                        border: '1.5px dashed #28282c',
+                        borderRadius: 12,
+                        padding: 32,
+                        textAlign: 'center',
                       }}
                     >
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                        {selectedFile.name}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={removeSelectedFile}
-                        aria-label="Remove selected document"
+                      <Icon name="cloud_upload" size={36} style={{ color: '#28282c', marginBottom: 10 }} />
+                      <div style={{ fontSize: 13, color: '#6a6a70', marginBottom: 14 }}>Drag a file here</div>
+                      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+                        <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setCameraOpen(true)}>
+                          <Icon name="photo_camera" size={14} />
+                          Camera
+                        </button>
+                        <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => fileRef.current?.click()}>
+                          <Icon name="folder_open" size={14} />
+                          Choose file
+                        </button>
+                        <input ref={fileRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleFile} />
+                      </div>
+                      {selectedFile && (
+                        <div
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 8,
+                            maxWidth: '100%',
+                            marginTop: 12,
+                            padding: '6px 10px',
+                            borderRadius: 8,
+                            background: 'rgba(0,184,96,0.06)',
+                            border: '1px solid rgba(0,184,96,0.25)',
+                            color: '#00b860',
+                            fontSize: 11,
+                          }}
+                        >
+                          <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedFile.name}</span>
+                          <button
+                            type="button"
+                            onClick={removeSelectedFile}
+                            aria-label="Remove front document"
+                            style={{ width: 22, height: 22, borderRadius: 5, border: '1px solid rgba(255,45,74,0.3)', background: 'rgba(255,45,74,0.08)', color: '#ff2d4a', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                          >
+                            <Icon name="close" size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Back upload — passport only */}
+                  {isIdentity && (
+                    <div>
+                      <div style={{ fontSize: 12, color: '#6a6a70', marginBottom: 8, fontWeight: 600 }}>
+                        Back of licence
+                      </div>
+                      <div
                         style={{
-                          width: 26,
-                          height: 26,
-                          borderRadius: 6,
-                          border: '1px solid rgba(255,180,171,0.3)',
-                          background: 'rgba(255,180,171,0.08)',
-                          color: '#ffb4ab',
-                          cursor: 'pointer',
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          flexShrink: 0,
+                          border: '1.5px dashed #28282c',
+                          borderRadius: 12,
+                          padding: 32,
+                          textAlign: 'center',
                         }}
                       >
-                        <Icon name="close" size={16} />
-                      </button>
+                        <Icon name="flip" size={36} style={{ color: '#28282c', marginBottom: 10 }} />
+                        <div style={{ fontSize: 13, color: '#6a6a70', marginBottom: 14 }}>Back of passport</div>
+                        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                          <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setCameraBackOpen(true)}>
+                            <Icon name="photo_camera" size={14} />
+                            Camera
+                          </button>
+                          <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => fileBackRef.current?.click()}>
+                            <Icon name="folder_open" size={14} />
+                            Choose file
+                          </button>
+                          <input ref={fileBackRef} type="file" accept="image/*,.pdf" style={{ display: 'none' }} onChange={handleFileBack} />
+                        </div>
+                        {selectedFileBack && (
+                          <div
+                            style={{
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 8,
+                              maxWidth: '100%',
+                              marginTop: 12,
+                              padding: '6px 10px',
+                              borderRadius: 8,
+                              background: 'rgba(0,184,96,0.06)',
+                              border: '1px solid rgba(0,184,96,0.25)',
+                              color: '#00b860',
+                              fontSize: 11,
+                            }}
+                          >
+                            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{selectedFileBack.name}</span>
+                            <button
+                              type="button"
+                              onClick={removeSelectedFileBack}
+                              aria-label="Remove back document"
+                              style={{ width: 22, height: 22, borderRadius: 5, border: '1px solid rgba(255,45,74,0.3)', background: 'rgba(255,45,74,0.08)', color: '#ff2d4a', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}
+                            >
+                              <Icon name="close" size={14} />
+                            </button>
+                          </div>
+                        )}
+                      </div>
                     </div>
                   )}
                 </div>
@@ -463,15 +587,15 @@ export default function AddEvidencePage() {
                         style={{
                           borderRadius: 12,
                           overflow: 'hidden',
-                          background: '#10141a',
-                          border: '1px solid #424655',
+                          background: '#070708',
+                          border: '1px solid #28282c',
                           aspectRatio: '3/4',
                           display: 'flex',
                           alignItems: 'center',
                           justifyContent: 'center',
                           flexDirection: 'column',
                           gap: 12,
-                          color: '#8c90a1',
+                          color: '#6a6a70',
                           textAlign: 'center',
                           padding: 20,
                         }}
@@ -494,15 +618,15 @@ export default function AddEvidencePage() {
                               name={claimResult.claim.status === 'verified' ? 'verified' : 'report'}
                               size={52}
                               style={{
-                                color: claimResult.claim.status === 'verified' ? '#40e56c' : '#ffb4ab',
+                                color: claimResult.claim.status === 'verified' ? '#00b860' : '#ff2d4a',
                               }}
                             />
-                            <div style={{ fontSize: 13, color: '#c2c6d8', overflowWrap: 'anywhere' }}>
+                            <div style={{ fontSize: 13, color: '#d2d2d6', overflowWrap: 'anywhere' }}>
                               {selectedFile?.name ?? 'Uploaded document'}
                             </div>
                           </>
                         )}
-                        <span style={{ fontSize: 11, color: '#8c90a1' }}>AI analysis complete</span>
+                        <span style={{ fontSize: 11, color: '#6a6a70' }}>AI analysis complete</span>
                       </div>
                     </div>
 
@@ -516,7 +640,7 @@ export default function AddEvidencePage() {
                       }}
                     >
                       {[
-                        { label: 'Status', value: claimResult.claim.status === 'verified' ? 'Verified' : 'Not verified', color: claimResult.claim.status === 'verified' ? '#40e56c' : '#ffb4ab' },
+                        { label: 'Status', value: claimResult.claim.status === 'verified' ? 'Verified' : 'Not verified', color: claimResult.claim.status === 'verified' ? '#00b860' : '#ff2d4a' },
                         { label: 'Document ID', value: claimResult.analysis.document_id ?? 'Not detected' },
                         { label: 'Document type', value: formatDocType(claimResult.analysis.doc_type) },
                         { label: 'Country / jurisdiction', value: claimResult.analysis.country ?? 'Not found' },
@@ -532,12 +656,12 @@ export default function AddEvidencePage() {
                           style={{
                             padding: '10px 12px',
                             borderRadius: 8,
-                            background: '#10141a',
-                            border: '1px solid #424655',
+                            background: '#070708',
+                            border: '1px solid #28282c',
                           }}
                         >
-                          <div style={{ fontSize: 11, color: '#8c90a1', marginBottom: 4 }}>{label}</div>
-                          <div style={{ fontSize: 14, fontWeight: 600, color: color ?? '#dfe2eb' }}>{value}</div>
+                          <div style={{ fontSize: 11, color: '#6a6a70', marginBottom: 4 }}>{label}</div>
+                          <div style={{ fontSize: 14, fontWeight: 600, color: color ?? '#d2d2d6' }}>{value}</div>
                         </div>
                       ))}
                       {claimResult.rejection_reason && (
@@ -546,9 +670,9 @@ export default function AddEvidencePage() {
                             gridColumn: 'span 2',
                             padding: 12,
                             borderRadius: 8,
-                            background: 'rgba(255,180,171,0.08)',
-                            border: '1px solid rgba(255,180,171,0.3)',
-                            color: '#ffb4ab',
+                            background: 'rgba(255,45,74,0.08)',
+                            border: '1px solid rgba(255,45,74,0.3)',
+                            color: '#ff2d4a',
                             fontSize: 13,
                             lineHeight: 1.5,
                           }}
@@ -559,7 +683,7 @@ export default function AddEvidencePage() {
                     </div>
                   </div>
                 ) : (
-                  <div style={{ color: '#8c90a1', fontSize: 14 }}>
+                  <div style={{ color: '#6a6a70', fontSize: 14 }}>
                     Upload a document first so AI can analyse it.
                   </div>
                 )}
@@ -600,16 +724,16 @@ export default function AddEvidencePage() {
                       style={{
                         padding: 16,
                         borderRadius: 10,
-                        background: claimResult?.claim.status === 'rejected' ? 'rgba(255,180,171,0.08)' : 'rgba(64,229,108,0.06)',
-                        border: claimResult?.claim.status === 'rejected' ? '1px solid rgba(255,180,171,0.3)' : '1px solid rgba(64,229,108,0.25)',
+                        background: claimResult?.claim.status === 'rejected' ? 'rgba(255,45,74,0.08)' : 'rgba(0,184,96,0.06)',
+                        border: claimResult?.claim.status === 'rejected' ? '1px solid rgba(255,45,74,0.3)' : '1px solid rgba(0,184,96,0.25)',
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 8,
                       }}
                     >
-                      <Icon name={icon} size={22} style={{ color: claimResult?.claim.status === 'rejected' ? '#ffb4ab' : '#40e56c' }} />
-                      <div style={{ fontSize: 14, fontWeight: 600, color: '#dfe2eb' }}>{label}</div>
-                      <div style={{ fontSize: 12, color: '#8c90a1' }}>{detail}</div>
+                      <Icon name={icon} size={22} style={{ color: claimResult?.claim.status === 'rejected' ? '#ff2d4a' : '#00b860' }} />
+                      <div style={{ fontSize: 14, fontWeight: 600, color: '#d2d2d6' }}>{label}</div>
+                      <div style={{ fontSize: 12, color: '#6a6a70' }}>{detail}</div>
                     </div>
                   ))}
                 </div>
@@ -620,18 +744,18 @@ export default function AddEvidencePage() {
                     justifyContent: 'space-between',
                     padding: '14px 16px',
                     borderRadius: 10,
-                    background: '#10141a',
-                    border: '1px solid #424655',
+                    background: '#070708',
+                    border: '1px solid #28282c',
                   }}
                 >
-                  <span style={{ fontSize: 14, color: '#c2c6d8' }}>
+                  <span style={{ fontSize: 14, color: '#d2d2d6' }}>
                     {claimResult?.claim.status === 'verified' ? (
                       <>
-                        Updated score: <strong style={{ color: '#40e56c' }}>{claimResult.new_score}</strong>
+                        Updated score: <strong style={{ color: '#00b860' }}>{claimResult.new_score}</strong>
                       </>
                     ) : (
                       <>
-                        Score unchanged: <strong style={{ color: '#ffb4ab' }}>{session?.score ?? claimResult?.new_score ?? 0}</strong>
+                        Score unchanged: <strong style={{ color: '#ff2d4a' }}>{session?.score ?? claimResult?.new_score ?? 0}</strong>
                       </>
                     )}
                   </span>
@@ -640,9 +764,9 @@ export default function AddEvidencePage() {
                     style={{
                       padding: '10px 24px',
                       borderRadius: 8,
-                      background: 'rgba(176,198,255,0.15)',
-                      border: '1px solid rgba(176,198,255,0.4)',
-                      color: '#b0c6ff',
+                      background: 'rgba(160,0,32,0.15)',
+                      border: '1px solid rgba(160,0,32,0.4)',
+                      color: '#a00020',
                       fontSize: 14,
                       fontWeight: 700,
                       cursor: 'pointer',
@@ -656,7 +780,7 @@ export default function AddEvidencePage() {
                   </button>
                 </div>
                 {(statusMessage || error) && (
-                  <p style={{ fontSize: 13, color: error ? '#ffb4ab' : '#40e56c', margin: '14px 0 0' }}>
+                  <p style={{ fontSize: 13, color: error ? '#ff2d4a' : '#00b860', margin: '14px 0 0' }}>
                     {error || statusMessage}
                   </p>
                 )}
@@ -673,7 +797,7 @@ export default function AddEvidencePage() {
         </div>
 
         {(statusMessage || error) && step !== 4 && (
-          <p style={{ fontSize: 13, color: error ? '#ffb4ab' : '#40e56c', margin: '16px 0 0' }}>
+          <p style={{ fontSize: 13, color: error ? '#ff2d4a' : '#00b860', margin: '16px 0 0' }}>
             {error || statusMessage}
           </p>
         )}
@@ -686,7 +810,7 @@ export default function AddEvidencePage() {
             justifyContent: 'space-between',
             marginTop: 24,
             paddingTop: 20,
-            borderTop: '1px solid #424655',
+            borderTop: '1px solid #28282c',
           }}
         >
           <button
@@ -697,9 +821,9 @@ export default function AddEvidencePage() {
             <Icon name="arrow_back" size={16} />
             Back
           </button>
-          <span style={{ fontSize: 13, color: '#8c90a1' }}>Step {step} of 4</span>
+          <span style={{ fontSize: 13, color: '#6a6a70' }}>Step {step} of 4</span>
           <button
-            className="btn-primary"
+            className="btn-solid-primary"
             onClick={() => {
               if (step === 2) {
                 void submitClaim()
@@ -733,6 +857,11 @@ export default function AddEvidencePage() {
         open={cameraOpen}
         onClose={() => setCameraOpen(false)}
         onCapture={handleCameraCapture}
+      />
+      <DocumentCameraCapture
+        open={cameraBackOpen}
+        onClose={() => setCameraBackOpen(false)}
+        onCapture={handleCameraBackCapture}
       />
     </div>
   )

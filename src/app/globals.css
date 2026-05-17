@@ -26,6 +26,15 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+  /* ─── BLACKOUT additions — semantic tokens exposed to Tailwind ─── */
+  --color-surface: var(--surface);
+  --color-surface-raised: var(--surface-raised);
+  --color-heading: var(--heading);
+  --color-accent-red: var(--accent-red);
+  --color-accent-hover: var(--accent-hover);
+  --color-danger: var(--danger);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: var(--radius);
   --radius-lg: calc(var(--radius) * 1.4);
@@ -36,24 +45,44 @@
 :root, .dark {
   --font-inter: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   --font-geist-mono: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
-  --background: #10141a;
-  --foreground: #dfe2eb;
-  --card: #181c22;
-  --card-foreground: #dfe2eb;
-  --popover: #181c22;
-  --popover-foreground: #dfe2eb;
-  --primary: #b0c6ff;
-  --primary-foreground: #002d6f;
-  --secondary: #40e56c;
-  --secondary-foreground: #003912;
-  --muted: #262a31;
-  --muted-foreground: #c2c6d8;
-  --accent: #262a31;
-  --accent-foreground: #dfe2eb;
-  --destructive: #ffb4ab;
-  --border: #424655;
-  --input: #0a0e14;
-  --ring: #b0c6ff;
+
+  /* ───────────────────────────────────────────────────────────────
+     BLACKOUT — post-blackout emergency civic palette
+     Accent: A1 ARTERY (deep crimson)  ·  Success: G5 PHOSPHOR (NVG green)
+     ─────────────────────────────────────────────────────────────── */
+
+  /* Semantic tokens (brief naming) — prefer these in new code */
+  --background:      #070708;
+  --surface:         #121214;
+  --surface-raised:  #1c1c1f;
+  --surface-hover:   #26262a;   /* btn-ghost hover, dropdown row hover */
+  --border:          #28282c;
+  --muted:           #6a6a70;   /* muted/placeholder TEXT — brief naming */
+  --foreground:      #d2d2d6;   /* body text */
+  --heading:         #f3f3f5;   /* headings, emphasis text */
+  --accent-red:      #a00020;   /* primary CTA, trust scores, active states */
+  --accent-hover:    #b8002a;
+  --accent-ink:      #f5f5f5;   /* text/icon on solid accent fill */
+  --danger:          #ff2d4a;   /* errors, destructive actions */
+  --success:         #00b860;   /* verified, tier-3, positive deltas */
+  --warning:         #cc7700;   /* pending, in-review */
+
+  /* Canonical shadcn token names — aliased to the semantic tokens above */
+  --card:                 var(--surface);
+  --card-foreground:      var(--foreground);
+  --popover:              var(--surface-raised);
+  --popover-foreground:   var(--heading);
+  --primary:              var(--accent-red);
+  --primary-foreground:   var(--accent-ink);
+  --secondary:            var(--success);
+  --secondary-foreground: var(--accent-ink);
+  --muted-foreground:     var(--muted);     /* `text-muted-foreground` Tailwind utility */
+  --accent:               var(--surface-raised);  /* shadcn's --accent = subtle hover surface, NOT the brand colour */
+  --accent-foreground:    var(--foreground);
+  --destructive:          var(--danger);
+  --input:                var(--background);
+  --ring:                 var(--accent-red);
+
   --radius: 0.5rem;
 }
 
@@ -63,8 +92,8 @@
     -moz-osx-font-smoothing: grayscale;
   }
   body {
-    background: #10141a;
-    color: #dfe2eb;
+    background: var(--background);
+    color: var(--foreground);
     font-family: var(--font-inter), system-ui, sans-serif;
   }
 }
@@ -72,34 +101,34 @@
 /* ─── CivicTrust design system utilities ─────────────────────────── */
 
 .bento {
-  background: #181c22;
-  border: 1px solid #424655;
+  background: #121214;
+  border: 1px solid #28282c;
   border-radius: 12px;
   padding: 20px;
   position: relative;
 }
 
 .field-input {
-  background: #0a0e14;
-  border: 1px solid #424655;
+  background: #070708;
+  border: 1px solid #28282c;
   border-radius: 8px;
   padding: 12px 14px;
-  color: #dfe2eb;
+  color: #d2d2d6;
   font-size: 14px;
   width: 100%;
   transition: all 0.2s;
 }
-.field-input::placeholder { color: #8c90a1; }
+.field-input::placeholder { color: #6a6a70; }
 .field-input:focus {
   outline: none;
-  border-color: #b0c6ff;
-  box-shadow: 0 0 0 3px rgba(176,198,255,0.12);
+  border-color: #a00020;
+  box-shadow: 0 0 0 3px rgba(160,0,32,0.12);
 }
 
 .btn-primary {
-  background: rgba(176,198,255,0.1);
-  border: 1px solid rgba(176,198,255,0.35);
-  color: #b0c6ff;
+  background: rgba(160,0,32,0.1);
+  border: 1px solid rgba(160,0,32,0.35);
+  color: #a00020;
   padding: 10px 18px;
   border-radius: 8px;
   font-weight: 600;
@@ -111,12 +140,12 @@
   cursor: pointer;
   text-decoration: none;
 }
-.btn-primary:hover { background: rgba(176,198,255,0.18); }
+.btn-primary:hover { background: rgba(160,0,32,0.18); }
 
 .btn-ghost {
-  background: #262a31;
-  border: 1px solid #424655;
-  color: #dfe2eb;
+  background: #1c1c1f;
+  border: 1px solid #28282c;
+  color: #d2d2d6;
   padding: 10px 18px;
   border-radius: 8px;
   font-size: 13px;
@@ -127,11 +156,11 @@
   cursor: pointer;
   text-decoration: none;
 }
-.btn-ghost:hover { background: #31353c; border-color: #8c90a1; }
+.btn-ghost:hover { background: var(--surface-hover); border-color: #6a6a70; }
 
 .btn-solid-primary {
-  background: #b0c6ff;
-  color: #002d6f;
+  background: #a00020;
+  color: #f5f5f5;
   padding: 12px 28px;
   border-radius: 8px;
   font-weight: 600;
@@ -144,7 +173,7 @@
   text-decoration: none;
   border: none;
 }
-.btn-solid-primary:hover { background: #d9e2ff; }
+.btn-solid-primary:hover { background: #b8002a; }
 
 .tier-badge {
   display: inline-flex;
@@ -157,41 +186,41 @@
   text-transform: uppercase;
   border: 1px solid;
 }
-.tier-0 { color: #c2c6d8; border-color: #424655; background: rgba(66,70,85,0.4); }
-.tier-1 { color: #b0c6ff; border-color: rgba(176,198,255,0.35); background: rgba(176,198,255,0.08); }
-.tier-2 { color: #b0c6ff; border-color: rgba(86,141,255,0.6); background: rgba(86,141,255,0.12); }
-.tier-3 { color: #002d6f; border-color: #40e56c; background: #40e56c; }
-.tier-3-outline { color: #40e56c; border-color: rgba(64,229,108,0.55); background: rgba(64,229,108,0.08); }
+.tier-0 { color: #d2d2d6; border-color: #28282c; background: rgba(40,40,44,0.4); }
+.tier-1 { color: #a00020; border-color: rgba(160,0,32,0.35); background: rgba(160,0,32,0.08); }
+.tier-2 { color: #a00020; border-color: rgba(160,0,32,0.6); background: rgba(160,0,32,0.12); }
+.tier-3 { color: #f5f5f5; border-color: #00b860; background: #00b860; }
+.tier-3-outline { color: #00b860; border-color: rgba(0,184,96,0.55); background: rgba(0,184,96,0.08); }
 
 .dot { width: 8px; height: 8px; border-radius: 9999px; display: inline-block; flex-shrink: 0; }
-.dot-green { background: #40e56c; box-shadow: 0 0 8px rgba(64,229,108,0.7); }
-.dot-amber { background: #ffc107; box-shadow: 0 0 8px rgba(255,193,7,0.7); }
-.dot-red   { background: #ff6b6b; box-shadow: 0 0 8px rgba(255,107,107,0.7); }
-.dot-blue  { background: #b0c6ff; box-shadow: 0 0 8px rgba(176,198,255,0.7); }
+.dot-green { background: #00b860; box-shadow: 0 0 8px rgba(0,184,96,0.7); }
+.dot-amber { background: #cc7700; box-shadow: 0 0 8px rgba(204,119,0,0.7); }
+.dot-red   { background: #ff2d4a; box-shadow: 0 0 8px rgba(255,45,74,0.7); }
+.dot-red   { background: #a00020; box-shadow: 0 0 8px rgba(160,0,32,0.7); }
 
 .chip {
   padding: 5px 12px;
   border-radius: 9999px;
-  background: #1c2026;
-  border: 1px solid #424655;
+  background: #121214;
+  border: 1px solid #28282c;
   font-size: 12px;
-  color: #c2c6d8;
+  color: #d2d2d6;
   cursor: pointer;
   transition: all 0.15s;
   display: inline-flex;
   align-items: center;
   user-select: none;
 }
-.chip:hover { border-color: #8c90a1; }
-.chip-active { background: rgba(176,198,255,0.1); border-color: #b0c6ff; color: #b0c6ff; }
+.chip:hover { border-color: #6a6a70; }
+.chip-active { background: rgba(160,0,32,0.1); border-color: #a00020; color: #a00020; }
 
 .city-grid {
-  background-color: #0a0e14;
+  background-color: #070708;
   background-image:
-    radial-gradient(circle at 20% 30%, rgba(176,198,255,0.04) 0%, transparent 40%),
-    radial-gradient(circle at 70% 60%, rgba(64,229,108,0.03) 0%, transparent 40%),
-    linear-gradient(to right, rgba(66,70,85,0.4) 1px, transparent 1px),
-    linear-gradient(to bottom, rgba(66,70,85,0.4) 1px, transparent 1px);
+    radial-gradient(circle at 20% 30%, rgba(160,0,32,0.04) 0%, transparent 40%),
+    radial-gradient(circle at 70% 60%, rgba(0,184,96,0.03) 0%, transparent 40%),
+    linear-gradient(to right, rgba(40,40,44,0.4) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(40,40,44,0.4) 1px, transparent 1px);
   background-size: 100% 100%, 100% 100%, 48px 48px, 48px 48px;
 }
 
@@ -238,16 +267,16 @@
 
 /* Leaflet zoom controls dark theme */
 .leaflet-control-zoom a {
-  background: #181c22 !important;
-  color: #dfe2eb !important;
-  border-color: #424655 !important;
+  background: #121214 !important;
+  color: #d2d2d6 !important;
+  border-color: #28282c !important;
 }
 .leaflet-control-zoom a:hover {
-  background: #1e2530 !important;
+  background: #1c1c1f !important;
   color: #ffffff !important;
 }
 .leaflet-bar {
-  border: 1px solid #424655 !important;
+  border: 1px solid #28282c !important;
   box-shadow: 0 2px 8px rgba(0,0,0,0.5) !important;
 }
 
@@ -258,5 +287,5 @@
 
 /* Selected borough glow */
 .selected-borough {
-  filter: drop-shadow(0 0 12px rgba(56, 189, 248, 0.5));
+  filter: drop-shadow(0 0 12px rgba(160, 0, 32, 0.5));
 }

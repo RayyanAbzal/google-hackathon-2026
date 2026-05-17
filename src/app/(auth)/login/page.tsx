@@ -81,18 +81,18 @@ export default function LoginPage() {
   }
 
   return (
-    <div style={{ background: '#10141a', minHeight: '100vh', color: '#dfe2eb' }}>
+    <div style={{ background: '#070708', minHeight: '100vh', color: '#d2d2d6' }}>
       <TopBar authMode="public" />
       <main style={{ paddingTop: 56, display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }}>
         <div style={{ width: '100%', maxWidth: 440, padding: '0 24px' }}>
           <div style={{ textAlign: 'center', marginBottom: 32 }}>
             <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.01em' }}>Sign in</h1>
-            <p style={{ color: '#c2c6d8', fontSize: 15, marginTop: 8 }}>Welcome back. Enter your username and password.</p>
+            <p style={{ color: '#d2d2d6', fontSize: 15, marginTop: 8 }}>Welcome back. Enter your username and password.</p>
           </div>
 
           <form className="bento" style={{ padding: 32, display: pendingSession ? 'none' : 'flex', flexDirection: 'column', gap: 20 }} onSubmit={handleSubmit}>
             <div>
-              <label style={{ fontSize: 13, color: '#c2c6d8', display: 'block', marginBottom: 6 }}>Username</label>
+              <label style={{ fontSize: 13, color: '#d2d2d6', display: 'block', marginBottom: 6 }}>Username</label>
               <input
                 className="field-input"
                 placeholder="@username"
@@ -104,8 +104,8 @@ export default function LoginPage() {
 
             <div>
               <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 6 }}>
-                <label style={{ fontSize: 13, color: '#c2c6d8' }}>Password</label>
-                <a href="#" style={{ fontSize: 12, color: '#8c90a1', textDecoration: 'none' }}>Lost access?</a>
+                <label style={{ fontSize: 13, color: '#d2d2d6' }}>Password</label>
+                <a href="#" style={{ fontSize: 12, color: '#6a6a70', textDecoration: 'none' }}>Lost access?</a>
               </div>
               <input
                 className="field-input"
@@ -116,27 +116,27 @@ export default function LoginPage() {
               />
             </div>
 
-            {error && <p style={{ fontSize: 13, color: '#ffb4ab', margin: 0 }}>{error}</p>}
+            {error && <p style={{ fontSize: 13, color: '#ff2d4a', margin: 0 }}>{error}</p>}
 
             <button
               type="submit"
               disabled={loading}
-              style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px 24px', borderRadius: 8, background: '#b0c6ff', color: '#002d6f', fontWeight: 600, fontSize: 15, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}
+              style={{ marginTop: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px 24px', borderRadius: 8, background: '#a00020', color: '#f5f5f5', fontWeight: 600, fontSize: 15, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}
             >
               {loading ? 'Signing in...' : 'Sign in'}
               {!loading && <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>}
             </button>
 
-            <p style={{ textAlign: 'center', fontSize: 13, color: '#c2c6d8', margin: 0 }}>
+            <p style={{ textAlign: 'center', fontSize: 13, color: '#d2d2d6', margin: 0 }}>
               Don&apos;t have an account?{' '}
-              <Link href="/register" style={{ color: '#b0c6ff', textDecoration: 'none' }}>Create one</Link>
+              <Link href="/register" style={{ color: '#a00020', textDecoration: 'none' }}>Create one</Link>
             </p>
           </form>
 
           {pendingSession && (
             <form className="bento" style={{ padding: 32, display: 'flex', flexDirection: 'column', gap: 20 }} onSubmit={handleUsernameSubmit}>
               <div>
-                <label style={{ fontSize: 13, color: '#c2c6d8', display: 'block', marginBottom: 6 }}>Choose your username</label>
+                <label style={{ fontSize: 13, color: '#d2d2d6', display: 'block', marginBottom: 6 }}>Choose your username</label>
                 <input
                   className="field-input"
                   placeholder="@username"
@@ -144,17 +144,17 @@ export default function LoginPage() {
                   onChange={e => setUsername(e.target.value)}
                   required
                 />
-                <p style={{ fontSize: 12, color: '#8c90a1', marginTop: 8 }}>
+                <p style={{ fontSize: 12, color: '#6a6a70', marginTop: 8 }}>
                   This lets people find your trust profile without using your raw User ID.
                 </p>
               </div>
 
-              {error && <p style={{ fontSize: 13, color: '#ffb4ab', margin: 0 }}>{error}</p>}
+              {error && <p style={{ fontSize: 13, color: '#ff2d4a', margin: 0 }}>{error}</p>}
 
               <button
                 type="submit"
                 disabled={loading}
-                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px 24px', borderRadius: 8, background: '#b0c6ff', color: '#002d6f', fontWeight: 600, fontSize: 15, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}
+                style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px 24px', borderRadius: 8, background: '#a00020', color: '#f5f5f5', fontWeight: 600, fontSize: 15, border: 'none', cursor: loading ? 'not-allowed' : 'pointer', opacity: loading ? 0.7 : 1 }}
               >
                 {loading ? 'Saving...' : 'Save username'}
                 {!loading && <span className="material-symbols-outlined" style={{ fontSize: 18 }}>arrow_forward</span>}

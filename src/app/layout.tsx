@@ -27,7 +27,7 @@ export default function RootLayout({
         />
       </head>
       <body
-        style={{ background: "#10141a", color: "#dfe2eb", minHeight: "100vh" }}
+        style={{ background: "#070708", color: "#d2d2d6", minHeight: "100vh" }}
         suppressHydrationWarning
         data-new-gr-c-s-check-loaded="14.1292.0"
         data-gr-ext-installed=""

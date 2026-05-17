@@ -38,7 +38,7 @@ The civic design system is shipped. Most planned components are now superseded b
 
 - Import types from `src/types/index.ts`
 - No API calls inside components — accept data via props
-- Design token colours: use the same inline style pattern as the civic components (`#10141a`, `#b0c6ff` etc)
+- Design token colours: use the same inline style pattern as the civic components (`#070708`, `#a00020` etc)
 - `getTier()` from `src/types/index.ts` — never hardcode tier thresholds
 
 ## Score tiers

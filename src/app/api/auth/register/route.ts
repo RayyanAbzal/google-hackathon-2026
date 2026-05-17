@@ -20,6 +20,7 @@ interface RegisterBody {
   borough?: string;
   skill?: SkillTag;
   doc_image_base64?: string;
+  doc_image_base64_back?: string;
   mime_type?: string;
 }
 
@@ -85,7 +86,7 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ success: false, error: "Invalid JSON" } satisfies ApiResponse<never>, { status: 400 });
   }
 
-  const { display_name, password, doc_type, borough, skill, doc_image_base64, mime_type } = body;
+  const { display_name, password, doc_type, borough, skill, doc_image_base64, doc_image_base64_back, mime_type } = body;
 
   if (!display_name?.trim()) {
     return Response.json({ success: false, error: "display_name is required" } satisfies ApiResponse<never>, { status: 400 });
@@ -98,6 +99,9 @@ export async function POST(request: Request): Promise<Response> {
   }
   if (!doc_image_base64?.trim()) {
     return Response.json({ success: false, error: "A valid identity document is required to create an account" } satisfies ApiResponse<never>, { status: 400 });
+  }
+  if (doc_type === "driving_licence" && !doc_image_base64_back?.trim()) {
+    return Response.json({ success: false, error: "driving_licence requires both front and back images" } satisfies ApiResponse<never>, { status: 400 });
   }
   if (mime_type !== "image/png") {
     return Response.json({ success: false, error: "Signup document must be a PNG image" } satisfies ApiResponse<never>, { status: 400 });
@@ -124,7 +128,7 @@ export async function POST(request: Request): Promise<Response> {
   }
 
   const password_hash = hashPassword(password);
-  const content_hash = createHash("sha256").update(doc_image_base64).digest("hex");
+  const content_hash = createHash("sha256").update(doc_image_base64 + (doc_image_base64_back ?? '')).digest("hex");
 
   const { data: dupCheck } = await supabaseAdmin
     .from("claims")
@@ -144,10 +148,11 @@ export async function POST(request: Request): Promise<Response> {
       document_category: doc_type,
       expiry_date: "2099-01-01",
       institution: null,
+      document_id: null,
       confidence: 0.9,
     };
   } else {
-    analysis = await analyseDocument(doc_image_base64, doc_type, mime_type || "image/jpeg");
+    analysis = await analyseDocument(doc_image_base64, doc_type, mime_type || "image/jpeg", doc_image_base64_back ?? undefined);
   }
 
   if (analysis.confidence < 0.35 || !analysis.extracted_name) {
@@ -194,6 +199,8 @@ export async function POST(request: Request): Promise<Response> {
       type: "identity",
       status: "verified",
       doc_type,
+      document_id: analysis.document_id ?? null,
+      expiry_date: analysis.expiry_date ?? null,
       extracted_name: analysis.extracted_name,
       extracted_institution: analysis.institution,
       confidence: analysis.confidence,
@@ -213,7 +220,7 @@ export async function POST(request: Request): Promise<Response> {
     title: 'Welcome to CivicTrust',
     detail: 'Start building your trust profile',
     icon: 'person_add',
-    color: '#8c90a1',
+    color: '#6a6a70',
   });
 
   return Response.json({

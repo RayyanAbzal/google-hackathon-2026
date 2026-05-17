@@ -3,12 +3,12 @@
 import type { SkillTag } from '@/types'
 
 export const SKILL_COLORS: Record<SkillTag, string> = {
-  Doctor:   '#22c55e',
-  Engineer: '#3b82f6',
-  Legal:    '#a855f7',
-  Builder:  '#f59e0b',
-  Nurse:    '#ec4899',
-  Other:    '#6b7280',
+  Doctor:   '#00b860',
+  Engineer: '#cc7700',
+  Legal:    '#d2d2d6',
+  Builder:  '#a00020',
+  Nurse:    '#a85a6f',
+  Other:    '#6a6a70',
 }
 
 // SVG circle rendered inside HeatMap's <svg>. x/y are projected SVG coordinates.
@@ -33,7 +33,7 @@ export function SkillPin({
     <g role="img" aria-label={`${skill} ${username}`}>
       <circle cx={x} cy={y} r={r} fill={color} opacity={0.88} className="cursor-pointer" />
       {isGov && (
-        <circle cx={x} cy={y} r={r + 2} fill="none" stroke="#fbbf24" strokeWidth={1.5} opacity={0.7} />
+        <circle cx={x} cy={y} r={r + 2} fill="none" stroke="#cc7700" strokeWidth={1.5} opacity={0.7} />
       )}
     </g>
   )

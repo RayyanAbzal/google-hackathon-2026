@@ -71,11 +71,11 @@ const CREDENTIAL_LABEL: Record<string, string> = {
 }
 
 const TIER_LABEL: Record<string, string> = { gov_official: 'T1', trusted: 'T2', verified: 'T3' }
-const TIER_COLOR: Record<string, string> = { gov_official: '#40e56c', trusted: '#b0c6ff', verified: '#8c90a1' }
+const TIER_COLOR: Record<string, string> = { gov_official: '#00b860', trusted: '#a00020', verified: '#6a6a70' }
 
 const SKILL_COLOR: Record<string, string> = {
-  Doctor: '#22c55e', Nurse: '#ec4899', Engineer: '#3b82f6',
-  Legal: '#a855f7', Builder: '#f59e0b', Other: '#6b7280',
+  Doctor: '#00b860', Nurse: '#a85a6f', Engineer: '#cc7700',
+  Legal: '#d2d2d6', Builder: '#a00020', Other: '#6a6a70',
 }
 
 const LONDON_POPULATION = 9_000_000
@@ -87,11 +87,11 @@ function toDisplayListing(row: YPListingRow): DisplayListing {
   const isAvailNow = row.tier === 'trusted' || row.tier === 'gov_official'
   return {
     nodeId: row.nodeId, username: row.username, refCode: row.nodeId,
-    icon: SKILL_ICON[row.skill] ?? 'person', iconColor: SKILL_COLOR[row.skill] ?? '#b0c6ff',
+    icon: SKILL_ICON[row.skill] ?? 'person', iconColor: SKILL_COLOR[row.skill] ?? '#a00020',
     title: `Verified ${row.skill}`, sub: SKILL_SUB[row.skill] ?? 'General', note,
     area: row.borough, avail: isAvailNow ? 'Available now' : 'Available soon',
-    availColor: isAvailNow ? '#40e56c' : '#ffc107',
-    tierLabel: TIER_LABEL[row.tier] ?? 'T3', tierColor: TIER_COLOR[row.tier] ?? '#b0c6ff',
+    availColor: isAvailNow ? '#00b860' : '#cc7700',
+    tierLabel: TIER_LABEL[row.tier] ?? 'T3', tierColor: TIER_COLOR[row.tier] ?? '#a00020',
     subCategory: SKILL_SUBCATEGORY[row.skill] ?? 'OTHER', borough: row.borough,
     featured: row.tier === 'gov_official', score: row.score,
     claimCount: row.claimCount, credentials: row.credentials, totalVouches: row.totalVouches,
@@ -113,8 +113,8 @@ function YPListing({ icon, iconColor, title, sub, availColor, tierLabel, tierCol
         alignItems: 'center',
         gap: 10,
         padding: '10px 14px',
-        borderTop: '1px solid rgba(66,70,85,0.4)',
-        background: isActive ? `${iconColor}08` : (featured ? 'rgba(251,191,36,0.04)' : 'transparent'),
+        borderTop: '1px solid rgba(40,40,44,0.4)',
+        background: isActive ? `${iconColor}08` : (featured ? 'rgba(204,119,0,0.04)' : 'transparent'),
         cursor: 'pointer',
         transition: 'background 0.1s',
         borderLeft: isActive ? `2px solid ${iconColor}` : (featured ? `2px solid ${tierColor}` : '2px solid transparent'),
@@ -129,7 +129,7 @@ function YPListing({ icon, iconColor, title, sub, availColor, tierLabel, tierCol
         <div style={{ fontSize: 13, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 6, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
           {title}
         </div>
-        <div style={{ fontSize: 11, color: '#8c90a1', marginTop: 1 }}>{sub}</div>
+        <div style={{ fontSize: 11, color: '#6a6a70', marginTop: 1 }}>{sub}</div>
       </div>
       {/* Score */}
       <div style={{ textAlign: 'center', flexShrink: 0 }}>
@@ -146,11 +146,11 @@ function YPListing({ icon, iconColor, title, sub, availColor, tierLabel, tierCol
 function YPSection({ title, count, children }: { title: string; count: number; children: React.ReactNode }) {
   return (
     <div style={{ marginBottom: 16 }}>
-      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '9px 14px', background: '#0a0e14', border: '1px solid rgba(66,70,85,0.55)', borderBottom: 'none' }}>
-        <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: '#dfe2eb', letterSpacing: '0.12em' }}>{title}</span>
+      <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', padding: '9px 14px', background: '#070708', border: '1px solid rgba(40,40,44,0.55)', borderBottom: 'none' }}>
+        <span className="mono" style={{ fontSize: 11, fontWeight: 700, color: '#d2d2d6', letterSpacing: '0.12em' }}>{title}</span>
         <span className="meta">{count} LISTINGS</span>
       </div>
-      <div style={{ border: '1px solid rgba(66,70,85,0.55)', background: '#181c22' }}>{children}</div>
+      <div style={{ border: '1px solid rgba(40,40,44,0.55)', background: '#121214' }}>{children}</div>
     </div>
   )
 }
@@ -336,7 +336,7 @@ export default function FindPage() {
   if (!accessChecked || !session || session.tier === 'unverified') return null
 
   return (
-    <div style={{ background: '#10141a', height: '100vh', color: '#dfe2eb', overflow: 'hidden' }}>
+    <div style={{ background: '#070708', height: '100vh', color: '#d2d2d6', overflow: 'hidden' }}>
       <TopBar />
       <Sidebar active="find" session={session} />
 
@@ -345,22 +345,22 @@ export default function FindPage() {
         {/* Header + search */}
         <div style={{ padding: '16px 20px 12px', flexShrink: 0 }}>
           <h1 style={{ fontSize: 28, fontWeight: 800, letterSpacing: '-0.02em', margin: '0 0 2px', lineHeight: 1 }}>The Yellow Pages.</h1>
-          <p style={{ color: '#8c90a1', fontSize: 12, margin: '0 0 10px' }}>Every verified doctor, nurse, engineer and builder — pinned to the map.</p>
+          <p style={{ color: '#6a6a70', fontSize: 12, margin: '0 0 10px' }}>Every verified doctor, nurse, engineer and builder — pinned to the map.</p>
 
           <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
-            <div style={{ flex: 1, display: 'flex', alignItems: 'center', padding: '0 12px', background: '#181c22', border: '1px solid #424655', borderRadius: 8, gap: 8 }}>
-              <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#8c90a1' }}>search</span>
+            <div style={{ flex: 1, display: 'flex', alignItems: 'center', padding: '0 12px', background: '#121214', border: '1px solid #28282c', borderRadius: 8, gap: 8 }}>
+              <span className="material-symbols-outlined" style={{ fontSize: 18, color: '#6a6a70' }}>search</span>
               <input
                 placeholder="Search by role, credential or borough…"
-                style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#dfe2eb', fontSize: 14, padding: '10px 0', fontFamily: 'inherit' }}
+                style={{ flex: 1, background: 'transparent', border: 'none', outline: 'none', color: '#d2d2d6', fontSize: 14, padding: '10px 0', fontFamily: 'inherit' }}
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
               {searchLoading && (
-                <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#8c90a1', animation: 'spin 1s linear infinite' }}>progress_activity</span>
+                <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#6a6a70', animation: 'spin 1s linear infinite' }}>progress_activity</span>
               )}
               {search && !searchLoading && (
-                <button onClick={() => { setSearch(''); setMapSkill('All'); setActiveBorough(''); setResetMap(true); setTimeout(() => setResetMap(false), 100) }} style={{ background: 'transparent', border: 'none', color: '#8c90a1', cursor: 'pointer', lineHeight: 1 }}>
+                <button onClick={() => { setSearch(''); setMapSkill('All'); setActiveBorough(''); setResetMap(true); setTimeout(() => setResetMap(false), 100) }} style={{ background: 'transparent', border: 'none', color: '#6a6a70', cursor: 'pointer', lineHeight: 1 }}>
                   <span className="material-symbols-outlined" style={{ fontSize: 16 }}>close</span>
                 </button>
               )}
@@ -369,11 +369,11 @@ export default function FindPage() {
         </div>
 
         {/* Side-by-side panels */}
-        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', borderTop: '1px solid rgba(66,70,85,0.4)' }}>
+        <div style={{ flex: 1, display: 'flex', overflow: 'hidden', borderTop: '1px solid rgba(40,40,44,0.4)' }}>
 
           {/* LEFT: Map 65% */}
-          <div style={{ flex: '0 0 65%', position: 'relative', overflow: 'hidden', borderRight: '1px solid rgba(66,70,85,0.4)' }}>
-            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, transparent 55%, rgba(16,20,26,0.65) 100%)', zIndex: 500, pointerEvents: 'none' }} />
+          <div style={{ flex: '0 0 65%', position: 'relative', overflow: 'hidden', borderRight: '1px solid rgba(40,40,44,0.4)' }}>
+            <div style={{ position: 'absolute', inset: 0, background: 'radial-gradient(ellipse at center, transparent 55%, rgba(7,7,8,0.65) 100%)', zIndex: 500, pointerEvents: 'none' }} />
             <HeatMap
               users={mapUsers}
               selectedBorough={activeBorough}
@@ -396,8 +396,8 @@ export default function FindPage() {
             />
 
             {/* Bottom-left: map hint */}
-            <div style={{ position: 'absolute', bottom: 12, left: 12, padding: '7px 12px', background: 'rgba(16,20,26,0.92)', border: `1px solid ${mapSkill !== 'All' ? `${SKILL_COLOR[mapSkill] ?? '#b0c6ff'}50` : 'rgba(66,70,85,0.5)'}`, borderRadius: 6, zIndex: 500, pointerEvents: 'none', transition: 'border-color 0.2s' }}>
-              <span className="meta" style={{ color: mapSkill !== 'All' ? (SKILL_COLOR[mapSkill] ?? '#b0c6ff') : '#8c90a1' }}>
+            <div style={{ position: 'absolute', bottom: 12, left: 12, padding: '7px 12px', background: 'rgba(7,7,8,0.92)', border: `1px solid ${mapSkill !== 'All' ? `${SKILL_COLOR[mapSkill] ?? '#a00020'}50` : 'rgba(40,40,44,0.5)'}`, borderRadius: 6, zIndex: 500, pointerEvents: 'none', transition: 'border-color 0.2s' }}>
+              <span className="meta" style={{ color: mapSkill !== 'All' ? (SKILL_COLOR[mapSkill] ?? '#a00020') : '#6a6a70' }}>
                 {mapSkill !== 'All' ? mapSkill.toUpperCase() + ' DENSITY' : 'DENSITY HEATMAP'}
               </span>
               <div style={{ fontSize: 13, fontWeight: 700, marginTop: 3 }}>{mapSkill !== 'All' ? `Showing ${mapSkill.toLowerCase()} density` : 'Showing all verified people'}</div>
@@ -405,21 +405,21 @@ export default function FindPage() {
 
             {/* Bottom-right: verified counter */}
             {totalVerified > 0 && (
-              <div style={{ position: 'absolute', bottom: 12, right: 12, padding: '10px 14px', background: 'rgba(16,20,26,0.92)', border: '1px solid rgba(66,70,85,0.5)', borderRadius: 6, zIndex: 500, pointerEvents: 'none', textAlign: 'right' }}>
-                <div className="mono" style={{ fontSize: 9, color: '#8c90a1', letterSpacing: '0.1em', marginBottom: 3 }}>VERIFIED LONDONERS</div>
-                <div style={{ fontSize: 22, fontWeight: 800, color: '#b0c6ff', letterSpacing: '-0.02em', lineHeight: 1 }}>
-                  {totalVerified.toLocaleString()} <span style={{ fontSize: 13, color: '#556074', fontWeight: 400 }}>/ {LONDON_POPULATION.toLocaleString()}</span>
+              <div style={{ position: 'absolute', bottom: 12, right: 12, padding: '10px 14px', background: 'rgba(7,7,8,0.92)', border: '1px solid rgba(40,40,44,0.5)', borderRadius: 6, zIndex: 500, pointerEvents: 'none', textAlign: 'right' }}>
+                <div className="mono" style={{ fontSize: 9, color: '#6a6a70', letterSpacing: '0.1em', marginBottom: 3 }}>VERIFIED LONDONERS</div>
+                <div style={{ fontSize: 22, fontWeight: 800, color: '#a00020', letterSpacing: '-0.02em', lineHeight: 1 }}>
+                  {totalVerified.toLocaleString()} <span style={{ fontSize: 13, color: '#6a6a70', fontWeight: 400 }}>/ {LONDON_POPULATION.toLocaleString()}</span>
                 </div>
                 {mapSkill !== 'All' ? (
-                  <div style={{ fontSize: 11, color: '#8c90a1', marginTop: 4, textAlign: 'right' }}>
-                    <span style={{ color: SKILL_COLOR[mapSkill] ?? '#b0c6ff' }}>●</span>{' '}
+                  <div style={{ fontSize: 11, color: '#6a6a70', marginTop: 4, textAlign: 'right' }}>
+                    <span style={{ color: SKILL_COLOR[mapSkill] ?? '#a00020' }}>●</span>{' '}
                     {skillFilteredCount} {mapSkill.toLowerCase()}{skillFilteredCount !== 1 ? 's' : ''} verified
                   </div>
                 ) : (totalDoctors > 0 || totalEngineers > 0 || totalLegal > 0) ? (
-                  <div style={{ fontSize: 11, color: '#8c90a1', marginTop: 4, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
-                    {totalDoctors > 0 && <span><span style={{ color: '#22c55e' }}>●</span> {totalDoctors} medical</span>}
-                    {totalEngineers > 0 && <span><span style={{ color: '#3b82f6' }}>●</span> {totalEngineers} engineers</span>}
-                    {totalLegal > 0 && <span><span style={{ color: '#a855f7' }}>●</span> {totalLegal} legal</span>}
+                  <div style={{ fontSize: 11, color: '#6a6a70', marginTop: 4, display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+                    {totalDoctors > 0 && <span><span style={{ color: '#00b860' }}>●</span> {totalDoctors} medical</span>}
+                    {totalEngineers > 0 && <span><span style={{ color: '#cc7700' }}>●</span> {totalEngineers} engineers</span>}
+                    {totalLegal > 0 && <span><span style={{ color: '#d2d2d6' }}>●</span> {totalLegal} legal</span>}
                   </div>
                 ) : null}
               </div>
@@ -427,29 +427,29 @@ export default function FindPage() {
           </div>
 
           {/* RIGHT: Listings 35% */}
-          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#181c22' }}>
+          <div style={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden', background: '#121214' }}>
 
             {/* Borough + result count */}
-            <div style={{ padding: '8px 14px', borderBottom: '1px solid rgba(66,70,85,0.4)', background: '#0a0e14', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+            <div style={{ padding: '8px 14px', borderBottom: '1px solid rgba(40,40,44,0.4)', background: '#070708', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#b0c6ff' }}>location_on</span>
-                <span style={{ fontSize: 13, fontWeight: 700, color: '#dfe2eb' }}>{activeBorough || 'All boroughs'}</span>
-                <span style={{ fontSize: 12, color: '#556074' }}>·</span>
-                <span style={{ fontSize: 12, color: '#8c90a1' }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
-                {search && <span style={{ fontSize: 10, color: '#8c90a1' }}>for &ldquo;{search}&rdquo;</span>}
+                <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#a00020' }}>location_on</span>
+                <span style={{ fontSize: 13, fontWeight: 700, color: '#d2d2d6' }}>{activeBorough || 'All boroughs'}</span>
+                <span style={{ fontSize: 12, color: '#6a6a70' }}>·</span>
+                <span style={{ fontSize: 12, color: '#6a6a70' }}>{filtered.length} result{filtered.length !== 1 ? 's' : ''}</span>
+                {search && <span style={{ fontSize: 10, color: '#6a6a70' }}>for &ldquo;{search}&rdquo;</span>}
               </div>
             </div>
 
             {/* Borough situation report */}
             {activeBorough && (
-              <div style={{ minHeight: 44, padding: '8px 14px', borderBottom: '1px solid rgba(66,70,85,0.4)', background: 'rgba(176,198,255,0.04)', flexShrink: 0, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#b0c6ff', marginTop: 2, flexShrink: 0 }}>smart_toy</span>
+              <div style={{ minHeight: 44, padding: '8px 14px', borderBottom: '1px solid rgba(40,40,44,0.4)', background: 'rgba(160,0,32,0.04)', flexShrink: 0, display: 'flex', alignItems: 'flex-start', gap: 8 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 13, color: '#a00020', marginTop: 2, flexShrink: 0 }}>smart_toy</span>
                 {reportLoading || !boroughReports[activeBorough] ? (
-                  <div style={{ fontSize: 11, color: '#556074', fontStyle: 'italic' }}>
+                  <div style={{ fontSize: 11, color: '#6a6a70', fontStyle: 'italic' }}>
                     {reportLoading ? 'Analysing coverage…' : ''}
                   </div>
                 ) : (
-                  <p style={{ fontSize: 11, color: '#8c90a1', margin: 0, lineHeight: 1.6 }}>{boroughReports[activeBorough]}</p>
+                  <p style={{ fontSize: 11, color: '#6a6a70', margin: 0, lineHeight: 1.6 }}>{boroughReports[activeBorough]}</p>
                 )}
               </div>
             )}
@@ -457,7 +457,7 @@ export default function FindPage() {
             {/* Scrollable listings */}
             <div style={{ flex: 1, overflowY: 'auto' }}>
               {loading && (
-                <div style={{ padding: 32, textAlign: 'center', color: '#8c90a1', fontSize: 14 }}>Loading listings...</div>
+                <div style={{ padding: 32, textAlign: 'center', color: '#6a6a70', fontSize: 14 }}>Loading listings...</div>
               )}
 
               {!loading && Object.entries(bySubCategory).map(([subCat, rows]) => (
@@ -481,16 +481,16 @@ export default function FindPage() {
               ))}
 
               {!loading && filtered.length === 0 && (
-                <div style={{ padding: 32, textAlign: 'center', color: '#8c90a1', fontSize: 14 }}>
+                <div style={{ padding: 32, textAlign: 'center', color: '#6a6a70', fontSize: 14 }}>
                   No verified listings in {activeBorough || 'any borough'}{search ? ` matching "${search}"` : ''}.
                 </div>
               )}
 
-              <div style={{ margin: 12, padding: 12, border: '1px dashed rgba(66,70,85,0.5)', borderRadius: 6, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
-                <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#b0c6ff', marginTop: 1, flexShrink: 0 }}>visibility_off</span>
+              <div style={{ margin: 12, padding: 12, border: '1px dashed rgba(40,40,44,0.5)', borderRadius: 6, display: 'flex', alignItems: 'flex-start', gap: 10 }}>
+                <span className="material-symbols-outlined" style={{ fontSize: 16, color: '#a00020', marginTop: 1, flexShrink: 0 }}>visibility_off</span>
                 <div>
                   <div style={{ fontSize: 12, fontWeight: 600 }}>Names are hidden by default.</div>
-                  <div style={{ fontSize: 11, color: '#8c90a1', marginTop: 2, lineHeight: 1.5 }}>You see role, area, credentials, and the hub they report to — never the person directly. Contact happens at the hub.</div>
+                  <div style={{ fontSize: 11, color: '#6a6a70', marginTop: 2, lineHeight: 1.5 }}>You see role, area, credentials, and the hub they report to — never the person directly. Contact happens at the hub.</div>
                 </div>
               </div>
             </div>

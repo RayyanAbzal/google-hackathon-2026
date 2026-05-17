@@ -8,7 +8,10 @@ export const USE_FALLBACKS =
 
 export const FALLBACK_DOCUMENT_ANALYSIS: DocumentAnalysis = {
   extracted_name: 'Sarah Mitchell',
+  document_id: null,
   doc_type: 'passport',
+  document_category: 'passport',
+  expiry_date: null,
   confidence: 0.95,
   institution: null,
 }

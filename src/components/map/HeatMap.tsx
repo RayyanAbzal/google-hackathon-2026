@@ -88,17 +88,17 @@ interface HeatMapProps {
 }
 
 const SKILL_COLORS: Record<SkillTag, string> = {
-  Doctor: '#22c55e',
-  Engineer: '#3b82f6',
-  Legal: '#a855f7',
-  Builder: '#f59e0b',
-  Nurse: '#ec4899',
-  Other: '#6b7280',
+  Doctor: '#00b860',
+  Engineer: '#cc7700',
+  Legal: '#d2d2d6',
+  Builder: '#a00020',
+  Nurse: '#a85a6f',
+  Other: '#6a6a70',
 }
 
 const POI_COLORS: Record<MapPOI['type'], string> = {
-  aid_hub: '#b0c6ff',
-  risk_alert: '#ffb4ab',
+  aid_hub: '#a00020',
+  risk_alert: '#ff2d4a',
 }
 
 type CentroidMap = Record<string, [number, number]>
@@ -154,7 +154,7 @@ export function HeatMap({
   const heatColorScale = useMemo(
     () => d3.scaleLinear<string>()
       .domain([0, maxWeightedCount])
-      .range(['#0b1220', '#b0c6ff'])
+      .range(['#070708', '#a00020'])
       .clamp(true),
     [maxWeightedCount]
   )
@@ -169,9 +169,9 @@ export function HeatMap({
 
     if (isSelected) {
       return {
-        fillColor: '#38bdf8',
+        fillColor: '#a00020',
         fillOpacity: 0.96,
-        color: '#7dd3fc',
+        color: '#b8002a',
         weight: 4,
         className: 'selected-borough',
       }
@@ -180,9 +180,9 @@ export function HeatMap({
     if (count === 0) {
       const dimmed = activeSkill !== 'All' || hasSelection
       return {
-        fillColor: '#1a2235',
+        fillColor: '#121214',
         fillOpacity: dimmed ? 0.1 : 0.55,
-        color: '#2a3550',
+        color: '#28282c',
         weight: 0.6,
       }
     }
@@ -190,7 +190,7 @@ export function HeatMap({
     return {
       fillColor: base,
       fillOpacity: hasSelection ? 0.45 : 0.88,
-      color: '#1e293b',
+      color: '#28282c',
       weight: 0.8,
     }
   }, [heatColorScale, lookup, selectedBorough, activeSkill])
@@ -220,7 +220,7 @@ export function HeatMap({
         const path = e.target as { setStyle: (s: PathOptions) => void; bringToFront: () => void }
         const isSelected = name === selectedBoroughRef.current
         if (!isSelected) {
-          path.setStyle({ ...boroughStyleRef.current(feature), color: '#60a5fa', weight: 2, fillOpacity: 0.75 })
+          path.setStyle({ ...boroughStyleRef.current(feature), color: '#b8002a', weight: 2, fillOpacity: 0.75 })
           path.bringToFront()
         }
       },
@@ -236,12 +236,12 @@ export function HeatMap({
 
   if (!geojson) {
     return (
-      <div className="flex h-full items-center justify-center rounded-xl border border-slate-700/70 bg-slate-950/80 px-6 text-center">
+      <div className="flex h-full items-center justify-center rounded-xl border border-border/70 bg-background/80 px-6 text-center">
         <div>
-          <div className="text-sm font-medium text-slate-200">
+          <div className="text-sm font-medium text-foreground">
             {mapError ?? 'Loading map...'}
           </div>
-          <div className="mt-2 text-xs text-slate-400">
+          <div className="mt-2 text-xs text-muted-foreground">
             The summary panel still works while the London borough layer loads.
           </div>
         </div>
@@ -316,13 +316,13 @@ export function HeatMap({
             }}
           >
             <Tooltip permanent direction="right" opacity={0.92} offset={[8, 0]}>
-              <span style={{ fontSize: 11, fontWeight: 600, color: poi.type === 'aid_hub' ? '#b0c6ff' : '#ffb4ab' }}>
+              <span style={{ fontSize: 11, fontWeight: 600, color: poi.type === 'aid_hub' ? '#a00020' : '#ff2d4a' }}>
                 {poi.label}
               </span>
             </Tooltip>
             <Popup>
               <div style={{ minWidth: 140 }}>
-                <div style={{ fontWeight: 700, fontSize: 13, color: '#f8fafc', marginBottom: 2 }}>{poi.label}</div>
+                <div style={{ fontWeight: 700, fontSize: 13, color: '#f3f3f5', marginBottom: 2 }}>{poi.label}</div>
                 <div style={{ fontSize: 11, color }}>
                   {poi.type === 'aid_hub' ? 'Aid hub' : 'Risk alert'}
                 </div>
@@ -338,7 +338,7 @@ export function HeatMap({
           closeButton={false}
           autoPan={false}
         >
-          <div style={{ minWidth: 200, fontFamily: 'inherit', background: '#181c22', color: '#dfe2eb', borderRadius: 8, padding: '12px 14px' }}>
+          <div style={{ minWidth: 200, fontFamily: 'inherit', background: '#121214', color: '#d2d2d6', borderRadius: 8, padding: '12px 14px' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8 }}>
               <div style={{ width: 28, height: 28, borderRadius: 6, background: `${popupListing.iconColor}18`, border: `1px solid ${popupListing.iconColor}35`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 15, color: popupListing.iconColor }}>{popupListing.icon}</span>
@@ -351,24 +351,24 @@ export function HeatMap({
                 {popupListing.tierLabel}
               </span>
             </div>
-            <div style={{ display: 'flex', gap: 6, fontSize: 10, color: '#8c90a1', marginBottom: 8, borderTop: '1px solid #2a3550', paddingTop: 7 }}>
-              <span>Score <span style={{ color: '#dfe2eb', fontWeight: 700 }}>{popupListing.score}</span></span>
-              <span style={{ color: '#424655' }}>·</span>
+            <div style={{ display: 'flex', gap: 6, fontSize: 10, color: '#6a6a70', marginBottom: 8, borderTop: '1px solid #28282c', paddingTop: 7 }}>
+              <span>Score <span style={{ color: '#d2d2d6', fontWeight: 700 }}>{popupListing.score}</span></span>
+              <span style={{ color: '#28282c' }}>·</span>
               <span>{popupListing.totalVouches} vouch{popupListing.totalVouches !== 1 ? 'es' : ''}</span>
-              <span style={{ color: '#424655' }}>·</span>
+              <span style={{ color: '#28282c' }}>·</span>
               <span style={{ color: popupListing.availColor }}>{popupListing.avail}</span>
             </div>
             {popupListing.credentials.length > 0 && (
               <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', marginBottom: 8 }}>
                 {popupListing.credentials.map(c => (
-                  <span key={c} style={{ fontSize: 9, padding: '2px 5px', borderRadius: 3, background: 'rgba(176,198,255,0.08)', border: '1px solid rgba(176,198,255,0.2)', color: '#b0c6ff' }}>
+                  <span key={c} style={{ fontSize: 9, padding: '2px 5px', borderRadius: 3, background: 'rgba(160,0,32,0.08)', border: '1px solid rgba(160,0,32,0.2)', color: '#a00020' }}>
                     ✓ {CREDENTIAL_LABEL[c] ?? c}
                   </span>
                 ))}
               </div>
             )}
-            <div style={{ fontSize: 10, color: '#8c90a1', marginBottom: 8, borderTop: '1px solid #2a3550', paddingTop: 6 }}>
-              Contact via <span style={{ color: '#dfe2eb' }}>{getAidHub(popupListing.borough)}</span>
+            <div style={{ fontSize: 10, color: '#6a6a70', marginBottom: 8, borderTop: '1px solid #28282c', paddingTop: 6 }}>
+              Contact via <span style={{ color: '#d2d2d6' }}>{getAidHub(popupListing.borough)}</span>
             </div>
             <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
               <button
@@ -377,7 +377,7 @@ export function HeatMap({
                   setTimeout(() => setResetView(false), 100)
                   onPopupClose?.()
                 }}
-                style={{ flex: 1, padding: '5px 0', background: 'rgba(66,70,85,0.3)', border: '1px solid #424655', borderRadius: 5, fontSize: 10, color: '#8c90a1', cursor: 'pointer' }}
+                style={{ flex: 1, padding: '5px 0', background: 'rgba(40,40,44,0.3)', border: '1px solid #28282c', borderRadius: 5, fontSize: 10, color: '#6a6a70', cursor: 'pointer' }}
               >
                 Close
               </button>

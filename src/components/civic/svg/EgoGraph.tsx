@@ -27,10 +27,10 @@ interface EgoGraphProps {
 
 // 4 rings matching the landing page "Four rings of trust"
 const RINGS = [
-  { tier: 'gov_official', factor: 0.15, stroke: '#40e56c', opacity: 0.6, dash: undefined },
-  { tier: 'trusted',      factor: 0.26, stroke: '#40e56c', opacity: 0.45, dash: '2 5' },
-  { tier: 'verified',     factor: 0.37, stroke: '#b0c6ff', opacity: 0.45, dash: '2 5' },
-  { tier: 'unverified',   factor: 0.46, stroke: '#8c90a1', opacity: 0.30, dash: '2 5' },
+  { tier: 'gov_official', factor: 0.15, stroke: '#00b860', opacity: 0.6, dash: undefined },
+  { tier: 'trusted',      factor: 0.26, stroke: '#00b860', opacity: 0.45, dash: '2 5' },
+  { tier: 'verified',     factor: 0.37, stroke: '#a00020', opacity: 0.45, dash: '2 5' },
+  { tier: 'unverified',   factor: 0.46, stroke: '#6a6a70', opacity: 0.30, dash: '2 5' },
 ]
 
 function ringForTier(tier?: string): number {
@@ -41,9 +41,9 @@ function ringForTier(tier?: string): number {
 }
 
 function nodeColor(tier?: string): string {
-  if (tier === 'gov_official' || tier === 'trusted') return '#40e56c'
-  if (tier === 'verified') return '#b0c6ff'
-  return '#8c90a1'
+  if (tier === 'gov_official' || tier === 'trusted') return '#00b860'
+  if (tier === 'verified') return '#a00020'
+  return '#6a6a70'
 }
 
 function relativeTime(iso: string): string {
@@ -117,8 +117,8 @@ export default function EgoGraph({
       >
         <defs>
           <radialGradient id="egoGlow" cx="50%" cy="50%" r="50%">
-            <stop offset="0%" stopColor="#40e56c" stopOpacity="0.25" />
-            <stop offset="100%" stopColor="#40e56c" stopOpacity="0" />
+            <stop offset="0%" stopColor="#00b860" stopOpacity="0.25" />
+            <stop offset="100%" stopColor="#00b860" stopOpacity="0" />
           </radialGradient>
           <filter id="nodeGlow">
             <feGaussianBlur stdDeviation="2.5" result="blur" />
@@ -154,9 +154,9 @@ export default function EgoGraph({
 
         {/* Center YOU node */}
         <circle cx={cx} cy={cy} r="32" fill="url(#egoGlow)" />
-        <circle cx={cx} cy={cy} r="14" fill="#40e56c" />
-        <circle cx={cx} cy={cy} r="20" fill="none" stroke="#40e56c" strokeOpacity="0.6" />
-        <text x={cx} y={cy + 4} textAnchor="middle" fontSize="11" fontWeight="700" fill="#002d6f">YOU</text>
+        <circle cx={cx} cy={cy} r="14" fill="#00b860" />
+        <circle cx={cx} cy={cy} r="20" fill="none" stroke="#00b860" strokeOpacity="0.6" />
+        <text x={cx} y={cy + 4} textAnchor="middle" fontSize="11" fontWeight="700" fill="#f5f5f5">YOU</text>
 
         {/* Voucher nodes */}
         {nodes.map((n, i) => {
@@ -202,7 +202,7 @@ export default function EgoGraph({
               left: `${pos.left}%`,
               top: `${pos.top}%`,
               transform: `translate(${flipX ? 'calc(-100% - 10px)' : '12px'}, ${flipY ? 'calc(-100% - 4px)' : '-50%'})`,
-              background: '#181c22',
+              background: '#121214',
               border: `1px solid ${tc}55`,
               borderRadius: 10,
               padding: '10px 14px',
@@ -212,11 +212,11 @@ export default function EgoGraph({
               boxShadow: `0 4px 20px rgba(0,0,0,0.5), 0 0 0 1px ${tc}22`,
             }}
           >
-            <div style={{ fontWeight: 700, fontSize: 13, color: '#dfe2eb', marginBottom: 2 }}>
+            <div style={{ fontWeight: 700, fontSize: 13, color: '#d2d2d6', marginBottom: 2 }}>
               {node.display_name ?? 'Unknown'}
             </div>
             {node.username && (
-              <div style={{ fontSize: 11, color: '#8c90a1', marginBottom: 6 }}>@{node.username}</div>
+              <div style={{ fontSize: 11, color: '#6a6a70', marginBottom: 6 }}>@{node.username}</div>
             )}
             <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: node.vouched_at ? 6 : 0 }}>
               <span style={{
@@ -233,7 +233,7 @@ export default function EgoGraph({
               </span>
             </div>
             {node.vouched_at && (
-              <div style={{ fontSize: 11, color: '#8c90a1' }}>
+              <div style={{ fontSize: 11, color: '#6a6a70' }}>
                 Vouched {relativeTime(node.vouched_at)}
               </div>
             )}
