@@ -10,6 +10,7 @@ import EgoGraph from '@/components/civic/svg/EgoGraph'
 import { useSidebar } from '@/components/civic/SidebarProvider'
 import type { ApiResponse, Claim, Session, TrustTier, Notification } from '@/types'
 import { getDisplayFirstName, protectedFetch, requireSession, updateStoredSession } from '@/app/_lib/session'
+import { formatDocType } from '@/lib/utils'
 
 const CIRCUMFERENCE = 276.46
 
@@ -133,7 +134,7 @@ export default function DashboardPage() {
   const evidenceRows = useMemo(() => {
     return claims.slice(0, 3).map(c => ({
       icon: claimIcon(c.doc_type),
-      title: c.doc_type,
+      title: formatDocType(c.doc_type),
       sub: c.extracted_institution ?? '',
       color: claimColor(c.status),
       badge: claimBadge(c.status),

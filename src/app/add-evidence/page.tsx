@@ -9,6 +9,7 @@ import Icon from '@/components/civic/Icon'
 import DocumentCameraCapture from '@/components/claims/DocumentCameraCapture'
 import type { Claim, ClaimType as ApiClaimType, DocumentAnalysis, Session, TrustTier } from '@/types'
 import { protectedFetch, requireSession, updateStoredSession } from '@/app/_lib/session'
+import { formatDocType } from '@/lib/utils'
 
 type ClaimType = 'Identity' | 'Credential' | 'Employment' | 'Residency'
 
@@ -50,10 +51,6 @@ interface ClaimResult {
   rejection_reason?: 'name_mismatch' | 'low_confidence' | 'unreadable'
 }
 
-function formatDocType(value?: string | null): string {
-  if (!value) return '—'
-  return value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
-}
 
 function formatConfidence(value?: number | null): string {
   if (typeof value !== 'number') return '—'
