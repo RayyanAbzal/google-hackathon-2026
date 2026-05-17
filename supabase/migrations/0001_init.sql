@@ -25,6 +25,7 @@ CREATE TABLE claims (
   type TEXT NOT NULL CHECK (type IN ('identity', 'credential', 'work')),
   status TEXT DEFAULT 'pending' CHECK (status IN ('pending', 'verified', 'rejected')),
   doc_type TEXT NOT NULL,
+  document_type TEXT,
   extracted_name TEXT,
   extracted_institution TEXT,
   confidence FLOAT,

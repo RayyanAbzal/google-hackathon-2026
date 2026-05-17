@@ -67,6 +67,7 @@ No other text.`
   return {
     extracted_name: parsed.full_name ?? null,
     doc_type: docType,
+    document_type: docType,
     institution: parsed.institution ?? null,
     confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,
   }

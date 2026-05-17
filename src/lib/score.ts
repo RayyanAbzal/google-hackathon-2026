@@ -3,6 +3,10 @@ import { calculateScore, getTier } from "@/types";
 import { createNotification } from "@/lib/notifications";
 import type { TrustTier } from "@/types";
 
+function isPassportDoc(docType: string): boolean {
+  return docType.toLowerCase().includes("passport");
+}
+
 export async function recalculateUserScore(
   userId: string
 ): Promise<{ score: number; tier: TrustTier }> {
@@ -29,8 +33,8 @@ export async function recalculateUserScore(
     ]);
 
   const claims = claimsResult.data ?? [];
-  const passport_count = claims.filter((c) => c.doc_type === "passport").length;
-  const other_doc_count = claims.filter((c) => c.doc_type !== "passport").length;
+  const passport_count = claims.filter((c) => isPassportDoc(c.doc_type)).length;
+  const other_doc_count = claims.filter((c) => !isPassportDoc(c.doc_type)).length;
 
   // Check if any voucher is a gov anchor
   const voucherIds = (vouchersResult.data ?? []).map((v) => v.voucher_id);

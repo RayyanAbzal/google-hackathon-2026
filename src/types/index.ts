@@ -38,6 +38,7 @@ export interface Claim {
   type: ClaimType
   status: ClaimStatus
   doc_type: string
+  document_type: string | null
   extracted_name: string | null  // nullable — Gemini can fail to read
   extracted_institution: string | null
   confidence: number | null
@@ -177,6 +178,7 @@ export interface Session {
 export interface DocumentAnalysis {
   extracted_name: string | null
   doc_type: DocType | string
+  document_type: string | null
   country?: string | null
   institution: string | null
   confidence: number

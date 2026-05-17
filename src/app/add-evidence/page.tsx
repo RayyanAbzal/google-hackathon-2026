@@ -111,8 +111,8 @@ function SummaryBar({
   claimResult: ClaimResult | null
 }) {
   const documentValue =
-    claimResult?.analysis.doc_type
-      ? formatDocType(claimResult.analysis.doc_type)
+    claimResult?.analysis.document_type
+      ? formatDocType(claimResult.analysis.document_type)
       : step >= 3
       ? formatDocType(CLAIM_TYPE_TO_DOC[claimType])
       : '—'
@@ -518,7 +518,7 @@ export default function AddEvidencePage() {
                       {[
                         { label: 'Status', value: claimResult.claim.status, color: claimResult.claim.status === 'verified' ? '#40e56c' : '#ffb4ab' },
                         { label: 'Extracted name', value: claimResult.analysis.extracted_name ?? 'Not readable' },
-                        { label: 'Document type', value: formatDocType(claimResult.analysis.doc_type) },
+                        { label: 'Document type', value: formatDocType(claimResult.analysis.document_type ?? claimResult.analysis.doc_type) },
                         { label: 'Country / jurisdiction', value: claimResult.analysis.country ?? 'Not detected' },
                         { label: 'Institution / issuer', value: claimResult.analysis.institution ?? 'Not detected' },
                         {
@@ -589,7 +589,7 @@ export default function AddEvidencePage() {
                       icon: claimResult?.claim.status === 'verified' ? 'verified' : 'warning',
                       label: 'Document status',
                       detail: claimResult?.claim.status === 'verified'
-                        ? `${formatDocType(claimResult.analysis.doc_type)} verified`
+                        ? `${formatDocType(claimResult.analysis.document_type ?? claimResult.analysis.doc_type)} verified`
                         : claimResult?.rejection_reason
                         ? getRejectionMessage(claimResult.rejection_reason)
                         : 'Pending verification',

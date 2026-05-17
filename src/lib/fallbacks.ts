@@ -9,6 +9,7 @@ export const USE_FALLBACKS =
 export const FALLBACK_DOCUMENT_ANALYSIS: DocumentAnalysis = {
   extracted_name: 'Sarah Mitchell',
   doc_type: 'passport',
+  document_type: 'Passport',
   confidence: 0.95,
   institution: null,
 }
@@ -75,6 +76,7 @@ export const FALLBACK_CLAIMS: Partial<Claim>[] = [
     type: 'credential',
     status: 'verified',
     doc_type: 'degree',
+    document_type: 'Degree',
     extracted_name: 'Dr. James Osei',
     extracted_institution: 'UCL Medicine',
     confidence: 0.92,

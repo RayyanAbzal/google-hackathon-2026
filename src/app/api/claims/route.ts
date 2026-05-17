@@ -26,6 +26,13 @@ interface ClaimResult {
 const RATE_WINDOW_MS = 10 * 60 * 1000;
 const RATE_MAX = 3;
 
+function getStoreClaimError(error: { code?: string; message?: string; details?: string | null; hint?: string | null }): string {
+  if (error.code === "23505") return "This document has already been registered";
+
+  const detail = [error.message, error.details, error.hint].filter(Boolean).join(" ");
+  return detail ? `Failed to store claim: ${detail}` : "Failed to store claim";
+}
+
 export async function POST(request: Request): Promise<Response> {
   const user = await verifyAuth(request);
   if (!user) {
@@ -86,25 +93,50 @@ export async function POST(request: Request): Promise<Response> {
     analysis = {
       extracted_name: user.display_name,
       doc_type,
+      document_type: doc_type,
       institution: "Demo Institution",
       confidence: 0.9,
     };
   } else {
     analysis = await analyseDocument(image_base64, doc_type, mime_type || "image/jpeg");
   }
+  const document_type = (analysis.document_type || analysis.doc_type || doc_type).trim();
+  const extracted_name = analysis.extracted_name?.trim() || null;
+  const confidence = Number.isFinite(analysis.confidence) ? analysis.confidence : 0;
 
-  // Name consistency check
+  // Name consistency check — extract key words for flexible matching
+  function extractNameWords(fullName: string | null): string[] {
+    if (!fullName) return []
+    return fullName.toLowerCase().split(/\s+/).filter(w => w.length > 2)
+  }
+
+  const extractedWords = extractNameWords(extracted_name)
+  const userWords = extractNameWords(user.display_name)
+  const hasNameOverlap = extractedWords.length > 0 && userWords.some(w => extractedWords.some(e => e.includes(w) || w.includes(e)))
+
   const nameMatch =
-    !analysis.extracted_name ||
-    user.display_name.toLowerCase().includes(analysis.extracted_name.toLowerCase()) ||
-    analysis.extracted_name.toLowerCase().includes(user.display_name.toLowerCase());
+    !extracted_name || // No name extracted is OK (unreadable)
+    user.display_name.toLowerCase().includes(extracted_name.toLowerCase()) ||
+    extracted_name.toLowerCase().includes(user.display_name.toLowerCase()) ||
+    hasNameOverlap // More flexible: check if any significant words overlap
 
-  const status = nameMatch && analysis.confidence >= 0.5 ? "verified" : "rejected";
+  const status = nameMatch && confidence >= 0.5 ? "verified" : "rejected"
+
+  console.log('Claim validation', {
+    user_id: user.id,
+    doc_type,
+    document_type,
+    extracted_name,
+    user_display_name: user.display_name,
+    confidence,
+    nameMatch,
+    status,
+  })
 
   if (status === "rejected") {
     const rejection_reason =
-      analysis.confidence < 0.5
-        ? analysis.extracted_name
+      confidence < 0.5
+        ? extracted_name
           ? "low_confidence"
           : "unreadable"
         : "name_mismatch";
@@ -116,16 +148,21 @@ export async function POST(request: Request): Promise<Response> {
         type,
         status: "rejected",
         doc_type,
-        extracted_name: analysis.extracted_name,
+        document_type,
+        extracted_name,
         extracted_institution: analysis.institution,
-        confidence: analysis.confidence,
+        confidence,
         content_hash,
       })
       .select("*")
       .single();
 
     if (rejectedError || !rejectedClaim) {
-      return Response.json({ success: false, error: "Failed to store rejected claim" } satisfies ApiResponse<never>, { status: 500 });
+      if (rejectedError) console.error("Failed to store rejected claim", rejectedError);
+      return Response.json(
+        { success: false, error: rejectedError ? getStoreClaimError(rejectedError) : "Failed to store rejected claim" } satisfies ApiResponse<never>,
+        { status: 500 }
+      );
     }
 
     return Response.json(
@@ -151,18 +188,20 @@ export async function POST(request: Request): Promise<Response> {
       type,
       status,
       doc_type,
-      extracted_name: analysis.extracted_name,
+      document_type,
+      extracted_name,
       extracted_institution: analysis.institution,
-      confidence: analysis.confidence,
+      confidence,
       content_hash,
     })
     .select("*")
     .single();
 
   if (error) {
+    console.error("Failed to store claim", error);
     const isDuplicateDoc = error.code === "23505";
     return Response.json(
-      { success: false, error: isDuplicateDoc ? "This document has already been registered" : "Failed to store claim" } satisfies ApiResponse<never>,
+      { success: false, error: getStoreClaimError(error) } satisfies ApiResponse<never>,
       { status: isDuplicateDoc ? 409 : 500 }
     );
   }
@@ -176,7 +215,7 @@ export async function POST(request: Request): Promise<Response> {
   await createNotification({
     user_id: user.id,
     type: 'claim_verified',
-    title: `Your ${doc_type} was verified`,
+    title: `Your ${document_type} was verified`,
     detail: 'Certificate registered',
     icon: 'done_all',
     color: '#40e56c',

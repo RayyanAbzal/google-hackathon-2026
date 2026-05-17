@@ -11,6 +11,10 @@ interface ScoreResult {
   gov_vouched: boolean;
 }
 
+function isPassportDoc(docType: string): boolean {
+  return docType.toLowerCase().includes("passport");
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ userId: string }> }
@@ -33,8 +37,8 @@ export async function GET(
   }
 
   const claims = claimsResult.data ?? [];
-  const passport_count = claims.filter((c) => c.doc_type === "passport").length;
-  const other_doc_count = claims.filter((c) => c.doc_type !== "passport").length;
+  const passport_count = claims.filter((c) => isPassportDoc(c.doc_type)).length;
+  const other_doc_count = claims.filter((c) => !isPassportDoc(c.doc_type)).length;
   const vouches_received = vouchesCountResult.count ?? 0;
 
   const voucherIds = (vouchersResult.data ?? []).map((v) => v.voucher_id);

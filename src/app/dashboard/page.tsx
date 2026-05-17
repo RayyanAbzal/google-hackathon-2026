@@ -32,11 +32,11 @@ function claimBadge(status: string): string {
   return status.toUpperCase()
 }
 
-const FALLBACK_EVIDENCE = [
-  { icon: 'id_card', title: 'Passport', sub: '6 vouches', color: '#40e56c', badge: 'VERIFIED' },
-  { icon: 'school', title: 'Medical Degree', sub: '2 vouches', color: '#40e56c', badge: 'VERIFIED' },
-  { icon: 'receipt_long', title: 'Utility bill', sub: 'Awaiting review', color: '#fbbf24', badge: 'PENDING' },
-]
+interface DeleteClaimResult {
+  deleted_claim_id: string
+  new_score: number
+  tier: TrustTier
+}
 
 export default function DashboardPage() {
   const router = useRouter()
@@ -49,6 +49,7 @@ export default function DashboardPage() {
   const [networkLoaded, setNetworkLoaded] = useState(false)
   const [ptsThisWeek, setPtsThisWeek] = useState<number | null>(null)
   const [deletingClaimId, setDeletingClaimId] = useState<string | null>(null)
+  const [evidenceError, setEvidenceError] = useState('')
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -121,10 +122,10 @@ export default function DashboardPage() {
   }, [score])
 
   const evidenceRows = useMemo(() => {
-    return claims.slice(0, 3).map(c => ({
+    return claims.map(c => ({
       id: c.id,
-      icon: claimIcon(c.doc_type),
-      title: c.doc_type,
+      icon: claimIcon(c.document_type ?? c.doc_type),
+      title: c.document_type ?? c.doc_type,
       sub: c.extracted_institution ?? '',
       color: claimColor(c.status),
       badge: claimBadge(c.status),
@@ -132,27 +133,29 @@ export default function DashboardPage() {
   }, [claims])
 
   const handleDeleteClaim = async (claimId: string) => {
-    if (!session) return
-    
+    if (!session || deletingClaimId) return
+    const confirmed = window.confirm('Delete this document from your evidence and the database?')
+    if (!confirmed) return
+
     setDeletingClaimId(claimId)
+    setEvidenceError('')
     try {
-      const json = await protectedFetch<{ new_score: number; tier: string }>('/api/claims/delete', session, {
+      const json = await protectedFetch<DeleteClaimResult>(`/api/claims/${claimId}`, session, {
         method: 'DELETE',
-        body: JSON.stringify({ claim_id: claimId }),
       })
 
       if (json.success) {
-        // Remove the claim from local state
-        setClaims(prev => prev.filter(c => c.id !== claimId))
-        // Update session with new score
+        setClaims(prev => prev.filter(c => c.id !== json.data.deleted_claim_id))
         const updated = updateStoredSession({
           score: json.data.new_score,
-          tier: json.data.tier as TrustTier,
+          tier: json.data.tier,
         })
         if (updated) setSession(updated)
+      } else {
+        setEvidenceError(json.error)
       }
     } catch {
-      // Silently fail — user can try again
+      setEvidenceError('Could not delete this document. Try again.')
     } finally {
       setDeletingClaimId(null)
     }
@@ -256,8 +259,8 @@ export default function DashboardPage() {
                 No verified evidence yet — add your first document to start building trust.
               </div>
             )}
-            {evidenceRows.map((e, i) => (
-              <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 14, border: '1px solid rgba(66,70,85,0.5)', borderRadius: 10, background: '#10141a' }}>
+            {evidenceRows.map((e) => (
+              <div key={e.id} style={{ display: 'flex', alignItems: 'center', gap: 14, padding: 14, border: '1px solid rgba(66,70,85,0.5)', borderRadius: 10, background: '#10141a' }}>
                 <div style={{ width: 42, height: 42, borderRadius: 10, background: `${e.color}18`, border: `1px solid ${e.color}40`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                   <span className="material-symbols-outlined" style={{ fontSize: 20, color: e.color }}>{e.icon}</span>
                 </div>
@@ -293,6 +296,9 @@ export default function DashboardPage() {
                 </button>
               </div>
             ))}
+            {evidenceError && (
+              <div style={{ color: '#ffb4ab', fontSize: 12, padding: '2px 4px' }}>{evidenceError}</div>
+            )}
             <Link
               href="/add-evidence"
               style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 8, padding: '14px', border: '1.5px dashed #424655', borderRadius: 10, color: '#8c90a1', fontSize: 13, textDecoration: 'none' }}
