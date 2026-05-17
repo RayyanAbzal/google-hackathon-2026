@@ -11,8 +11,8 @@ export default function MeshGraph({
   width = 640,
   height = 420,
   dense = false,
-  accent = '#b0c6ff',
-  highlight = '#40e56c',
+  accent = '#a00020',
+  highlight = '#00b860',
   seed = 1,
 }: MeshGraphProps) {
   const r2 = (n: number) => Math.round(n * 100) / 100
@@ -61,7 +61,7 @@ export default function MeshGraph({
         )
       })}
       {nodes.map((n, i) => {
-        const color = n.kind === 'hl' ? highlight : n.kind === 'mid' ? accent : '#8c90a1'
+        const color = n.kind === 'hl' ? highlight : n.kind === 'mid' ? accent : '#6a6a70'
         return (
           <g key={i}>
             {n.kind === 'hl' && (

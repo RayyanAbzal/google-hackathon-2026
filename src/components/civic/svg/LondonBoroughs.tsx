@@ -46,8 +46,8 @@ export default function LondonBoroughs({
     >
       <path
         d="M -20 230 Q 80 215 180 245 T 360 250 T 540 240 L 540 280 Q 360 290 200 275 T -20 265 Z"
-        fill="#181c22"
-        stroke="#b0c6ff"
+        fill="#121214"
+        stroke="#a00020"
         strokeOpacity="0.25"
       />
       {BOROUGHS.map((b) => {
@@ -59,8 +59,8 @@ export default function LondonBoroughs({
           <g key={b.name} onClick={() => onBoroughClick?.(b.name)} style={{ cursor: onBoroughClick ? 'pointer' : 'default' }}>
             <path
               d={b.d}
-              fill={active ? 'rgba(176,198,255,0.18)' : '#181c22'}
-              stroke={active ? '#b0c6ff' : '#424655'}
+              fill={active ? 'rgba(160,0,32,0.18)' : '#121214'}
+              stroke={active ? '#a00020' : '#28282c'}
               strokeWidth={active ? 1.5 : 0.7}
             />
             <text
@@ -68,7 +68,7 @@ export default function LondonBoroughs({
               y={ty}
               fontFamily="JetBrains Mono, ui-monospace, monospace"
               fontSize="9"
-              fill={active ? '#b0c6ff' : '#8c90a1'}
+              fill={active ? '#a00020' : '#6a6a70'}
               opacity={active ? 1 : 0.6}
             >
               {b.name.toUpperCase()}
@@ -79,17 +79,17 @@ export default function LondonBoroughs({
       {pins.map((p, i) => (
         <g key={i}>
           <circle cx={p.x} cy={p.y} r="14" fill={p.color} fillOpacity="0.18" />
-          <circle cx={p.x} cy={p.y} r="6" fill={p.color} stroke="#10141a" strokeWidth="1.5" />
+          <circle cx={p.x} cy={p.y} r="6" fill={p.color} stroke="#070708" strokeWidth="1.5" />
         </g>
       ))}
-      <line x1="0" y1={height / 2} x2={width} y2={height / 2} stroke="#424655" strokeOpacity="0.2" strokeDasharray="2 4" />
-      <line x1={width / 2} y1="0" x2={width / 2} y2={height} stroke="#424655" strokeOpacity="0.2" strokeDasharray="2 4" />
+      <line x1="0" y1={height / 2} x2={width} y2={height / 2} stroke="#28282c" strokeOpacity="0.2" strokeDasharray="2 4" />
+      <line x1={width / 2} y1="0" x2={width / 2} y2={height} stroke="#28282c" strokeOpacity="0.2" strokeDasharray="2 4" />
       <text
         x="6"
         y={height - 8}
         fontFamily="JetBrains Mono, ui-monospace, monospace"
         fontSize="9"
-        fill="#8c90a1"
+        fill="#6a6a70"
       >
         51.5074°N · 0.1278°W
       </text>

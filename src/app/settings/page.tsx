@@ -128,14 +128,14 @@ export default function SettingsPage() {
   }
 
   return (
-    <div style={{ background: '#10141a', minHeight: '100vh', color: '#dfe2eb' }}>
+    <div style={{ background: '#070708', minHeight: '100vh', color: '#d2d2d6' }}>
       <TopBar />
       <Sidebar active="settings" session={session} />
       <main className="ml-60 pt-14 px-8 py-8">
 
         <div style={{ marginBottom: 28 }}>
           <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>Settings</h1>
-          <p style={{ fontSize: 15, color: '#8c90a1', marginTop: 4 }}>Manage your account details.</p>
+          <p style={{ fontSize: 15, color: '#6a6a70', marginTop: 4 }}>Manage your account details.</p>
         </div>
 
         {/* Tab row */}
@@ -143,7 +143,7 @@ export default function SettingsPage() {
           style={{
             display: 'flex',
             gap: 0,
-            borderBottom: '1px solid rgba(66,70,85,0.6)',
+            borderBottom: '1px solid rgba(40,40,44,0.6)',
             marginBottom: 28,
           }}
         >
@@ -157,8 +157,8 @@ export default function SettingsPage() {
                   padding: '10px 20px',
                   background: 'transparent',
                   border: 'none',
-                  borderBottom: isActive ? '2px solid #b0c6ff' : '2px solid transparent',
-                  color: isActive ? '#b0c6ff' : '#8c90a1',
+                  borderBottom: isActive ? '2px solid #a00020' : '2px solid transparent',
+                  color: isActive ? '#a00020' : '#6a6a70',
                   fontSize: 14,
                   fontWeight: isActive ? 600 : 400,
                   cursor: 'pointer',
@@ -191,13 +191,13 @@ export default function SettingsPage() {
                     gap: 16,
                     padding: '16px',
                     borderRadius: 10,
-                    background: '#10141a',
-                    border: '1px solid #424655',
+                    background: '#070708',
+                    border: '1px solid #28282c',
                   }}
                 >
                   <div style={{ flex: 1 }}>
                     <div style={{ fontSize: 14, fontWeight: 600, marginBottom: 2 }}>{label}</div>
-                    <div style={{ fontSize: 13, color: '#8c90a1' }}>{description}</div>
+                    <div style={{ fontSize: 13, color: '#6a6a70' }}>{description}</div>
                   </div>
                   <label style={{ display: 'flex', alignItems: 'center', cursor: 'pointer' }}>
                     <input
@@ -208,7 +208,7 @@ export default function SettingsPage() {
                         width: 18,
                         height: 18,
                         cursor: 'pointer',
-                        accentColor: '#b0c6ff',
+                        accentColor: '#a00020',
                       }}
                     />
                   </label>
@@ -231,21 +231,21 @@ export default function SettingsPage() {
 
               {/* Avatar row */}
               <div
-                style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, paddingBottom: 24, borderBottom: '1px solid #424655' }}
+                style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 24, paddingBottom: 24, borderBottom: '1px solid #28282c' }}
               >
                 <div
                   style={{
                     width: 64,
                     height: 64,
                     borderRadius: '50%',
-                    background: 'rgba(176,198,255,0.15)',
-                    border: '2px solid rgba(176,198,255,0.3)',
+                    background: 'rgba(160,0,32,0.15)',
+                    border: '2px solid rgba(160,0,32,0.3)',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
                     fontSize: 22,
                     fontWeight: 700,
-                    color: '#b0c6ff',
+                    color: '#a00020',
                     flexShrink: 0,
                   }}
                 >
@@ -253,7 +253,7 @@ export default function SettingsPage() {
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 15, fontWeight: 600, marginBottom: 4 }}>Profile photo</div>
-                  <div style={{ fontSize: 13, color: '#8c90a1' }}>
+                  <div style={{ fontSize: 13, color: '#6a6a70' }}>
                     Optional. Shown to people who scan your QR.
                   </div>
                 </div>
@@ -263,7 +263,7 @@ export default function SettingsPage() {
               {/* Fields grid */}
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                 <div>
-                  <label style={{ fontSize: 13, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
+                  <label style={{ fontSize: 13, color: '#6a6a70', display: 'block', marginBottom: 6 }}>
                     Full name
                   </label>
                   <input
@@ -274,7 +274,7 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: 13, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
+                  <label style={{ fontSize: 13, color: '#6a6a70', display: 'block', marginBottom: 6 }}>
                     Display name
                   </label>
                   <input
@@ -285,7 +285,7 @@ export default function SettingsPage() {
                   />
                 </div>
                 <div>
-                  <label style={{ fontSize: 13, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
+                  <label style={{ fontSize: 13, color: '#6a6a70', display: 'block', marginBottom: 6 }}>
                     Role
                   </label>
                   <select className="field-input">
@@ -298,7 +298,7 @@ export default function SettingsPage() {
                   </select>
                 </div>
                 <div>
-                  <label style={{ fontSize: 13, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
+                  <label style={{ fontSize: 13, color: '#6a6a70', display: 'block', marginBottom: 6 }}>
                     Borough
                   </label>
                   <select className="field-input">
@@ -313,7 +313,7 @@ export default function SettingsPage() {
                   </select>
                 </div>
                 <div style={{ gridColumn: 'span 2' }}>
-                  <label style={{ fontSize: 13, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
+                  <label style={{ fontSize: 13, color: '#6a6a70', display: 'block', marginBottom: 6 }}>
                     Node ID
                   </label>
                   <div style={{ display: 'flex', gap: 8 }}>
@@ -329,14 +329,14 @@ export default function SettingsPage() {
                       Copy
                     </button>
                   </div>
-                  <p style={{ fontSize: 12, color: '#424655', marginTop: 6 }}>
+                  <p style={{ fontSize: 12, color: '#28282c', marginTop: 6 }}>
                     Your Node ID is permanent and cannot be changed.
                   </p>
                 </div>
               </div>
 
               {(saveError || saveMessage || loadingProfile) && (
-                <div style={{ marginTop: 20, color: saveError ? '#ffb4ab' : '#8c90a1', fontSize: 13 }}>
+                <div style={{ marginTop: 20, color: saveError ? '#ff2d4a' : '#6a6a70', fontSize: 13 }}>
                   {loadingProfile ? 'Loading profile from database...' : saveError || saveMessage}
                 </div>
               )}
@@ -347,20 +347,20 @@ export default function SettingsPage() {
               <h2 style={{ fontSize: 18, fontWeight: 700, margin: '0 0 20px' }}>Password</h2>
               <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20 }}>
                 <div>
-                  <label style={{ fontSize: 13, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
+                  <label style={{ fontSize: 13, color: '#6a6a70', display: 'block', marginBottom: 6 }}>
                     Current password
                   </label>
                   <input className="field-input" type="password" placeholder="••••••••" />
                 </div>
                 <div />
                 <div>
-                  <label style={{ fontSize: 13, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
+                  <label style={{ fontSize: 13, color: '#6a6a70', display: 'block', marginBottom: 6 }}>
                     New password
                   </label>
                   <input className="field-input" type="password" placeholder="••••••••" />
                 </div>
                 <div>
-                  <label style={{ fontSize: 13, color: '#8c90a1', display: 'block', marginBottom: 6 }}>
+                  <label style={{ fontSize: 13, color: '#6a6a70', display: 'block', marginBottom: 6 }}>
                     Confirm new password
                   </label>
                   <input className="field-input" type="password" placeholder="••••••••" />
@@ -376,7 +376,7 @@ export default function SettingsPage() {
                 style={{
                   background: 'transparent',
                   border: 'none',
-                  color: '#ffb4ab',
+                  color: '#ff2d4a',
                   fontSize: 14,
                   cursor: 'pointer',
                   fontWeight: 500,

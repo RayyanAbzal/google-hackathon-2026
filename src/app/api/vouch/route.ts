@@ -93,7 +93,7 @@ export async function POST(request: Request): Promise<Response> {
     title: `${voucher.display_name} vouched for you`,
     detail: `${voucherTier === 'gov_official' ? 'Government' : voucherTier === 'trusted' ? 'Trusted' : 'Verified'} vouch · +${vouchPoints} pts`,
     icon: 'handshake',
-    color: '#b0c6ff',
+    color: '#a00020',
     related_user_id: voucher.id,
   });
 

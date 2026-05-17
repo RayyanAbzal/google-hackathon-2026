@@ -162,6 +162,7 @@ export default function AddEvidencePage() {
   const [error, setError] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [cameraOpen, setCameraOpen] = useState(false)
+  const [cameraBackOpen, setCameraBackOpen] = useState(false)
   const [claimResult, setClaimResult] = useState<ClaimResult | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
   const fileBackRef = useRef<HTMLInputElement>(null)
@@ -211,6 +212,12 @@ export default function AddEvidencePage() {
     setClaimResult(null)
     setError('')
     setStatusMessage('Photo captured and ready for review.')
+  }
+
+  function handleCameraBackCapture(file: File) {
+    setSelectedFileBack(file)
+    setClaimResult(null)
+    setError('')
   }
 
   function removeSelectedFile() {
@@ -470,12 +477,10 @@ export default function AddEvidencePage() {
                       <Icon name="cloud_upload" size={36} style={{ color: '#28282c', marginBottom: 10 }} />
                       <div style={{ fontSize: 13, color: '#6a6a70', marginBottom: 14 }}>Drag a file here</div>
                       <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-                        {!isIdentity && (
-                          <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setCameraOpen(true)}>
-                            <Icon name="photo_camera" size={14} />
-                            Camera
-                          </button>
-                        )}
+                        <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setCameraOpen(true)}>
+                          <Icon name="photo_camera" size={14} />
+                          Camera
+                        </button>
                         <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => fileRef.current?.click()}>
                           <Icon name="folder_open" size={14} />
                           Choose file
@@ -529,6 +534,10 @@ export default function AddEvidencePage() {
                         <Icon name="flip" size={36} style={{ color: '#28282c', marginBottom: 10 }} />
                         <div style={{ fontSize: 13, color: '#6a6a70', marginBottom: 14 }}>Back of passport</div>
                         <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+                          <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => setCameraBackOpen(true)}>
+                            <Icon name="photo_camera" size={14} />
+                            Camera
+                          </button>
                           <button className="btn-ghost" style={{ fontSize: 12 }} onClick={() => fileBackRef.current?.click()}>
                             <Icon name="folder_open" size={14} />
                             Choose file
@@ -851,6 +860,11 @@ export default function AddEvidencePage() {
         open={cameraOpen}
         onClose={() => setCameraOpen(false)}
         onCapture={handleCameraCapture}
+      />
+      <DocumentCameraCapture
+        open={cameraBackOpen}
+        onClose={() => setCameraBackOpen(false)}
+        onCapture={handleCameraBackCapture}
       />
     </div>
   )

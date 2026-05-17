@@ -96,7 +96,7 @@ export default function ProfilePage() {
   const verifiedClaims = useMemo(() => claims.filter((claim) => claim.status === 'verified'), [claims])
 
   return (
-    <div style={{ background: '#10141a', minHeight: '100vh', color: '#dfe2eb' }}>
+    <div style={{ background: '#070708', minHeight: '100vh', color: '#d2d2d6' }}>
       <TopBar />
       <Sidebar active="dashboard" session={session} />
       <main className="ml-60 pt-14 px-8 py-8">
@@ -105,7 +105,7 @@ export default function ProfilePage() {
             <h1 style={{ fontSize: 32, fontWeight: 700, letterSpacing: '-0.02em', margin: 0 }}>
               {user?.display_name ?? session?.display_name ?? 'Trust profile'}
             </h1>
-            <p style={{ fontSize: 15, color: '#8c90a1', marginTop: 4 }}>
+            <p style={{ fontSize: 15, color: '#6a6a70', marginTop: 4 }}>
               @{user?.username ?? session?.username ?? 'username-not-set'} · {user?.borough ?? 'London Mesh'}
             </p>
           </div>
@@ -116,7 +116,7 @@ export default function ProfilePage() {
         </div>
 
         {error && (
-          <div className="bento" style={{ padding: 18, marginBottom: 20, color: '#ffb4ab' }}>
+          <div className="bento" style={{ padding: 18, marginBottom: 20, color: '#ff2d4a' }}>
             {error}
           </div>
         )}
@@ -129,27 +129,27 @@ export default function ProfilePage() {
                 height: 72,
                 borderRadius: '50%',
                 margin: '0 auto 16px',
-                background: 'rgba(176,198,255,0.15)',
-                border: '1px solid rgba(176,198,255,0.35)',
+                background: 'rgba(160,0,32,0.15)',
+                border: '1px solid rgba(160,0,32,0.35)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: 22,
                 fontWeight: 700,
-                color: '#b0c6ff',
+                color: '#a00020',
               }}
             >
               {getInitials(user?.display_name ?? session?.display_name)}
             </div>
             <div style={{ position: 'relative', width: 176, height: 176, margin: '0 auto 18px' }}>
               <svg viewBox="0 0 100 100" style={{ width: 176, height: 176, transform: 'rotate(-90deg)' }}>
-                <circle cx="50" cy="50" r="44" fill="none" stroke="#424655" strokeWidth="3" />
+                <circle cx="50" cy="50" r="44" fill="none" stroke="#28282c" strokeWidth="3" />
                 <circle
                   cx="50"
                   cy="50"
                   r="44"
                   fill="none"
-                  stroke="#40e56c"
+                  stroke="#00b860"
                   strokeWidth="4"
                   strokeDasharray={`${CIRCUMFERENCE}`}
                   strokeDashoffset={`${dashOffset}`}
@@ -158,11 +158,11 @@ export default function ProfilePage() {
               </svg>
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
                 <span style={{ fontSize: 48, fontWeight: 700 }}>{score}</span>
-                <span style={{ fontSize: 12, color: '#8c90a1' }}>out of 100</span>
+                <span style={{ fontSize: 12, color: '#6a6a70' }}>out of 100</span>
               </div>
             </div>
             <TierBadge tier={user?.tier ?? session?.tier ?? 'unverified'} />
-            <div style={{ marginTop: 18, fontSize: 13, color: '#8c90a1', overflowWrap: 'anywhere' }}>
+            <div style={{ marginTop: 18, fontSize: 13, color: '#6a6a70', overflowWrap: 'anywhere' }}>
               {user?.id ?? session?.user_id ?? 'No User ID'}
             </div>
           </section>
@@ -180,22 +180,22 @@ export default function ProfilePage() {
               {verifiedClaims.map((claim) => (
                 <article key={claim.id} className="bento" style={{ padding: 16 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 10 }}>
-                    <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(64,229,108,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                      <Icon name="fact_check" size={18} style={{ color: '#40e56c' }} />
+                    <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(0,184,96,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                      <Icon name="fact_check" size={18} style={{ color: '#00b860' }} />
                     </div>
                     <div>
                       <div style={{ fontSize: 14, fontWeight: 700 }}>{claimTitle(claim)}</div>
-                      <div style={{ fontSize: 12, color: '#8c90a1' }}>{claim.doc_type}</div>
+                      <div style={{ fontSize: 12, color: '#6a6a70' }}>{claim.doc_type}</div>
                     </div>
                   </div>
-                  <div style={{ fontSize: 12, color: '#c2c6d8' }}>
+                  <div style={{ fontSize: 12, color: '#d2d2d6' }}>
                     Confidence {Math.round((claim.confidence ?? 0.9) * 100)}%
                   </div>
                 </article>
               ))}
 
               {verifiedClaims.length === 0 && (
-                <div className="bento" style={{ gridColumn: 'span 2', padding: 24, color: '#8c90a1', textAlign: 'center' }}>
+                <div className="bento" style={{ gridColumn: 'span 2', padding: 24, color: '#6a6a70', textAlign: 'center' }}>
                   No verified claims yet.
                 </div>
               )}

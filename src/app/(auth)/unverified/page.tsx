@@ -61,64 +61,64 @@ export default function UnverifiedPage() {
   const vouchProgress = Math.min(100, Math.round((eligibleVouches / 2) * 100))
 
   return (
-    <div style={{ background: '#10141a', minHeight: '100vh', color: '#dfe2eb' }}>
+    <div style={{ background: '#070708', minHeight: '100vh', color: '#d2d2d6' }}>
       <TopBar />
       <main style={{ paddingTop: 56, padding: '56px 32px 48px' }}>
         <div style={{ maxWidth: 840, margin: '0 auto' }}>
-          <div className="bento" style={{ padding: 32, marginBottom: 24, borderColor: 'rgba(245,158,11,0.4)' }}>
+          <div className="bento" style={{ padding: 32, marginBottom: 24, borderColor: 'rgba(204,119,0,0.4)' }}>
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
-              <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fbbf24', flexShrink: 0 }}>
+              <div style={{ width: 48, height: 48, borderRadius: '50%', background: 'rgba(204,119,0,0.15)', border: '1px solid rgba(204,119,0,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#cc7700', flexShrink: 0 }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 24 }}>hourglass_top</span>
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 8 }}>
-                  <span style={{ padding: '3px 10px', borderRadius: 9999, background: 'rgba(245,158,11,0.15)', border: '1px solid rgba(245,158,11,0.4)', color: '#fbbf24', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Unverified</span>
-                  <span style={{ fontSize: 13, color: '#8c90a1', fontFamily: 'monospace' }}>{session?.username ? `@${session.username}` : session?.node_id ?? 'Creating identity...'}</span>
+                  <span style={{ padding: '3px 10px', borderRadius: 9999, background: 'rgba(204,119,0,0.15)', border: '1px solid rgba(204,119,0,0.4)', color: '#cc7700', fontSize: 11, fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase' }}>Unverified</span>
+                  <span style={{ fontSize: 13, color: '#6a6a70', fontFamily: 'monospace' }}>{session?.username ? `@${session.username}` : session?.node_id ?? 'Creating identity...'}</span>
                 </div>
                 <h1 style={{ fontSize: 26, fontWeight: 700, marginBottom: 8 }}>Welcome, {getDisplayFirstName(session?.display_name)}. Your account isn&apos;t verified yet.</h1>
-                <p style={{ fontSize: 14, color: '#c2c6d8' }}>
-                  You have the document points needed. You still need {vouchesNeeded === 0 ? 'no more' : vouchesNeeded} eligible {vouchesNeeded === 1 ? 'vouch' : 'vouches'} to reach <span style={{ color: '#40e56c' }}>Tier 1 - Verified</span>.
+                <p style={{ fontSize: 14, color: '#d2d2d6' }}>
+                  You have the document points needed. You still need {vouchesNeeded === 0 ? 'no more' : vouchesNeeded} eligible {vouchesNeeded === 1 ? 'vouch' : 'vouches'} to reach <span style={{ color: '#00b860' }}>Tier 1 - Verified</span>.
                 </p>
               </div>
             </div>
 
-            <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid rgba(66,70,85,0.6)' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#8c90a1', marginBottom: 6 }}>
+            <div style={{ marginTop: 24, paddingTop: 20, borderTop: '1px solid rgba(40,40,44,0.6)' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 12, color: '#6a6a70', marginBottom: 6 }}>
                 <span>{documentPoints} / 20 document points - {eligibleVouches} / 2 eligible vouches</span>
-                <span style={{ color: '#fbbf24' }}>{vouchProgress}% vouches</span>
+                <span style={{ color: '#cc7700' }}>{vouchProgress}% vouches</span>
               </div>
-              <div style={{ height: 8, borderRadius: 9999, background: '#0a0e14', overflow: 'hidden' }}>
-                <div style={{ width: `${documentProgress}%`, height: '100%', background: '#fbbf24', borderRadius: 9999 }} />
+              <div style={{ height: 8, borderRadius: 9999, background: '#070708', overflow: 'hidden' }}>
+                <div style={{ width: `${documentProgress}%`, height: '100%', background: '#cc7700', borderRadius: 9999 }} />
               </div>
             </div>
           </div>
 
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 20, marginBottom: 24 }}>
-            <Link href="/add-evidence" className="bento" style={{ padding: 24, borderColor: 'rgba(176,198,255,0.4)', display: 'block', textDecoration: 'none', color: 'inherit', transition: 'border-color 0.15s' }}>
-              <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(176,198,255,0.15)', border: '1px solid rgba(176,198,255,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#b0c6ff', marginBottom: 16 }}>
+            <Link href="/add-evidence" className="bento" style={{ padding: 24, borderColor: 'rgba(160,0,32,0.4)', display: 'block', textDecoration: 'none', color: 'inherit', transition: 'border-color 0.15s' }}>
+              <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(160,0,32,0.15)', border: '1px solid rgba(160,0,32,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#a00020', marginBottom: 16 }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 22 }}>upload_file</span>
               </div>
               <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 6 }}>Add evidence</h2>
-              <p style={{ fontSize: 14, color: '#c2c6d8', marginBottom: 16 }}>Upload a credential, work ID, or residency document. Each one raises your score.</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#b0c6ff', fontWeight: 600 }}>
+              <p style={{ fontSize: 14, color: '#d2d2d6', marginBottom: 16 }}>Upload a credential, work ID, or residency document. Each one raises your score.</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#a00020', fontWeight: 600 }}>
                 Start adding <span className="material-symbols-outlined" style={{ fontSize: 16 }}>arrow_forward</span>
               </div>
             </Link>
 
             <Link href="/vouch" className="bento" style={{ padding: 24, display: 'block', textDecoration: 'none', color: 'inherit' }}>
-              <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(64,229,108,0.15)', border: '1px solid rgba(64,229,108,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#40e56c', marginBottom: 16 }}>
+              <div style={{ width: 44, height: 44, borderRadius: 10, background: 'rgba(0,184,96,0.15)', border: '1px solid rgba(0,184,96,0.4)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#00b860', marginBottom: 16 }}>
                 <span className="material-symbols-outlined" style={{ fontSize: 22 }}>handshake</span>
               </div>
               <h2 style={{ fontSize: 18, fontWeight: 600, marginBottom: 6 }}>Get vouched</h2>
-              <p style={{ fontSize: 14, color: '#c2c6d8', marginBottom: 16 }}>Share your QR with verified people who know you. You need at least 2 eligible vouches.</p>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#40e56c', fontWeight: 600 }}>
+              <p style={{ fontSize: 14, color: '#d2d2d6', marginBottom: 16 }}>Share your QR with verified people who know you. You need at least 2 eligible vouches.</p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 13, color: '#00b860', fontWeight: 600 }}>
                 Show my QR <span className="material-symbols-outlined" style={{ fontSize: 16 }}>arrow_forward</span>
               </div>
             </Link>
           </div>
 
           <div style={{ marginTop: 24, textAlign: 'center' }}>
-            <button onClick={signOut} style={{ fontSize: 13, color: '#8c90a1', background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Sign out</button>
+            <button onClick={signOut} style={{ fontSize: 13, color: '#6a6a70', background: 'transparent', border: 'none', cursor: 'pointer', textDecoration: 'underline' }}>Sign out</button>
           </div>
         </div>
       </main>

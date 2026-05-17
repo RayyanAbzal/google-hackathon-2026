@@ -13,8 +13,8 @@ const overlayStyle: CSSProperties = {
   position: 'fixed',
   inset: 0,
   zIndex: 80,
-  background: 'rgba(10,14,20,0.92)',
-  color: '#dfe2eb',
+  background: 'rgba(7,7,8,0.92)',
+  color: '#d2d2d6',
   display: 'flex',
   alignItems: 'center',
   justifyContent: 'center',
@@ -129,8 +129,8 @@ export default function DocumentCameraCapture({ open, onClose, onCapture }: Docu
         style={{
           width: 'min(920px, 100%)',
           maxHeight: 'min(860px, calc(100dvh - 20px))',
-          background: '#10141a',
-          border: '1px solid #424655',
+          background: '#070708',
+          border: '1px solid #28282c',
           borderRadius: 12,
           overflow: 'auto',
           boxShadow: '0 24px 80px rgba(0,0,0,0.35)',
@@ -143,12 +143,12 @@ export default function DocumentCameraCapture({ open, onClose, onCapture }: Docu
             justifyContent: 'space-between',
             gap: 16,
             padding: 'clamp(12px, 2vw, 16px) clamp(12px, 2.5vw, 18px)',
-            borderBottom: '1px solid #424655',
+            borderBottom: '1px solid #28282c',
           }}
         >
           <div>
             <h2 style={{ fontSize: 17, fontWeight: 700, margin: 0 }}>Take document photo</h2>
-            <p style={{ fontSize: 12, color: '#8c90a1', margin: '4px 0 0' }}>
+            <p style={{ fontSize: 12, color: '#6a6a70', margin: '4px 0 0' }}>
               Place the document inside the frame, then capture.
             </p>
           </div>
@@ -161,8 +161,8 @@ export default function DocumentCameraCapture({ open, onClose, onCapture }: Docu
           <div
             style={{
               position: 'relative',
-              background: '#0a0e14',
-              border: '1px solid #424655',
+              background: '#070708',
+              border: '1px solid #28282c',
               borderRadius: 10,
               overflow: 'hidden',
               width: '100%',
@@ -190,9 +190,9 @@ export default function DocumentCameraCapture({ open, onClose, onCapture }: Docu
                   maxWidth: 'calc(100% - 32px)',
                   aspectRatio: '85.6 / 54',
                   transform: 'translate(-50%, -50%)',
-                  border: '2px solid rgba(176,198,255,0.75)',
+                  border: '2px solid rgba(160,0,32,0.75)',
                   borderRadius: 10,
-                  boxShadow: '0 0 0 999px rgba(10,14,20,0.28)',
+                  boxShadow: '0 0 0 999px rgba(7,7,8,0.28)',
                   pointerEvents: 'none',
                 }}
               />
@@ -207,7 +207,7 @@ export default function DocumentCameraCapture({ open, onClose, onCapture }: Docu
                   justifyContent: 'center',
                   flexDirection: 'column',
                   gap: 10,
-                  color: error ? '#ffb4ab' : '#8c90a1',
+                  color: error ? '#ff2d4a' : '#6a6a70',
                   textAlign: 'center',
                   padding: 24,
                 }}

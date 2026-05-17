@@ -32,8 +32,8 @@ export default function ContourMap({ width = 800, height = 500, opacity = 1, see
     >
       <defs>
         <linearGradient id={`carto-fade-${seed}`} x1="0" x2="0" y1="0" y2="1">
-          <stop offset="0%" stopColor="#b0c6ff" stopOpacity="0.4" />
-          <stop offset="100%" stopColor="#b0c6ff" stopOpacity="0.05" />
+          <stop offset="0%" stopColor="#a00020" stopOpacity="0.4" />
+          <stop offset="100%" stopColor="#a00020" stopOpacity="0.05" />
         </linearGradient>
       </defs>
       {lines.map((p, i) => (
@@ -41,7 +41,7 @@ export default function ContourMap({ width = 800, height = 500, opacity = 1, see
           key={i}
           d={p}
           fill="none"
-          stroke="#b0c6ff"
+          stroke="#a00020"
           strokeOpacity={0.06 + (i % 4) * 0.03}
           strokeWidth={i % 3 === 0 ? 1.2 : 0.7}
         />

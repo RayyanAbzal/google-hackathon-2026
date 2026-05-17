@@ -63,9 +63,10 @@ No other text.`
   ])
   const raw = result.response.text().trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
   console.log(`│  Raw Gemini response: ${raw.slice(0, 300)}`)
-  const parsed = JSON.parse(raw) as { full_name: string | null; institution: string | null; confidence: number }
+  const parsed = JSON.parse(raw) as { full_name: string | null; document_id?: string | null; institution: string | null; confidence: number }
   return {
     extracted_name: parsed.full_name ?? null,
+    document_id: parsed.document_id ?? null,
     doc_type: docType,
     institution: parsed.institution ?? null,
     confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,

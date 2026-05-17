@@ -41,6 +41,8 @@ export interface Claim {
   doc_type: string
   extracted_name: string | null  // nullable — Gemini can fail to read
   extracted_institution: string | null
+  document_id: string | null     // licence/passport/doc number — global dedup
+  expiry_date: string | null     // ISO YYYY-MM-DD, null if doc has no expiry
   confidence: number | null
   content_hash: string | null  // for per-user dedup, stored in DB
   vouches: number
@@ -172,9 +174,10 @@ export interface Session {
 // Shape returned by analyseDocument() in src/lib/gemini.ts
 export interface DocumentAnalysis {
   extracted_name: string | null
+  document_id: string | null     // licence/passport/doc number
   doc_type: DocType | string
   document_category?: 'passport' | 'driving_licence' | 'other' | null
-  expiry_date?: string | null
+  expiry_date?: string | null    // ISO YYYY-MM-DD
   country?: string | null
   institution: string | null
   confidence: number

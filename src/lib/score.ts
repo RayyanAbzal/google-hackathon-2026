@@ -85,7 +85,7 @@ export async function recalculateUserScore(
       title: `You reached ${tier} tier!`,
       detail: `Your trust score is now ${score}`,
       icon: 'star',
-      color: '#fbbf24',
+      color: '#cc7700',
     });
   }
 
