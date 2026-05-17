@@ -2,7 +2,10 @@ import { supabaseAdmin } from "@/lib/supabase";
 import { verifyAuth } from "@/lib/auth";
 import { recalculateUserScore } from "@/lib/score";
 import { createNotification } from "@/lib/notifications";
+import { getTier } from "@/types";
 import type { ApiResponse, TrustTier } from "@/types";
+
+const CIRCULAR_VOUCH_PENALTY = 20;
 
 interface VouchBody {
   vouchee_id: string;
@@ -72,6 +75,15 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json({ success: false, error: "Vouch limit reached — 5 per 24h" } satisfies ApiResponse<never>, { status: 429 });
   }
 
+  // Detect circular vouching: vouchee already vouches back for the voucher
+  const { count: reverseCount } = await supabaseAdmin
+    .from("vouches")
+    .select("*", { count: "exact", head: true })
+    .eq("voucher_id", vouchee_id)
+    .eq("vouchee_id", voucher.id);
+
+  const isCircular = (reverseCount ?? 0) > 0;
+
   const { error } = await supabaseAdmin
     .from("vouches")
     .insert({ voucher_id: voucher.id, vouchee_id });
@@ -81,6 +93,33 @@ export async function POST(request: Request): Promise<Response> {
     return Response.json(
       { success: false, error: isDuplicate ? "Already vouched for this user" : "Failed to record vouch" } satisfies ApiResponse<never>,
       { status: isDuplicate ? 409 : 500 }
+    );
+  }
+
+  // Apply circular vouching penalty to both parties
+  if (isCircular) {
+    const { data: both } = await supabaseAdmin
+      .from("users")
+      .select("id, score")
+      .in("id", [voucher.id, vouchee_id]);
+
+    await Promise.all(
+      (both ?? []).map(async (u) => {
+        const newScore = Math.max(0, (u.score ?? 0) - CIRCULAR_VOUCH_PENALTY);
+        const newTier = getTier(newScore);
+        await supabaseAdmin
+          .from("users")
+          .update({ score: newScore, tier: newTier })
+          .eq("id", u.id);
+        await createNotification({
+          user_id: u.id,
+          type: "claim_verified",
+          title: "Trust penalty: Circular vouching detected",
+          detail: `-${CIRCULAR_VOUCH_PENALTY} pts — mutual vouching is not permitted`,
+          icon: "warning",
+          color: "#ffb4ab",
+        });
+      })
     );
   }
 

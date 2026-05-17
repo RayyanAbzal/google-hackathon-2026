@@ -173,6 +173,7 @@ export interface Session {
 export interface DocumentAnalysis {
   extracted_name: string | null
   doc_type: DocType | string
+  document_id?: string | null
   document_category?: 'passport' | 'driving_licence' | 'other' | null
   expiry_date?: string | null
   country?: string | null
