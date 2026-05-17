@@ -14,6 +14,7 @@ interface VouchBody {
 interface VouchResult {
   new_score: number;
   tier: TrustTier;
+  circular: boolean;
 }
 
 const VOUCH_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -136,6 +137,6 @@ export async function POST(request: Request): Promise<Response> {
 
   return Response.json({
     success: true,
-    data: { new_score, tier },
+    data: { new_score, tier, circular: isCircular },
   } satisfies ApiResponse<VouchResult>, { status: 201 });
 }

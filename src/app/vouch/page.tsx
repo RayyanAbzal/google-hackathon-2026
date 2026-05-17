@@ -20,7 +20,7 @@ interface FoundUser {
   borough: string | null
 }
 
-type VouchState = 'idle' | 'loading' | 'found' | 'confirming' | 'success' | 'error'
+type VouchState = 'idle' | 'loading' | 'found' | 'confirming' | 'success' | 'circular' | 'error'
 type ScanState  = 'off' | 'scanning' | 'done'
 
 export default function VouchPage() {
@@ -119,7 +119,7 @@ export default function VouchPage() {
       const json = await res.json()
       if (!json.success) { setErrorMsg(json.error ?? 'Vouch failed'); setVouchState('found'); return }
       setVoucheeNewScore(json.data?.new_score ?? null)
-      setVouchState('success')
+      setVouchState(json.data?.circular ? 'circular' : 'success')
     } catch {
       setErrorMsg('Network error — try again')
       setVouchState('found')
@@ -314,7 +314,23 @@ export default function VouchPage() {
             </div>
 
             {/* Person preview + confirm — shown after lookup */}
-            {vouchState === 'success' ? (
+            {vouchState === 'circular' ? (
+              <div className="bento" style={{ textAlign: 'center', padding: 40, border: '1px solid rgba(255,180,171,0.35)', background: 'rgba(255,180,171,0.05)' }}>
+                <Icon name="warning" size={48} style={{ color: '#ffb4ab', marginBottom: 12 }} />
+                <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Circular vouching detected</div>
+                <div style={{ fontSize: 14, color: '#8c90a1', marginBottom: 6 }}>
+                  {foundUser?.display_name} already vouches for you. Both parties have been penalised <strong style={{ color: '#ffb4ab' }}>−20 pts</strong>.
+                </div>
+                {voucheeNewScore !== null && (
+                  <div style={{ fontSize: 14, color: '#8c90a1' }}>
+                    Their score is now <strong style={{ color: '#ffb4ab' }}>{voucheeNewScore}</strong>.
+                  </div>
+                )}
+                <button onClick={handleReject} className="btn-ghost" style={{ marginTop: 20 }}>
+                  Vouch someone else
+                </button>
+              </div>
+            ) : vouchState === 'success' ? (
               <div
                 className="bento"
                 style={{
