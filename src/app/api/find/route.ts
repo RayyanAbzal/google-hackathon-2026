@@ -83,6 +83,7 @@ export async function GET(request: Request): Promise<Response> {
     .from("users")
     .select("borough, skill, score")
     .gte("score", 55)
+    .neq("skill", "Other")
     .limit(1000);
 
   if (skill) {

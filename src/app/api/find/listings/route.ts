@@ -37,6 +37,7 @@ export async function GET(): Promise<Response> {
     .select('node_id, username, skill, borough, tier, score, claims(doc_type, status, vouches)')
     .in('tier', ['trusted', 'gov_official'])
     .neq('borough', '')
+    .neq('skill', 'Other')
     .limit(1000)
 
   if (error) {
