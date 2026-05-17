@@ -52,14 +52,49 @@ function contentHash(userId: string, docType: string, n: number): string {
 
 const DEMO_PASSWORD = hashPassword('password123')
 
-const BOROUGHS = [
-  'Southwark', 'Westminster', 'Hackney', 'Tower Hamlets', 'Lewisham',
-  'Greenwich', 'Lambeth', 'Islington', 'Camden', 'Haringey',
-  'Newham', 'Wandsworth', 'Bromley', 'Croydon', 'Ealing', 'Enfield',
-  'Barnet', 'Brent', 'Waltham Forest', 'Hounslow',
-]
+// borough -> target user count. Variation drives heatmap density contrast.
+const BOROUGH_DENSITY: Record<string, number> = {
+  // Inner / hot (dense central London)
+  'Westminster': 48,
+  'Camden': 42,
+  'Tower Hamlets': 40,
+  'Hackney': 38,
+  'Southwark': 36,
+  'Lambeth': 34,
+  'Islington': 32,
+  'Kensington and Chelsea': 28,
+  // Mid (inner ring + busy outer)
+  'Newham': 24,
+  'Hammersmith and Fulham': 22,
+  'Wandsworth': 22,
+  'Lewisham': 20,
+  'Haringey': 18,
+  'Greenwich': 18,
+  'Waltham Forest': 16,
+  'Brent': 16,
+  'Ealing': 16,
+  'Barnet': 14,
+  'Croydon': 14,
+  // Low (outer suburbs)
+  'Enfield': 10,
+  'Redbridge': 9,
+  'Hounslow': 8,
+  'Merton': 7,
+  'Richmond upon Thames': 6,
+  'Hillingdon': 6,
+  'Bromley': 6,
+  'Harrow': 5,
+  'Barking and Dagenham': 5,
+  'Kingston upon Thames': 4,
+  'Sutton': 4,
+  'Bexley': 4,
+  'Havering': 3,
+  'City of London': 3,
+}
 
-const SKILLS = ['Doctor', 'Engineer', 'Legal', 'Builder', 'Nurse', 'Other'] as const
+const BOROUGHS: string[] = Object.keys(BOROUGH_DENSITY)
+
+type Skill = 'Doctor' | 'Engineer' | 'Legal' | 'Builder' | 'Nurse' | 'Other'
 
 const FIRST_NAMES = [
   'James', 'Sarah', 'Michael', 'Fatima', 'David', 'Priya', 'John', 'Amara',
@@ -77,25 +112,61 @@ const LAST_NAMES = [
 
 const DOC_TYPES = ['passport', 'degree', 'employer_letter', 'nhs_card', 'driving_licence']
 
-// Score distribution across 200 users
-function targetScore(i: number): number {
-  const bucket = i % 10
-  if (bucket < 3) return (i % 3) * 10        // 0, 10, 20 — unverified
-  if (bucket < 5) return 30 + (i % 20)        // 30-49 — verified (old "partial" label, thresholds changed)
-  if (bucket < 8) return 50 + (i % 35)        // 50-84 — verified
-  return 90 + (i % 5)                          // 90-94 — trusted
+// Per-borough recipe: deterministic skill + score mix so every borough
+// renders with full skill variety and a trusted/verified/unverified spread.
+interface Slot { skill: Skill; score: number }
+
+// Pool of slot templates. Per-borough we sample N from this pool so that:
+//   - small boroughs still get >=1 trusted + variety
+//   - large boroughs scale up across all skills/tiers proportionally
+const SLOT_POOL: Slot[] = [
+  // trusted (>=55) — 19% of pool
+  { skill: 'Doctor',   score: 72 },
+  { skill: 'Nurse',    score: 64 },
+  { skill: 'Legal',    score: 60 },
+  { skill: 'Doctor',   score: 58 },
+  // verified (20-54) — 44% of pool
+  { skill: 'Builder',  score: 42 },
+  { skill: 'Engineer', score: 48 },
+  { skill: 'Other',    score: 28 },
+  { skill: 'Other',    score: 35 },
+  { skill: 'Builder',  score: 24 },
+  { skill: 'Engineer', score: 52 },
+  { skill: 'Nurse',    score: 46 },
+  { skill: 'Legal',    score: 38 },
+  { skill: 'Doctor',   score: 30 },
+  // unverified (0-19) — 38% of pool
+  { skill: 'Other',    score: 0 },
+  { skill: 'Other',    score: 5 },
+  { skill: 'Builder',  score: 10 },
+  { skill: 'Engineer', score: 15 },
+  { skill: 'Legal',    score: 18 },
+  { skill: 'Doctor',   score: 12 },
+  { skill: 'Nurse',    score: 8 },
+]
+
+function slotsForBorough(count: number): Slot[] {
+  const out: Slot[] = []
+  // Guarantee >=1 trusted Doctor in any borough with count >= 1
+  if (count > 0) out.push({ skill: 'Doctor', score: 72 })
+  if (count > 2) out.push({ skill: 'Nurse',  score: 64 })
+  if (count > 4) out.push({ skill: 'Legal',  score: 60 })
+  while (out.length < count) {
+    out.push(SLOT_POOL[out.length % SLOT_POOL.length])
+  }
+  return out.slice(0, count)
 }
 
 function claimsForScore(score: number): number {
   return Math.min(5, Math.ceil(score / 15))
 }
 
-async function insertUser(i: number): Promise<void> {
+async function insertUser(globalIdx: number, borough: string, slot: Slot): Promise<void> {
+  const i       = globalIdx
   const first   = FIRST_NAMES[i % FIRST_NAMES.length]
   const last    = LAST_NAMES[(i * 7 + 3) % LAST_NAMES.length]
-  const borough = BOROUGHS[i % BOROUGHS.length]
-  const skill   = SKILLS[(i * 3) % SKILLS.length]
-  const score   = targetScore(i)
+  const skill   = slot.skill
+  const score   = slot.score
   const tier    = getTier(score)
 
   const { data: user, error } = await supabase
@@ -181,15 +252,23 @@ async function seed(): Promise<void> {
   await seedGovAnchors()
   await seedDrOsei()
 
-  console.log('  Seeding 200 Londoners...')
-  const BATCH = 20
-  for (let i = 0; i < 200; i += BATCH) {
-    await Promise.all(
-      Array.from({ length: Math.min(BATCH, 200 - i) }, (_, j) => insertUser(i + j))
-    )
-    process.stdout.write(`  ${Math.min(i + BATCH, 200)}/200\r`)
+  let idx = 0
+  const jobs: Array<{ borough: string; slot: Slot; idx: number }> = []
+  for (const borough of BOROUGHS) {
+    const count = BOROUGH_DENSITY[borough]
+    for (const slot of slotsForBorough(count)) {
+      jobs.push({ borough, slot, idx: idx++ })
+    }
   }
-  console.log('  ✓ 200 Londoners seeded.          ')
+  const total = jobs.length
+  console.log(`  Seeding ${total} Londoners across ${BOROUGHS.length} boroughs (density-weighted)...`)
+  const BATCH = 20
+  for (let i = 0; i < jobs.length; i += BATCH) {
+    const chunk = jobs.slice(i, i + BATCH)
+    await Promise.all(chunk.map((j) => insertUser(j.idx, j.borough, j.slot)))
+    process.stdout.write(`  ${Math.min(i + BATCH, jobs.length)}/${jobs.length}\r`)
+  }
+  console.log(`  ✓ ${total} Londoners seeded.          `)
 
   const { count } = await supabase.from('users').select('*', { count: 'exact', head: true })
   console.log(`\n✅ Done — ${count} total users in DB`)
