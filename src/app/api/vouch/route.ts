@@ -96,34 +96,32 @@ export async function POST(request: Request): Promise<Response> {
     );
   }
 
-  // Apply circular vouching penalty to both parties
+  // Recalculate vouchee score first, then apply circular penalty on top so it isn't overwritten
+  let { score: new_score, tier } = await recalculateUserScore(vouchee_id);
+
   if (isCircular) {
-    const { data: both } = await supabaseAdmin
+    // Fetch current scores for both parties (vouchee was just recalculated above)
+    const { data: voucherRow } = await supabaseAdmin
       .from("users")
-      .select("id, score")
-      .in("id", [voucher.id, vouchee_id]);
+      .select("score")
+      .eq("id", voucher.id)
+      .single();
 
-    await Promise.all(
-      (both ?? []).map(async (u) => {
-        const newScore = Math.max(0, (u.score ?? 0) - CIRCULAR_VOUCH_PENALTY);
-        const newTier = getTier(newScore);
-        await supabaseAdmin
-          .from("users")
-          .update({ score: newScore, tier: newTier })
-          .eq("id", u.id);
-        await createNotification({
-          user_id: u.id,
-          type: "claim_verified",
-          title: "Trust penalty: Circular vouching detected",
-          detail: `-${CIRCULAR_VOUCH_PENALTY} pts — mutual vouching is not permitted`,
-          icon: "warning",
-          color: "#ffb4ab",
-        });
-      })
-    );
+    const penalizedVouchee = Math.max(0, new_score - CIRCULAR_VOUCH_PENALTY);
+    const penalizedVoucheeTier = getTier(penalizedVouchee);
+    const penalizedVoucher = Math.max(0, (voucherRow?.score ?? 0) - CIRCULAR_VOUCH_PENALTY);
+    const penalizedVoucherTier = getTier(penalizedVoucher);
+
+    await Promise.all([
+      supabaseAdmin.from("users").update({ score: penalizedVouchee, tier: penalizedVoucheeTier }).eq("id", vouchee_id),
+      supabaseAdmin.from("users").update({ score: penalizedVoucher, tier: penalizedVoucherTier }).eq("id", voucher.id),
+      createNotification({ user_id: vouchee_id, type: "claim_verified", title: "Trust penalty: Circular vouching detected", detail: `-${CIRCULAR_VOUCH_PENALTY} pts — mutual vouching is not permitted`, icon: "warning", color: "#ffb4ab" }),
+      createNotification({ user_id: voucher.id, type: "claim_verified", title: "Trust penalty: Circular vouching detected", detail: `-${CIRCULAR_VOUCH_PENALTY} pts — mutual vouching is not permitted`, icon: "warning", color: "#ffb4ab" }),
+    ]);
+
+    new_score = penalizedVouchee;
+    tier = penalizedVoucheeTier;
   }
-
-  const { score: new_score, tier } = await recalculateUserScore(vouchee_id);
 
   // Create notification for vouchee
   await createNotification({
