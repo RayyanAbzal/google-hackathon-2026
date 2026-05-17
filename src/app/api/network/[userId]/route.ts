@@ -18,6 +18,13 @@ interface NetworkResult {
 
 const MAX_DISPLAYED_NODES = 12;
 
+function vouchPointsForTier(tier: TrustTier): number {
+  if (tier === "gov_official") return 10;
+  if (tier === "trusted") return 6.25;
+  if (tier === "verified") return 5;
+  return 0;
+}
+
 export async function GET(
   _request: Request,
   { params }: { params: Promise<{ userId: string }> }
@@ -82,12 +89,14 @@ export async function GET(
 
   const oldVoucherIds = oldVouches.map((v) => v.voucher_id);
   let oldGovVouched = false;
+  let oldWeightedVouchPoints = 0;
   if (oldVoucherIds.length > 0) {
-    const { count } = await supabaseAdmin
-      .from("gov_officials")
-      .select("*", { count: "exact", head: true })
-      .in("user_id", oldVoucherIds);
-    oldGovVouched = (count ?? 0) > 0;
+    for (const vouch of oldVouches) {
+      const user = Array.isArray(vouch.users) ? vouch.users[0] : vouch.users;
+      const tier = ((user as { tier: TrustTier } | null)?.tier ?? "unverified") as TrustTier;
+      oldWeightedVouchPoints += vouchPointsForTier(tier);
+      if (tier === "gov_official") oldGovVouched = true;
+    }
   }
 
   const oldScore = calculateScore({
@@ -96,6 +105,7 @@ export async function GET(
     other_doc_count: oldVerifiedClaims.filter((c) => c.doc_type !== "passport")
       .length,
     vouches_received: oldVouches.length,
+    weighted_vouch_points: oldWeightedVouchPoints,
     gov_vouched: oldGovVouched,
   });
 

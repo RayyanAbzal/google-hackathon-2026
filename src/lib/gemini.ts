@@ -41,12 +41,14 @@ Read the document image directly. Do not assume the country from the expected ca
 Extract these fields:
 - full_name: the person's full legal name
 - document_type: the specific document type, including country if visible (for example "New Zealand Passport")
+- document_category: exactly "passport", "driving_licence", or "other". Use "passport" only for passports. Use "driving_licence" only for driver's licences / driving licences / driver licenses. Use "other" for every other document, including IDs, visas, certificates, bank cards, health cards, or documents you cannot classify.
+- expiry_date: the document expiry/expiration date in ISO format YYYY-MM-DD if visible. If no expiry date is visible, return null.
 - country: issuing country or jurisdiction if visible (null if not visible)
 - institution: issuing institution or employer (null if not applicable)
 - confidence: a float 0.0-1.0 indicating how clearly the key fields are legible
 
 Respond ONLY with valid JSON in this exact shape:
-{"full_name": string | null, "document_type": string | null, "country": string | null, "institution": string | null, "confidence": number}
+{"full_name": string | null, "document_type": string | null, "document_category": "passport" | "driving_licence" | "other", "expiry_date": string | null, "country": string | null, "institution": string | null, "confidence": number}
 
 No other text.`
 
@@ -61,6 +63,8 @@ No other text.`
     const parsed: {
       full_name: string | null
       document_type?: string | null
+      document_category?: 'passport' | 'driving_licence' | 'other' | null
+      expiry_date?: string | null
       country?: string | null
       institution: string | null
       confidence: number
@@ -70,6 +74,8 @@ No other text.`
     return {
       extracted_name: parsed.full_name ?? null,
       doc_type: parsed.document_type ?? docType,
+      document_category: parsed.document_category ?? null,
+      expiry_date: parsed.expiry_date ?? null,
       country: parsed.country ?? null,
       institution: parsed.institution ?? null,
       confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,
@@ -81,6 +87,6 @@ No other text.`
       mimeType: normalizeMimeType(mimeType),
       base64Length: imageBase64.length,
     })
-    return { extracted_name: null, doc_type: docType, institution: null, confidence: 0 }
+    return { extracted_name: null, doc_type: docType, document_category: null, expiry_date: null, institution: null, confidence: 0 }
   }
 }

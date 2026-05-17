@@ -166,6 +166,8 @@ export default function VouchPage() {
   if (!session) return null
 
   const initials = session.display_name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()
+  const canVouch = session.tier === 'verified' || session.tier === 'trusted' || session.tier === 'gov_official'
+  const vouchPower = session.tier === 'gov_official' ? 10 : session.tier === 'trusted' ? 6.25 : session.tier === 'verified' ? 5 : 0
 
   return (
     <div style={{ background: '#10141a', minHeight: '100vh', color: '#dfe2eb' }}>
@@ -180,6 +182,21 @@ export default function VouchPage() {
           </p>
         </div>
 
+        {!canVouch && (
+          <div
+            className="bento"
+            style={{
+              marginBottom: 24,
+              borderColor: 'rgba(251,191,36,0.4)',
+              background: 'rgba(251,191,36,0.06)',
+              color: '#fbbf24',
+              fontSize: 14,
+            }}
+          >
+            Your account is unverified. You can show your QR code to receive vouches, but only Verified, Trusted, and Government accounts can vouch for colleagues.
+          </div>
+        )}
+
         <div
           style={{
             display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px',
@@ -189,7 +206,7 @@ export default function VouchPage() {
           }}
         >
           <Icon name="warning" size={18} style={{ color: '#ffb4ab', flexShrink: 0 }} />
-          False vouches carry a trust penalty. Only vouch for people you have physically verified.
+          False vouches carry a trust penalty. Your current vouch power is +{vouchPower} points.
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(12, 1fr)', gap: 20 }}>
@@ -363,7 +380,7 @@ export default function VouchPage() {
                   <button onClick={handleReject} className="btn-ghost">Reject</button>
                   <button
                     onClick={handleConfirmVouch}
-                    disabled={vouchState === 'confirming'}
+                    disabled={!canVouch || vouchState === 'confirming'}
                     style={{
                       padding: '10px 20px', borderRadius: 8,
                       background: 'rgba(64,229,108,0.15)',

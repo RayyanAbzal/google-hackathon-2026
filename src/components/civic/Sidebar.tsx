@@ -24,10 +24,10 @@ const PUBLIC_NAV = [
   { key: 'find',     icon: 'search',   label: 'Find Help',  href: '/find-help' },
 ]
 
-function tierLabel(score: number): string {
-  if (score >= 91) return 'Gov'
-  if (score >= 55) return 'Trusted'
-  if (score >= 20) return 'Verified'
+function tierLabel(tier: Session['tier']): string {
+  if (tier === 'gov_official') return 'Gov'
+  if (tier === 'trusted') return 'Trusted'
+  if (tier === 'verified') return 'Verified'
   return 'Unverified'
 }
 
@@ -37,7 +37,8 @@ export default function Sidebar({ active, session: sessionOverride, mode = 'auto
   const { collapsed, toggle } = useSidebar()
 
   const isPublic = mode === 'public' || !session
-  const nav = isPublic ? PUBLIC_NAV : AUTH_NAV
+  const isUnverified = session?.tier === 'unverified'
+  const nav = isPublic ? PUBLIC_NAV : AUTH_NAV.filter((item) => !(isUnverified && item.key === 'find'))
   const score = session?.score ?? 0
   const progress = Math.min(100, Math.max(4, score))
   const w = collapsed ? SIDEBAR_COLLAPSED : SIDEBAR_EXPANDED
@@ -88,7 +89,7 @@ export default function Sidebar({ active, session: sessionOverride, mode = 'auto
           </div>
           <div style={{ fontSize: 11, color: '#8c90a1', marginBottom: 4, display: 'flex', justifyContent: 'space-between' }}>
             <span>{score} pts</span>
-            <span style={{ color: '#b0c6ff' }}>{tierLabel(score)}</span>
+            <span style={{ color: '#b0c6ff' }}>{tierLabel(session.tier)}</span>
           </div>
           <div style={{ height: 4, borderRadius: 9999, background: '#0a0e14', overflow: 'hidden' }}>
             <div style={{ width: `${progress}%`, height: '100%', background: '#b0c6ff', borderRadius: 9999 }} />

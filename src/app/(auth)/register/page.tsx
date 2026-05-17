@@ -4,10 +4,10 @@ import { useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import TopBar from '@/components/civic/TopBar'
-import type { MandatoryDocType, Session } from '@/types'
+import type { MandatoryDocType, Session, TrustTier } from '@/types'
 import { protectedFetch, saveSession, updateStoredSession } from '@/app/_lib/session'
 
-interface RegisterResult { token: string; user_id: string; node_id: string }
+interface RegisterResult { token: string; user_id: string; node_id: string; score: number; tier: TrustTier }
 
 export default function RegisterPage() {
   const [name, setName] = useState('')
@@ -28,6 +28,7 @@ export default function RegisterPage() {
     if (password !== confirm) { setError('Passwords do not match'); return }
     if (password.length < 6) { setError('Password must be at least 6 characters'); return }
     if (!file) { setError('Please upload an ID document'); return }
+    if (file.type !== 'image/png') { setError('Please upload a PNG image only'); return }
 
     setLoading(true)
     try {
@@ -41,12 +42,12 @@ export default function RegisterPage() {
       const resp = await fetch('/api/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ display_name: name.trim(), password, doc_type: docType, doc_image_base64: base64 }),
+        body: JSON.stringify({ display_name: name.trim(), password, doc_type: docType, doc_image_base64: base64, mime_type: 'image/png' }),
       })
       const json = await resp.json() as { success: boolean; data?: RegisterResult; error?: string }
       if (!json.success || !json.data) { setError(json.error ?? 'Registration failed'); return }
 
-      const session: Session = { ...json.data, display_name: name.trim(), score: 0, tier: 'unverified', username: null, skill: null, borough: null }
+      const session: Session = { ...json.data, display_name: name.trim(), username: null, skill: null, borough: null }
       saveSession(session)
       setPendingSession(session)
     } catch {
@@ -137,8 +138,23 @@ export default function RegisterPage() {
                   Click to upload
                 </button>
               )}
-              <input ref={fileRef} type="file" accept=".jpg,.jpeg,.png,.pdf" style={{ display: 'none' }} onChange={e => setFile(e.target.files?.[0] ?? null)} />
-              <p style={{ fontSize: 12, color: '#8c90a1', marginTop: 8 }}>Only passports and driving licences are accepted for sign-up.</p>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/png,.png"
+                style={{ display: 'none' }}
+                onChange={e => {
+                  const nextFile = e.target.files?.[0] ?? null
+                  if (nextFile && nextFile.type !== 'image/png') {
+                    setFile(null)
+                    setError('Please upload a PNG image only')
+                    return
+                  }
+                  setError('')
+                  setFile(nextFile)
+                }}
+              />
+              <p style={{ fontSize: 12, color: '#8c90a1', marginTop: 8 }}>Only PNG images of a current passport or driving licence are accepted for sign-up.</p>
             </div>
 
             {error && <p style={{ fontSize: 13, color: '#ffb4ab', margin: 0 }}>{error}</p>}
