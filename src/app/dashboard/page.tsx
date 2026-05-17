@@ -10,6 +10,7 @@ import EgoGraph from '@/components/civic/svg/EgoGraph'
 import { useSidebar } from '@/components/civic/SidebarProvider'
 import type { ApiResponse, Claim, Session, TrustTier, Notification } from '@/types'
 import { getDisplayFirstName, protectedFetch, requireSession, updateStoredSession } from '@/app/_lib/session'
+import { formatDocType } from '@/lib/utils'
 
 const CIRCUMFERENCE = 276.46
 
@@ -47,7 +48,6 @@ export default function DashboardPage() {
   const [notifications, setNotifications] = useState<Notification[]>([])
   const [networkNodes, setNetworkNodes] = useState<Array<{ type: 'gov' | 'community'; display_name?: string; username?: string | null; tier?: string; vouched_at?: string }>>([])
   const [networkLoaded, setNetworkLoaded] = useState(false)
-  const [ptsThisWeek, setPtsThisWeek] = useState<number | null>(null)
   const [vouchesReceived, setVouchesReceived] = useState<number>(0)
 
   useEffect(() => {
@@ -90,7 +90,6 @@ export default function DashboardPage() {
         .then((json) => {
           if (json.success) {
             setNetworkNodes(json.data.nodes)
-            setPtsThisWeek(json.data.pts_this_week)
           }
         })
         .catch(() => {})
@@ -133,7 +132,7 @@ export default function DashboardPage() {
   const evidenceRows = useMemo(() => {
     return claims.slice(0, 3).map(c => ({
       icon: claimIcon(c.doc_type),
-      title: c.doc_type,
+      title: formatDocType(c.doc_type),
       sub: c.extracted_institution ?? '',
       color: claimColor(c.status),
       badge: claimBadge(c.status),
@@ -202,9 +201,6 @@ export default function DashboardPage() {
           <div style={{ border: '1px solid rgba(40,40,44,0.5)', borderRadius: 14, padding: 20, background: '#121214' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
               <span className="meta">YOUR TRUST NETWORK</span>
-              {ptsThisWeek !== null && ptsThisWeek > 0 && (
-                <span className="meta" style={{ color: '#00b860' }}>+{ptsThisWeek} PTS THIS WEEK</span>
-              )}
             </div>
             <div style={{ height: 300, marginTop: 6 }}>
               <EgoGraph width={680} height={300} vouchers={networkLoaded ? networkNodes : []} />

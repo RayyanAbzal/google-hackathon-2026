@@ -7,7 +7,8 @@ import TopBar from '@/components/civic/TopBar'
 import Sidebar from '@/components/civic/Sidebar'
 import TierBadge from '@/components/civic/TierBadge'
 import Icon from '@/components/civic/Icon'
-import type { Session, TrustTier, SkillTag } from '@/types'
+import type { Claim, Session, TrustTier, SkillTag } from '@/types'
+import { protectedFetch } from '@/app/_lib/session'
 
 interface FoundUser {
   id: string
@@ -20,7 +21,7 @@ interface FoundUser {
   borough: string | null
 }
 
-type VouchState = 'idle' | 'loading' | 'found' | 'confirming' | 'success' | 'error'
+type VouchState = 'idle' | 'loading' | 'found' | 'confirming' | 'success' | 'circular' | 'error'
 type ScanState  = 'off' | 'scanning' | 'done'
 
 export default function VouchPage() {
@@ -35,6 +36,10 @@ export default function VouchPage() {
   const [vouchState, setVouchState]   = useState<VouchState>('idle')
   const [voucheeNewScore, setVoucheeNewScore] = useState<number | null>(null)
   const [errorMsg, setErrorMsg]       = useState('')
+  const [foundUserClaims, setFoundUserClaims] = useState<Claim[]>([])
+  const [flagConfirm, setFlagConfirm] = useState<string | null>(null)
+  const [flagging, setFlagging]       = useState<string | null>(null)
+  const [flagResult, setFlagResult]   = useState<{ claimId: string; msg: string } | null>(null)
   const [scanState, setScanState]     = useState<ScanState>('off')
   const scannerRef                    = useRef<HTMLDivElement>(null)
   // html5-qrcode instance stored in ref so it survives renders
@@ -59,6 +64,12 @@ export default function VouchPage() {
       if (json.data.id === session?.user_id) { setErrorMsg('Cannot vouch for yourself'); setVouchState('error'); return }
       setFoundUser(json.data as FoundUser)
       setVouchState('found')
+      setFlagResult(null)
+      if (session) {
+        protectedFetch<Claim[]>(`/api/claims/${json.data.id}`, session)
+          .then(r => { if (r.success) setFoundUserClaims(r.data.filter(c => c.status === 'verified')) })
+          .catch(() => {})
+      }
     } catch {
       setErrorMsg('Network error — try again')
       setVouchState('error')
@@ -119,7 +130,7 @@ export default function VouchPage() {
       const json = await res.json()
       if (!json.success) { setErrorMsg(json.error ?? 'Vouch failed'); setVouchState('found'); return }
       setVoucheeNewScore(json.data?.new_score ?? null)
-      setVouchState('success')
+      setVouchState(json.data?.circular ? 'circular' : 'success')
     } catch {
       setErrorMsg('Network error — try again')
       setVouchState('found')
@@ -132,6 +143,9 @@ export default function VouchPage() {
     setVouchState('idle')
     setErrorMsg('')
     setVoucheeNewScore(null)
+    setFoundUserClaims([])
+    setFlagConfirm(null)
+    setFlagResult(null)
     setScanState('off')
   }
 
@@ -167,7 +181,32 @@ export default function VouchPage() {
 
   const initials = session.display_name.split(' ').map(p => p[0]).join('').slice(0, 2).toUpperCase()
   const canVouch = session.tier === 'verified' || session.tier === 'trusted' || session.tier === 'gov_official'
+  const canFlag  = session.tier === 'trusted' || session.tier === 'gov_official'
   const vouchPower = session.tier === 'gov_official' ? 10 : session.tier === 'trusted' ? 6.25 : session.tier === 'verified' ? 5 : 0
+
+  async function handleFlag(claimId: string) {
+    if (!session || !foundUser) return
+    setFlagging(claimId)
+    setFlagConfirm(null)
+    try {
+      const json = await protectedFetch<{ penalized_vouchers: number }>('/api/vouch/flag', session, {
+        method: 'POST',
+        body: JSON.stringify({ claim_id: claimId }),
+      })
+      if (json.success) {
+        setFlagResult({ claimId, msg: `Flagged — ${json.data.penalized_vouchers} voucher(s) penalised.` })
+        // Refresh the found user's score so it reflects the penalty immediately
+        const refreshed = await fetch(`/api/users/node/${foundUser.node_id}`).then(r => r.json())
+        if (refreshed.success) setFoundUser(refreshed.data as FoundUser)
+      } else {
+        setFlagResult({ claimId, msg: json.error })
+      }
+    } catch {
+      setFlagResult({ claimId, msg: 'Could not submit flag. Try again.' })
+    } finally {
+      setFlagging(null)
+    }
+  }
 
   return (
     <div style={{ background: '#070708', minHeight: '100vh', color: '#d2d2d6' }}>
@@ -314,7 +353,23 @@ export default function VouchPage() {
             </div>
 
             {/* Person preview + confirm — shown after lookup */}
-            {vouchState === 'success' ? (
+            {vouchState === 'circular' ? (
+              <div className="bento" style={{ textAlign: 'center', padding: 40, border: '1px solid rgba(255,180,171,0.35)', background: 'rgba(255,180,171,0.05)' }}>
+                <Icon name="warning" size={48} style={{ color: '#ffb4ab', marginBottom: 12 }} />
+                <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Circular vouching detected</div>
+                <div style={{ fontSize: 14, color: '#8c90a1', marginBottom: 6 }}>
+                  {foundUser?.display_name} already vouches for you. Both parties have been penalised <strong style={{ color: '#ffb4ab' }}>−20 pts</strong>.
+                </div>
+                {voucheeNewScore !== null && (
+                  <div style={{ fontSize: 14, color: '#8c90a1' }}>
+                    Their score is now <strong style={{ color: '#ffb4ab' }}>{voucheeNewScore}</strong>.
+                  </div>
+                )}
+                <button onClick={handleReject} className="btn-ghost" style={{ marginTop: 20 }}>
+                  Vouch someone else
+                </button>
+              </div>
+            ) : vouchState === 'success' ? (
               <div
                 className="bento"
                 style={{
@@ -394,6 +449,36 @@ export default function VouchPage() {
                     {vouchState === 'confirming' ? 'Confirming…' : 'Confirm vouch'}
                   </button>
                 </div>
+
+                {/* Claims + flag section */}
+                {canFlag && foundUserClaims.length > 0 && (
+                  <div style={{ marginTop: 20, paddingTop: 20, borderTop: '1px solid #424655' }}>
+                    <div style={{ fontSize: 13, fontWeight: 600, color: '#8c90a1', marginBottom: 12 }}>VERIFIED CLAIMS</div>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                      {foundUserClaims.map(claim => (
+                        <div key={claim.id} style={{ display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', borderRadius: 8, background: '#10141a', border: '1px solid #424655' }}>
+                          <Icon name="fact_check" size={16} style={{ color: '#40e56c', flexShrink: 0 }} />
+                          <div style={{ flex: 1, fontSize: 13 }}>
+                            <span style={{ fontWeight: 600 }}>{claim.doc_type.replace(/_/g, ' ')}</span>
+                            {claim.flags > 0 && <span style={{ marginLeft: 8, fontSize: 11, color: '#ffb4ab' }}>{claim.flags} flag{claim.flags !== 1 ? 's' : ''}</span>}
+                          </div>
+                          {flagResult?.claimId === claim.id ? (
+                            <span style={{ fontSize: 12, color: flagResult.msg.startsWith('Flagged') ? '#40e56c' : '#ffb4ab' }}>{flagResult.msg}</span>
+                          ) : (
+                            <button
+                              onClick={() => setFlagConfirm(claim.id)}
+                              disabled={!!flagging}
+                              style={{ padding: '4px 10px', borderRadius: 6, border: '1px solid rgba(255,180,171,0.3)', background: 'rgba(255,180,171,0.08)', color: '#ffb4ab', cursor: 'pointer', fontSize: 11, fontWeight: 600, display: 'flex', alignItems: 'center', gap: 4 }}
+                            >
+                              <Icon name="flag" size={12} />
+                              Flag
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ) : (
               /* Placeholder when nothing looked up yet */
@@ -434,6 +519,28 @@ export default function VouchPage() {
         </div>
 
       </main>
+
+      {flagConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <div className="bento" style={{ padding: 32, maxWidth: 400, width: '90%', textAlign: 'center' }}>
+            <Icon name="flag" size={36} style={{ color: '#ffb4ab', marginBottom: 12 }} />
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Flag this claim?</h3>
+            <p style={{ fontSize: 14, color: '#8c90a1', marginBottom: 24 }}>
+              This marks the claim as potentially fraudulent. Penalties apply to vouchers based on your tier ({session.tier === 'gov_official' ? '−30 pts' : '−15 pts'}). Cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button className="btn-ghost" onClick={() => setFlagConfirm(null)} disabled={!!flagging}>Cancel</button>
+              <button
+                onClick={() => { void handleFlag(flagConfirm) }}
+                disabled={!!flagging}
+                style={{ padding: '10px 24px', borderRadius: 8, background: 'rgba(255,180,171,0.15)', border: '1px solid rgba(255,180,171,0.4)', color: '#ffb4ab', fontSize: 14, fontWeight: 700, cursor: flagging ? 'not-allowed' : 'pointer', opacity: flagging ? 0.6 : 1 }}
+              >
+                {flagging ? 'Flagging...' : 'Yes, flag it'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

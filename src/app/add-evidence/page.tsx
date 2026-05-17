@@ -9,6 +9,7 @@ import Icon from '@/components/civic/Icon'
 import DocumentCameraCapture from '@/components/claims/DocumentCameraCapture'
 import type { Claim, ClaimType as ApiClaimType, DocumentAnalysis, Session, TrustTier } from '@/types'
 import { protectedFetch, requireSession, updateStoredSession } from '@/app/_lib/session'
+import { formatDocType } from '@/lib/utils'
 
 type ClaimType = 'Identity' | 'Credential' | 'Employment' | 'Residency'
 
@@ -50,10 +51,6 @@ interface ClaimResult {
   rejection_reason?: 'name_mismatch' | 'low_confidence' | 'unreadable'
 }
 
-function formatDocType(value?: string | null): string {
-  if (!value) return '—'
-  return value.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase())
-}
 
 function formatConfidence(value?: number | null): string {
   if (typeof value !== 'number') return '—'
@@ -80,7 +77,7 @@ function StepCircle({ n, status }: { n: number; status: 'done' | 'active' | 'pen
       ? { background: '#00b860', color: '#f5f5f5', border: '1px solid #00b860' }
       : status === 'active'
       ? { background: 'rgba(160,0,32,0.15)', color: '#a00020', border: '1px solid #a00020' }
-      : { background: '#070708', color: '#6a6a70', border: '1px solid #28282c' }
+      : { background: 'transparent', color: '#6a6a70', border: '1px solid #28282c' }
   return (
     <div
       style={{
@@ -826,7 +823,7 @@ export default function AddEvidencePage() {
           </button>
           <span style={{ fontSize: 13, color: '#6a6a70' }}>Step {step} of 4</span>
           <button
-            className="btn-primary"
+            className="btn-solid-primary"
             onClick={() => {
               if (step === 2) {
                 void submitClaim()

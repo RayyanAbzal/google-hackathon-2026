@@ -29,6 +29,9 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<UserProfileResult | null>(null)
   const [claims, setClaims] = useState<Claim[]>([])
   const [error, setError] = useState('')
+  const [flagging, setFlagging] = useState<string | null>(null)
+  const [flagConfirm, setFlagConfirm] = useState<string | null>(null)
+  const [flagResult, setFlagResult] = useState<{ claimId: string; msg: string } | null>(null)
 
   useEffect(() => {
     queueMicrotask(() => {
@@ -61,39 +64,52 @@ export default function ProfilePage() {
       }
 
       const claimsRequest = protectedFetch<Claim[]>(`/api/claims/${current.user_id}`, current)
-        .then((json) => {
-          if (json.success) setClaims(json.data)
-        })
+        .then((json) => { if (json.success) setClaims(json.data) })
         .catch(() => setClaims([]))
 
       const profileSlug = username === 'me' || username === current.user_id || username === current.node_id
         ? current.username
         : username
 
-      if (!profileSlug) {
-        void claimsRequest
-        return
-      }
+      if (!profileSlug) { void claimsRequest; return }
 
       protectedFetch<UserProfileResult>(`/api/users/${profileSlug}`, current)
         .then((json) => {
-          if (json.success) {
-            setProfile(json.data)
-            setClaims(json.data.claims)
-            return
-          }
+          if (json.success) { setProfile(json.data); setClaims(json.data.claims); return }
           if (!ownProfile) setError(json.error)
         })
-        .catch(() => {
-          if (!ownProfile) setError('Could not load this profile.')
-        })
+        .catch(() => { if (!ownProfile) setError('Could not load this profile.') })
     })
   }, [params.username, router])
+
+  async function handleFlag(claimId: string) {
+    if (!session) return
+    setFlagging(claimId)
+    setFlagConfirm(null)
+    try {
+      const json = await protectedFetch<{ penalized_vouchers: number }>('/api/vouch/flag', session, {
+        method: 'POST',
+        body: JSON.stringify({ claim_id: claimId }),
+      })
+      if (json.success) {
+        setFlagResult({ claimId, msg: `Flagged. ${json.data.penalized_vouchers} voucher(s) penalized.` })
+      } else {
+        setFlagResult({ claimId, msg: json.error })
+      }
+    } catch {
+      setFlagResult({ claimId, msg: 'Could not submit flag. Try again.' })
+    } finally {
+      setFlagging(null)
+    }
+  }
 
   const user = profile?.user
   const score = user?.score ?? session?.score ?? 0
   const dashOffset = CIRCUMFERENCE * (1 - score / 100)
   const verifiedClaims = useMemo(() => claims.filter((claim) => claim.status === 'verified'), [claims])
+
+  const isOwnProfile = user?.id === session?.user_id
+  const canFlag = !isOwnProfile && (session?.tier === 'trusted' || session?.tier === 'gov_official')
 
   return (
     <div style={{ background: '#070708', minHeight: '100vh', color: '#d2d2d6' }}>
@@ -183,14 +199,32 @@ export default function ProfilePage() {
                     <div style={{ width: 36, height: 36, borderRadius: 8, background: 'rgba(0,184,96,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                       <Icon name="fact_check" size={18} style={{ color: '#00b860' }} />
                     </div>
-                    <div>
+                    <div style={{ flex: 1 }}>
                       <div style={{ fontSize: 14, fontWeight: 700 }}>{claimTitle(claim)}</div>
                       <div style={{ fontSize: 12, color: '#6a6a70' }}>{claim.doc_type}</div>
                     </div>
+                    {canFlag && (
+                      <button
+                        onClick={() => setFlagConfirm(claim.id)}
+                        title="Flag this claim as fraudulent"
+                        style={{ padding: '4px 8px', borderRadius: 6, border: '1px solid rgba(255,180,171,0.3)', background: 'rgba(255,180,171,0.08)', color: '#ffb4ab', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: 4, fontSize: 11, fontWeight: 600 }}
+                      >
+                        <Icon name="flag" size={13} />
+                        Flag
+                      </button>
+                    )}
                   </div>
                   <div style={{ fontSize: 12, color: '#d2d2d6' }}>
                     Confidence {Math.round((claim.confidence ?? 0.9) * 100)}%
+                    {claim.flags > 0 && (
+                      <span style={{ marginLeft: 8, color: '#ffb4ab' }}>· {claim.flags} flag{claim.flags !== 1 ? 's' : ''}</span>
+                    )}
                   </div>
+                  {flagResult?.claimId === claim.id && (
+                    <div style={{ marginTop: 8, fontSize: 12, color: flagResult.msg.startsWith('Flagged') ? '#40e56c' : '#ffb4ab' }}>
+                      {flagResult.msg}
+                    </div>
+                  )}
                 </article>
               ))}
 
@@ -203,6 +237,35 @@ export default function ProfilePage() {
           </section>
         </div>
       </main>
+
+      {/* Confirmation dialog */}
+      {flagConfirm && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100 }}>
+          <div className="bento" style={{ padding: 32, maxWidth: 420, width: '90%', textAlign: 'center' }}>
+            <Icon name="flag" size={36} style={{ color: '#ffb4ab', marginBottom: 12 }} />
+            <h3 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>Flag this claim?</h3>
+            <p style={{ fontSize: 14, color: '#8c90a1', marginBottom: 24 }}>
+              This marks the claim as potentially fraudulent. Penalties are applied to vouchers based on your trust tier. This action cannot be undone.
+            </p>
+            <div style={{ display: 'flex', gap: 12, justifyContent: 'center' }}>
+              <button
+                className="btn-ghost"
+                onClick={() => setFlagConfirm(null)}
+                disabled={!!flagging}
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => { void handleFlag(flagConfirm) }}
+                disabled={!!flagging}
+                style={{ padding: '10px 24px', borderRadius: 8, background: 'rgba(255,180,171,0.15)', border: '1px solid rgba(255,180,171,0.4)', color: '#ffb4ab', fontSize: 14, fontWeight: 700, cursor: flagging ? 'not-allowed' : 'pointer', opacity: flagging ? 0.6 : 1 }}
+              >
+                {flagging ? 'Flagging...' : 'Yes, flag it'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

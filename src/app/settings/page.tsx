@@ -394,7 +394,7 @@ export default function SettingsPage() {
                 }}>
                   Cancel
                 </button>
-                <button className="btn-primary" type="button" onClick={handleSaveProfile} disabled={savingProfile}>
+                <button className="btn-solid-primary" type="button" onClick={handleSaveProfile} disabled={savingProfile}>
                   {savingProfile ? 'Saving...' : 'Save changes'}
                 </button>
               </div>
